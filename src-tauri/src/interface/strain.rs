@@ -79,6 +79,9 @@ impl InnerDbState {
         .execute(&self.conn_pool)
         .await
         {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No strain found with name '{name}'"
+            ))),
             Ok(_) => Ok(()),
             Err(e) => {
                 eprint!("Update strain error: {e}");

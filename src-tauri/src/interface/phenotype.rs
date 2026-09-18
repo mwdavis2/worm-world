@@ -217,8 +217,73 @@ impl InnerDbState {
             Ok(_) => Ok(()),
             Err(e) => {
                 eprint!("Delete Gene error: {e}");
+                // SQLITE_CONSTRAINT_FOREIGNKEY: describe what's still referencing
+                // the phenotype(s) instead of surfacing the raw SQLite error code.
+                if e.as_database_error().and_then(|d| d.code()).as_deref() == Some("787") {
+                    let reason = self
+                        .describe_phenotype_references(filter)
+                        .await
+                        .unwrap_or_else(|_| "other records that reference it".to_string());
+                    return Err(DbError::Delete(format!(
+                        "Cannot delete: still referenced by {reason}"
+                    )));
+                }
                 Err(DbError::Delete(e.to_string()))
             }
+        }
+    }
+
+    /// Describes which allele expressions / expression relations still reference
+    /// the phenotype(s) matched by `filter`, for use in a foreign-key-violation
+    /// error message.
+    async fn describe_phenotype_references(
+        &self,
+        filter: &FilterGroup<PhenotypeFieldName>,
+    ) -> Result<String, DbError> {
+        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new("SELECT name, wild FROM phenotypes");
+        filter.add_filtered_query(&mut qb, true, false);
+        let targets: Vec<(String, i64)> = qb
+            .build_query_as::<(String, i64)>()
+            .fetch_all(&self.conn_pool)
+            .await
+            .map_err(|e| DbError::Query(e.to_string()))?;
+
+        let mut descriptions = Vec::new();
+        for (name, wild) in targets {
+            let expr_count: i32 = sqlx::query_scalar!(
+                "SELECT COUNT(*) FROM allele_exprs
+                WHERE expressing_phenotype_name = ? AND expressing_phenotype_wild = ?",
+                name,
+                wild
+            )
+            .fetch_one(&self.conn_pool)
+            .await
+            .unwrap_or(0);
+
+            let relation_count: i32 = sqlx::query_scalar!(
+                "SELECT COUNT(*) FROM expr_relations
+                WHERE (expressing_phenotype_name = ? AND expressing_phenotype_wild = ?)
+                   OR (altering_phenotype_name = ? AND altering_phenotype_wild = ?)",
+                name,
+                wild,
+                name,
+                wild
+            )
+            .fetch_one(&self.conn_pool)
+            .await
+            .unwrap_or(0);
+
+            if expr_count > 0 || relation_count > 0 {
+                descriptions.push(format!(
+                    "'{name}' (wild: {wild}): {expr_count} allele expression(s), {relation_count} expression relation(s)"
+                ));
+            }
+        }
+
+        if descriptions.is_empty() {
+            Ok("other records".to_string())
+        } else {
+            Ok(descriptions.join("; "))
         }
     }
 }

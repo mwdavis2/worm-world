@@ -222,7 +222,7 @@ export const StrainSelect = (props: StrainSelectProps): React.JSX.Element => {
         {searchRes.length === 0 ? (
           <></>
         ) : (
-          <ul className='menu dropdown-content rounded-box z-50 my-2 max-h-80 w-52 overflow-auto bg-base-100 p-2 shadow'>
+          <ul className='dropdown-content menu rounded-box z-50 my-2 max-h-80 w-52 overflow-auto bg-base-100 p-2 shadow'>
             {searchRes.map((strain, idx) => {
               return (
                 <li

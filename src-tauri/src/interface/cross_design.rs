@@ -88,6 +88,10 @@ impl InnerDbState {
         .execute(&self.conn_pool)
         .await
         {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No cross design found with id '{}'",
+                cross_design.id
+            ))),
             Ok(_) => Ok(()),
             Err(e) => {
                 eprint!("Update cross design error: {e}");
@@ -108,6 +112,20 @@ impl InnerDbState {
             Ok(_) => Ok(()),
             Err(e) => {
                 eprint!("Delete CrossDesign error: {e}");
+                // SQLITE_CONSTRAINT_FOREIGNKEY: name what's still referencing it
+                // instead of surfacing the raw SQLite error code.
+                if e.as_database_error().and_then(|d| d.code()).as_deref() == Some("787") {
+                    let task_count: i32 = sqlx::query_scalar!(
+                        "SELECT COUNT(*) FROM tasks WHERE cross_design_id = ?",
+                        id
+                    )
+                    .fetch_one(&self.conn_pool)
+                    .await
+                    .unwrap_or(0);
+                    return Err(DbError::Delete(format!(
+                        "Cannot delete: still referenced by {task_count} task(s). Delete those tasks first."
+                    )));
+                }
                 Err(DbError::Delete(e.to_string()))
             }
         }

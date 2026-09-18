@@ -190,7 +190,10 @@ impl<T: FieldNameEnum> FilterQueryBuilder for FilterGroup<T> {
         }
 
         // ORDER BY
-        if !self.order_by.is_empty() && supply_where {
+        // Gated on `paginated`, not just `supply_where`: callers pass
+        // `paginated: false` for COUNT/DELETE queries, and SQLite rejects
+        // `ORDER BY` on a `DELETE` with no `LIMIT`.
+        if !self.order_by.is_empty() && supply_where && paginated {
             qb.push(" ORDER BY ");
             let mut qb_separated = qb.separated(", ");
             for (order_field, order_dir) in self.order_by.iter() {

@@ -5,6 +5,7 @@ import { Table, type ColumnDefinitionType } from 'components/Table/Table';
 import { type FilterGroup } from 'models/db/filter/FilterGroup';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import { getErrorMessage } from 'utils/getErrorMessage';
 
 interface DataTableProps<T, K> {
   title: string;
@@ -25,6 +26,11 @@ interface DataTableProps<T, K> {
 }
 
 const rowsPerPage = 50;
+
+// Tauri's native dialog.open() presents a modal sheet on the app window; firing
+// a second one before the first resolves leaves the extra sheet unresponsive
+// to all input (macOS only tracks one active modal session per window).
+let importInProgress = false;
 
 const DataTableView = <T, K>(
   props: DataTableProps<T, K>
@@ -66,13 +72,10 @@ const DataTableView = <T, K>(
         successCallback();
         refresh();
       })
-      .catch((e: Error) => {
-        let eMsg = e.message;
-        if (eMsg === 'undefined' || eMsg === undefined || eMsg === null)
-          eMsg =
-            'An error has occured when inserting data: ' + JSON.stringify(e);
-
-        toast.error(eMsg);
+      .catch((e) => {
+        toast.error(
+          'An error has occured when inserting data: ' + getErrorMessage(e)
+        );
       });
   };
 
@@ -82,12 +85,17 @@ const DataTableView = <T, K>(
       .then(() => {
         refresh();
       })
-      .catch((e: Error) => {
-        toast.error(`Unable to delete record: ${JSON.stringify(e)}`);
+      .catch((e) => {
+        toast.error(`Unable to delete record: ${getErrorMessage(e)}`);
       });
   };
 
   const importData = async (): Promise<void> => {
+    if (importInProgress) {
+      toast.error('An import is already in progress');
+      return;
+    }
+    importInProgress = true;
     try {
       const filepath: string | null = (await open({
         filters: [
@@ -103,8 +111,10 @@ const DataTableView = <T, K>(
       toast.success('Successfully imported data');
     } catch (e) {
       toast.error(
-        'An error has occured when importing data: ' + JSON.stringify(e)
+        'An error has occured when importing data: ' + getErrorMessage(e)
       );
+    } finally {
+      importInProgress = false;
     }
   };
 
@@ -125,14 +135,14 @@ const DataTableView = <T, K>(
               setData(ds);
             })
             .catch((e) =>
-              toast.error('Unable to get data: ' + JSON.stringify(e), {
+              toast.error('Unable to get data: ' + getErrorMessage(e), {
                 toastId: props.dataName,
               })
             );
           setRowCount(c);
         })
         .catch((e) =>
-          toast.error('Unable to get data: ' + JSON.stringify(e), {
+          toast.error('Unable to get data: ' + getErrorMessage(e), {
             toastId: props.dataName,
           })
         );

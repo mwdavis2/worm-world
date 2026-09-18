@@ -8,6 +8,7 @@ import { deleteCrossDesign, getFilteredCrossDesigns } from 'api/crossDesign';
 import { BiHide, BiShow } from 'react-icons/bi';
 import { SiMicrogenetics as GeneIcon } from 'react-icons/si';
 import EditorContext from 'components/EditorContext/EditorContext';
+import { getErrorMessage } from 'utils/getErrorMessage';
 
 export const ToDoView = (): React.JSX.Element => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -23,10 +24,10 @@ export const ToDoView = (): React.JSX.Element => {
       .then(() => {
         setHasLoadedOnce(true);
       }) // prevents text from flashing on screen while loading tasks from db
-      .catch((e) => toast.error('Unable to get data: ' + JSON.stringify(e)));
+      .catch((e) => toast.error('Unable to get data: ' + getErrorMessage(e)));
 
     refreshDesignNames().catch((e) =>
-      toast.error('Unable to get crossDesignIds: ' + JSON.stringify(e))
+      toast.error('Unable to get crossDesignIds: ' + getErrorMessage(e))
     );
   }, []);
 
@@ -50,14 +51,18 @@ export const ToDoView = (): React.JSX.Element => {
   const handleUpdateTask = (task: Task): void => {
     updateTask(task.generateRecord())
       .then(refreshTasks)
-      .catch((e) => toast.error('Unable to update task: ' + JSON.stringify(e)));
+      .catch((e) =>
+        toast.error('Unable to update task: ' + getErrorMessage(e))
+      );
   };
 
   const handleDeleteTasks = (designId?: string): void => {
     (designId === undefined
-      ? deleteAllTasks().then(() => {
-          [...designNames.keys()].map(
-            async (crossDesignId) => await deleteCrossDesign(crossDesignId)
+      ? deleteAllTasks().then(async () => {
+          await Promise.all(
+            [...designNames.keys()].map(
+              async (crossDesignId) => await deleteCrossDesign(crossDesignId)
+            )
           );
         })
       : deleteTasks(designId).then(async () => {
@@ -69,7 +74,7 @@ export const ToDoView = (): React.JSX.Element => {
         setFilteredOnDesignId(undefined);
       })
       .catch((e) =>
-        toast.error('Unable to delete tasks: ' + JSON.stringify(e))
+        toast.error('Unable to delete tasks: ' + getErrorMessage(e))
       );
   };
 
