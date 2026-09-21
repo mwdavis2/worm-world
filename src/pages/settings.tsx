@@ -17,6 +17,13 @@ const Settings = (): React.JSX.Element => {
     setLocalPreferences(setPreferences({ edgeStyle: value }));
   };
 
+  const updateMinChildProbabilityPercent = (percent: number): void => {
+    const clamped = Number.isFinite(percent)
+      ? Math.min(100, Math.max(0, percent))
+      : 0;
+    setLocalPreferences(setPreferences({ minChildProbability: clamped / 100 }));
+  };
+
   return (
     <>
       <TopNav title={'Settings'} />
@@ -67,6 +74,36 @@ const Settings = (): React.JSX.Element => {
             <option value='straight'>Straight</option>
             <option value='default'>Curved</option>
           </select>
+        </div>
+
+        <div className='form-control'>
+          <label className='label' htmlFor='minChildProbability'>
+            <span className='label-text'>
+              Auto-hide new children below this probability
+            </span>
+          </label>
+          <div className='flex items-center gap-2'>
+            <input
+              id='minChildProbability'
+              type='number'
+              min={0}
+              max={100}
+              step={0.25}
+              value={preferences.minChildProbability * 100}
+              className='input input-bordered w-32'
+              onChange={(e) => {
+                updateMinChildProbabilityPercent(Number(e.target.value));
+              }}
+            />
+            <span>%</span>
+          </div>
+          <label className='label'>
+            <span className='label-text-alt'>
+              Children below this percentage are hidden automatically when a
+              cross is created; use the cross&apos;s filter menu to reveal them.
+              0% disables this.
+            </span>
+          </label>
         </div>
       </div>
     </>

@@ -5,11 +5,16 @@ export type EdgeStyle = 'straight' | 'default'; // 'default' is react-flow's bui
 export interface Preferences {
   minZoom: number;
   edgeStyle: EdgeStyle;
+  // Fraction (0-1). Children below this probability start hidden when a
+  // cross is created. 0 disables the feature, since a probability can never
+  // be less than 0.
+  minChildProbability: number;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   minZoom: 0.5,
   edgeStyle: 'straight',
+  minChildProbability: 0,
 };
 
 export const getPreferences = (): Preferences => {

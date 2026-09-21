@@ -433,6 +433,27 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     else setDrawerState({ type: DrawerType.Cross, isOpen: true, id: node.id });
   }, []);
 
+  // Compacts positions of only the currently-visible children (0..N-1), so
+  // hidden children don't leave gaps in the layout. Hidden children keep
+  // whatever position they last had - harmless since they aren't rendered,
+  // and they'll be repositioned correctly the next time this runs (e.g. when
+  // un-hidden via the filter menu).
+  const repositionVisibleChildren = (
+    middleNode: Node,
+    childNodes: Array<Node<Strain>>
+  ): void => {
+    const visibleChildNodes = childNodes.filter(
+      (node) => !(node.hidden ?? false)
+    );
+    const positions = CrossDesign.calculateChildPositions(
+      middleNode.type === NodeType.X ? NodeType.X : NodeType.Self,
+      visibleChildNodes.length
+    );
+    visibleChildNodes.forEach((childNode, idx) => {
+      childNode.position = positions[idx];
+    });
+  };
+
   const updateFilter = (update: StrainFilterUpdate): void => {
     const filter: StrainFilter =
       reactFlowInstance.getNode(update.filterId)?.data ?? new StrainFilter();
@@ -453,19 +474,32 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     }
     middleNode.data = new StrainFilter({ ...filter });
 
-    // Reposition child nodes
-    const visibleChildNodes = childNodes.filter(
-      (node) => !(node.hidden ?? false)
-    );
-    const positions = CrossDesign.calculateChildPositions(
-      middleNode.type === NodeType.X ? NodeType.X : NodeType.Self,
-      visibleChildNodes.length
-    );
-    visibleChildNodes.forEach((childNode, idx) => {
-      childNode.position = positions[idx];
-    });
+    repositionVisibleChildren(middleNode, childNodes);
 
     setNodes((nodes) => addToArray(nodes, middleNode, ...childNodes));
+  };
+
+  // Hides newly-created children below the user's configured probability
+  // threshold, reusing StrainFilter.hiddenNodes so the existing filter menu
+  // (per-strain checkboxes, "Select All") can reveal them unchanged.
+  const applyInitialHiddenFilter = (
+    middleNode: Node<StrainFilter>,
+    childNodes: Array<Node<Strain>>
+  ): void => {
+    const threshold = getPreferences().minChildProbability;
+    if (threshold <= 0) return;
+
+    const hiddenIds = new Set<string>();
+    childNodes.forEach((node) => {
+      if ((node.data.probability ?? 1) < threshold) {
+        node.hidden = true;
+        hiddenIds.add(node.id);
+      }
+    });
+    if (hiddenIds.size === 0) return;
+
+    middleNode.data = new StrainFilter({ hiddenNodes: hiddenIds });
+    repositionVisibleChildren(middleNode, childNodes);
   };
 
   const getNodePositionFromLastClick = (): XYPosition => {
@@ -541,11 +575,13 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     };
     const strainOpts = await parentNode.data.selfCross();
     const childNodes = getChildNodes(selfNode, strainOpts);
+    applyInitialHiddenFilter(selfNode, childNodes);
     const childEdges = childNodes.map((node) => {
       return {
         id: props.crossDesign.createId(),
         source: selfNode.id,
         target: node.id,
+        hidden: node.hidden,
       };
     });
     setNodes((nodes) => addToArray(nodes, parentNode, selfNode, ...childNodes));
@@ -595,11 +631,13 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     };
     const childOptions = await maleStrain.crossWith(hermStrain);
     const childNodes = getChildNodes(xNode, childOptions);
+    applyInitialHiddenFilter(xNode, childNodes);
     const childEdges = childNodes.map((node) => {
       return {
         id: props.crossDesign.createId(),
         source: xNode.id,
         target: node.id,
+        hidden: node.hidden,
       };
     });
 
