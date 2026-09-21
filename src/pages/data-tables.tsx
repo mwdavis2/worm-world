@@ -21,14 +21,14 @@ const DataTables = (): React.JSX.Element => {
           Conditions
         </Link>
         <Link key='allele-expressions' to='allele-expressions' className='tab'>
-          Allele Expressions
+          Allele Phenotypes
         </Link>
         <Link
           key='expression-relations'
           to='expression-relations'
           className='tab'
         >
-          Expression Relations
+          Phenotype Relationships
         </Link>
         <Link key='strains' to='strains' className='tab'>
           Strains

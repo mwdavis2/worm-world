@@ -41,7 +41,7 @@ export const getAlleleExpression = async (
   };
 
   const res = await getFilteredAlleleExpressions(filter);
-  return getSingleRecordOrThrow(res, 'Unable to find the allele expression');
+  return getSingleRecordOrThrow(res, 'Unable to find the allele phenotype');
 };
 
 export const insertAlleleExpression = async (

@@ -74,7 +74,7 @@ const nameMapping: {
 export default function ExpressionRelationDataTable(): React.JSX.Element {
   return (
     <DataTableView
-      title='Expression Relations'
+      title='Phenotype Relationships'
       dataName='expressionRelation'
       cols={cols}
       fields={fields}

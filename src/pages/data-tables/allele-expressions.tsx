@@ -54,7 +54,7 @@ const nameMapping: {
 export default function AlleleExpressionDataTable(): React.JSX.Element {
   return (
     <DataTableView
-      title='Allele Expressions'
+      title='Allele Phenotypes'
       dataName='alleleExpression'
       cols={cols}
       fields={fields}
