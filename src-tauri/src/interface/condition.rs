@@ -157,8 +157,9 @@ impl InnerDbState {
     pub async fn insert_conditions(&self, bulk: Bulk<ConditionDb>) -> Result<(), DbError> {
         if !bulk.errors.is_empty() {
             return Err(DbError::BulkInsert(format!(
-                "Found errors on {} lines",
-                bulk.errors.len()
+                "Found {} invalid row(s); first error: {}",
+                bulk.errors.len(),
+                bulk.errors[0].1
             )));
         }
         // 7 is the number of fields here

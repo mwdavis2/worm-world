@@ -114,8 +114,9 @@ impl InnerDbState {
     pub async fn insert_strains(&self, bulk: Bulk<Strain>) -> Result<(), DbError> {
         if !bulk.errors.is_empty() {
             return Err(DbError::BulkInsert(format!(
-                "Found errors on {} lines",
-                bulk.errors.len()
+                "Found {} invalid row(s); first error: {}",
+                bulk.errors.len(),
+                bulk.errors[0].1
             )));
         }
         let bind_limit = SQLITE_BIND_LIMIT / 3;

@@ -101,8 +101,9 @@ impl InnerDbState {
     pub async fn insert_variations(&self, bulk: Bulk<VariationDb>) -> Result<(), DbError> {
         if !bulk.errors.is_empty() {
             return Err(DbError::BulkInsert(format!(
-                "Found errors on {} lines",
-                bulk.errors.len()
+                "Found {} invalid row(s); first error: {}",
+                bulk.errors.len(),
+                bulk.errors[0].1
             )));
         }
         if let Some(bad) = bulk
