@@ -800,7 +800,6 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                 zoomOnScroll={true}
                 nodeTypes={nodeTypes}
                 minZoom={preferences.minZoom}
-                onlyRenderVisibleElements
                 defaultEdgeOptions={{ type: preferences.edgeStyle }}
                 defaultViewport={{ x: 0, y: 0, zoom: 5 }}
                 nodes={nodes}
