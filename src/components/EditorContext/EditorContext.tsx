@@ -8,6 +8,7 @@ const EditorContext = createContext<{
   toggleHetPair?: (id: string, pair: AllelePair) => void;
   toggleSex?: (id: string) => void;
   getMenuItems?: (id: string) => MenuItem[];
+  reportContentScale?: (id: string, scale: number) => void;
 }>({
   showGenes: true,
 });

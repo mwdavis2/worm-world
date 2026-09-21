@@ -6,7 +6,8 @@ import { Sex } from 'models/enums';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { type ChromosomePair } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { type Strain } from 'models/frontend/Strain/Strain';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
+import { useFitScale } from 'hooks/useFitScale';
 import { BsLightningCharge as MenuIcon } from 'react-icons/bs';
 import { IoMale as MaleIcon, IoMaleFemale as HermIcon } from 'react-icons/io5';
 import { RiArrowUpDownLine as SwapIcon } from 'react-icons/ri';
@@ -17,6 +18,9 @@ interface StrainCardProps {
 }
 
 const StrainCard = (props: StrainCardProps): JSX.Element => {
+  const { ref: contentRef, scale: contentScale } = useFitScale<HTMLDivElement>([
+    props.strain,
+  ]);
   const probability =
     props.strain.probability === undefined
       ? 'No Prob'
@@ -24,6 +28,10 @@ const StrainCard = (props: StrainCardProps): JSX.Element => {
 
   const context = useContext(EditorContext);
   const menuItems = context.getMenuItems?.(props.id) ?? [];
+
+  useEffect(() => {
+    context.reportContentScale?.(props.id, contentScale);
+  }, [contentScale, props.id]);
   const strainCardContextValue = {
     strain: props.strain,
     toggleHetPair:
@@ -74,8 +82,15 @@ const StrainCard = (props: StrainCardProps): JSX.Element => {
             />
           </div>
         </div>
-        <div className='overflow-x-auto'>
-          <div className='flex h-24 min-w-min justify-center text-sm'>
+        <div className='min-w-0 overflow-hidden'>
+          <div
+            ref={contentRef}
+            className='flex h-24 min-w-min justify-center text-sm'
+            style={{
+              transform: `scale(${contentScale})`,
+              transformOrigin: 'top left',
+            }}
+          >
             <MainContentArea strain={props.strain} />
           </div>
         </div>

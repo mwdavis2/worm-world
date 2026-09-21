@@ -29,7 +29,7 @@ export const Menu = (props: MenuProps): React.JSX.Element => {
       {props.items.length > 0 && (
         <ul
           tabIndex={0}
-          className='menu-compact menu dropdown-content z-50 w-40 rounded-md bg-base-100 p-1 drop-shadow-lg'
+          className='menu-compact menu dropdown-content z-50 w-40 rounded-md bg-base-100 p-1 text-base-content drop-shadow-lg'
         >
           <li className='menu-title'>
             <span>{props.title}</span>

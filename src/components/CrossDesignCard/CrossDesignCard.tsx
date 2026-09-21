@@ -85,8 +85,11 @@ const CrossDesignCard = (props: CrossDesignCardProps): React.JSX.Element => {
         to={'/editor'}
         className='card h-52 w-52 rounded-lg shadow-xl'
         state={{ crossDesignId: props.crossDesign.id.toString() }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+        }}
       >
-        <div className='flex h-1/2 justify-end rounded-t-lg bg-primary'>
+        <div className='flex h-1/2 justify-end rounded-t-lg bg-primary text-primary-content'>
           <Menu items={menuItems} title='Actions' icon={<MoreHorizIcon />} />
         </div>
         <div className='h-1/2 bg-base-200 p-4 pt-2 text-base-content'>

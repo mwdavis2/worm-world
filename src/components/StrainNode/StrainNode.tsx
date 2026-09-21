@@ -20,7 +20,13 @@ const StrainNode = (props: StrainNodeProps): React.JSX.Element => {
 
   return (
     <div className='strain-node h-fit w-fit'>
-      <Handle key='top' id='top' type='target' position={Position.Top} />
+      <Handle
+        key='top'
+        id='top'
+        type='target'
+        position={Position.Top}
+        className='invisible'
+      />
       <Handle
         key='right'
         id='right'

@@ -89,6 +89,13 @@ interface StrainModalState {
   strain?: Strain;
 }
 
+// Below this content-scale factor, a strain card's genotype text is
+// considered too small to read comfortably.
+const LEGIBILITY_THRESHOLD = 0.6;
+// React Flow's own default minZoom, used as a floor so we only ever raise
+// the zoom-out limit, never lower it below the library's normal behavior.
+const DEFAULT_MIN_ZOOM = 0.5;
+
 const Editor = (props: EditorProps): React.JSX.Element => {
   const navigate = useNavigate();
   const reactFlowInstance = useReactFlow();
@@ -103,6 +110,8 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   const [saveStrainModalState, setSaveStrainModalState] =
     useState<StrainModalState>({ isOpen: false, strain: new Strain() });
   const [showGenes, setShowGenes] = useState(true);
+  const contentScales = useRef(new Map<string, number>());
+  const [minZoom, setMinZoom] = useState(DEFAULT_MIN_ZOOM);
   const [isSaving, setIsSaving] = useState(false);
   const timeout = useRef<NodeJS.Timeout>();
 
@@ -147,8 +156,41 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     );
   };
 
+  // Only cards already shrunk below the legibility threshold (at normal,
+  // zoom = 1 view) push the floor up; a card at scale 1 (no shrink needed)
+  // shouldn't restrict how far the user can zoom out.
+  const computeMinZoom = (): number => {
+    let required = DEFAULT_MIN_ZOOM;
+    for (const scale of contentScales.current.values()) {
+      if (scale < LEGIBILITY_THRESHOLD) {
+        required = Math.max(required, LEGIBILITY_THRESHOLD / scale);
+      }
+    }
+    return required;
+  };
+
+  const reportContentScale = useCallback((id: string, scale: number): void => {
+    contentScales.current.set(id, scale);
+    setMinZoom(computeMinZoom());
+  }, []);
+
+  // Drop entries for nodes that no longer exist, so a deleted card's small
+  // scale can't keep the zoom-out floor artificially high forever.
+  useEffect(() => {
+    const currentIds = new Set(nodes.map((node) => node.id));
+    let changed = false;
+    for (const id of contentScales.current.keys()) {
+      if (!currentIds.has(id)) {
+        contentScales.current.delete(id);
+        changed = true;
+      }
+    }
+    if (changed) setMinZoom(computeMinZoom());
+  }, [nodes]);
+
   const editorContextValue = {
     showGenes,
+    reportContentScale,
     toggleSex: (id: string): void => {
       const node = reactFlowInstance.getNode(id);
       if (node === undefined || node.type !== NodeType.Strain) {
@@ -785,8 +827,10 @@ const Editor = (props: EditorProps): React.JSX.Element => {
               <ReactFlow
                 fitView
                 ref={flowRef}
+                deleteKeyCode={['Backspace', 'Delete']}
                 zoomOnScroll={true}
                 nodeTypes={nodeTypes}
+                minZoom={minZoom}
                 defaultViewport={{ x: 0, y: 0, zoom: 5 }}
                 nodes={nodes}
                 edges={edges}
