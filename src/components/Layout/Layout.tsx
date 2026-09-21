@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { BiCalendar, BiData } from 'react-icons/bi';
+import { BiCalendar, BiCog, BiData } from 'react-icons/bi';
 import { TbBinaryTree } from 'react-icons/tb';
 import { useEffect } from 'react';
 import { themeChange } from 'theme-change';
@@ -29,6 +29,11 @@ const navItems: NavItem[] = [
     name: 'Data Tables',
     path: '/data-tables/genes',
     icon: <BiData className='text-2xl' />,
+  },
+  {
+    name: 'Settings',
+    path: '/settings',
+    icon: <BiCog className='text-2xl' />,
   },
 ];
 

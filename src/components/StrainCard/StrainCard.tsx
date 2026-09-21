@@ -6,7 +6,7 @@ import { Sex } from 'models/enums';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { type ChromosomePair } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { type Strain } from 'models/frontend/Strain/Strain';
-import { memo, useContext, useEffect, useMemo } from 'react';
+import { memo, useContext, useMemo } from 'react';
 import { useFitScale } from 'hooks/useFitScale';
 import { BsLightningCharge as MenuIcon } from 'react-icons/bs';
 import { IoMale as MaleIcon, IoMaleFemale as HermIcon } from 'react-icons/io5';
@@ -29,9 +29,6 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
   const context = useContext(EditorContext);
   const menuItems = context.getMenuItems?.(props.id) ?? [];
 
-  useEffect(() => {
-    context.reportContentScale?.(props.id, contentScale);
-  }, [contentScale, props.id]);
   const strainCardContextValue = useMemo(
     () => ({
       strain: props.strain,
