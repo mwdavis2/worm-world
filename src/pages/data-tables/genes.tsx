@@ -55,7 +55,6 @@ const nameMapping: { [key in keyof db_Gene]: GeneFieldName } = {
   chromosome: 'Chromosome',
   physLoc: 'PhysLoc',
   geneticLoc: 'GeneticLoc',
-  recombSuppressor: 'RecombSuppressor',
 };
 
 export default function GeneDataTable(): React.JSX.Element {

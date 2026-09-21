@@ -175,7 +175,6 @@ pub fn get_filtered_alleles_with_gene_filter() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::Iii),
                 phys_loc: Some(10902641),
                 gen_loc: Some(5.59),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -191,7 +190,6 @@ pub fn get_filtered_alleles_with_gene_filter() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::X),
                 phys_loc: Some(7682896),
                 gen_loc: Some(-1.35),
-                recomb_suppressor: None,
             },
         ),
     ]
@@ -211,7 +209,6 @@ pub fn get_filtered_alleles_with_no_gene_filter() -> Vec<(Allele, Gene)> {
             chromosome: Some(ChromosomeName::Iii),
             phys_loc: Some(10902641),
             gen_loc: Some(5.59),
-            recomb_suppressor: None,
         },
     )]
 }
@@ -230,7 +227,6 @@ pub fn get_filtered_alleles_and_filtered_genes_no_allele_filter() -> Vec<(Allele
             chromosome: Some(ChromosomeName::Iii),
             phys_loc: Some(10902641),
             gen_loc: Some(5.59),
-            recomb_suppressor: None,
         },
     )]
 }
@@ -250,7 +246,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::Ii),
                 phys_loc: Some(6710149),
                 gen_loc: Some(0.0),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -266,7 +261,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::Ii),
                 phys_loc: Some(6710149),
                 gen_loc: Some(0.0),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -282,7 +276,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::Iv),
                 phys_loc: Some(11696430),
                 gen_loc: Some(5.22),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -298,7 +291,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::Iv),
                 phys_loc: Some(7979870),
                 gen_loc: Some(3.51),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -314,7 +306,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -330,7 +321,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -346,7 +336,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::Iii),
                 phys_loc: Some(10902641),
                 gen_loc: Some(5.59),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -362,7 +351,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::Iv),
                 phys_loc: Some(9540806),
                 gen_loc: Some(4.3),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -378,7 +366,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::X),
                 phys_loc: Some(7682896),
                 gen_loc: Some(-1.35),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -394,7 +381,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::X),
                 phys_loc: Some(15726123),
                 gen_loc: Some(22.95),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -410,7 +396,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::X),
                 phys_loc: Some(15726123),
                 gen_loc: Some(22.95),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -426,7 +411,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: Some(ChromosomeName::Iv),
                 phys_loc: Some(11425742),
                 gen_loc: Some(4.98),
-                recomb_suppressor: None,
             },
         ),
         (
@@ -442,7 +426,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -460,7 +443,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -476,7 +458,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -492,7 +473,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -508,7 +488,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -524,7 +503,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -540,7 +518,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -556,7 +533,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -572,7 +548,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
         (
@@ -588,7 +563,6 @@ pub fn get_alleles_with_genes() -> Vec<(Allele, Gene)> {
                 chromosome: None,
                 phys_loc: None,
                 gen_loc: None,
-                recomb_suppressor: None,
             },
         ),
     ]

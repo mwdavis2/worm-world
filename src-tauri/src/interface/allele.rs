@@ -74,11 +74,11 @@ impl InnerDbState {
         gene_filter: &FilterGroup<GeneFieldName>,
     ) -> Result<Vec<(Allele, Gene)>, DbError> {
         let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "SELECT name, contents, systematic_gene_name, variation_name, 
-            systematic_name, descriptive_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end 
-            FROM alleles 
-            LEFT JOIN genes 
-            ON systematic_gene_name IS systematic_name 
+            "SELECT name, contents, systematic_gene_name, variation_name,
+            systematic_name, descriptive_name, chromosome, phys_loc, gen_loc
+            FROM alleles
+            LEFT JOIN genes
+            ON systematic_gene_name IS systematic_name
             ",
         );
 
@@ -109,13 +109,6 @@ impl InnerDbState {
                             chromosome: row.get::<Option<String>, _>(6).map(|v: String| v.into()),
                             phys_loc: row.get::<Option<i64>, _>(7).map(|v| v as i32),
                             gen_loc: row.get(8),
-                            recomb_suppressor: match (
-                                row.get::<Option<i64>, _>(9),
-                                row.get::<Option<i64>, _>(10),
-                            ) {
-                                (Some(start), Some(end)) => Some((start as i32, end as i32)),
-                                _ => None,
-                            },
                         };
                         (a, g)
                     })
@@ -247,7 +240,6 @@ mod test {
             chromosome: Some(ChromosomeName::Ii),
             phys_loc: Some(6710149),
             gen_loc: Some(0.0),
-            recomb_suppressor: None,
         };
 
         state.insert_gene(&new_gene).await?;
@@ -344,7 +336,6 @@ mod test {
             chromosome: Some(ChromosomeName::Ii),
             phys_loc: Some(6710149),
             gen_loc: Some(0.0),
-            recomb_suppressor: None,
         };
 
         state.insert_gene(&new_gene).await?;

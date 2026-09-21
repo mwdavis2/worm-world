@@ -12,7 +12,7 @@ impl InnerDbState {
         match sqlx::query_as!(
             GeneDb,
             "
-            SELECT systematic_name, descriptive_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end FROM genes ORDER BY descriptive_name
+            SELECT systematic_name, descriptive_name, chromosome, phys_loc, gen_loc FROM genes ORDER BY descriptive_name
             "
         )
         .fetch_all(&self.conn_pool)
@@ -31,7 +31,7 @@ impl InnerDbState {
         filter: &FilterGroup<GeneFieldName>,
     ) -> Result<Vec<Gene>, DbError> {
         let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "SELECT systematic_name, descriptive_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end FROM genes",
+            "SELECT systematic_name, descriptive_name, chromosome, phys_loc, gen_loc FROM genes",
         );
         filter.add_filtered_query(&mut qb, true, true);
 
@@ -69,23 +69,16 @@ impl InnerDbState {
     }
 
     pub async fn insert_gene(&self, gene: &Gene) -> Result<(), DbError> {
-        let (start, end): (Option<i32>, Option<i32>) = match gene.recomb_suppressor {
-            Some(recomb_range) => (Some(recomb_range.0), Some(recomb_range.1)),
-            None => (None, None),
-        };
-
         let chromosome = gene.chromosome.as_ref().map(|v| v.to_string());
         match sqlx::query!(
-            "INSERT INTO genes (systematic_name, descriptive_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end)
-            VALUES(?, ?, ?, ?, ?, ?, ?)
+            "INSERT INTO genes (systematic_name, descriptive_name, chromosome, phys_loc, gen_loc)
+            VALUES(?, ?, ?, ?, ?)
             ",
             gene.systematic_name,
             gene.descriptive_name,
             chromosome,
             gene.phys_loc,
-            gene.gen_loc,
-            start,
-            end
+            gene.gen_loc
         )
         .execute(&self.conn_pool)
         .await
@@ -114,13 +107,13 @@ impl InnerDbState {
                 "Invalid chromosome name '{bad}'. Expected one of: I, II, III, IV, V, X, MtDNA, Ex"
             )));
         }
-        let bind_limit = SQLITE_BIND_LIMIT / 7;
+        let bind_limit = SQLITE_BIND_LIMIT / 5;
 
         let mut data = bulk.data.into_iter().peekable();
         while data.peek().is_some() {
             let chunk = data.by_ref().take(bind_limit - 1).collect::<Vec<_>>();
             let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-                "INSERT OR IGNORE INTO genes (systematic_name, descriptive_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end) "
+                "INSERT OR IGNORE INTO genes (systematic_name, descriptive_name, chromosome, phys_loc, gen_loc) "
             );
             if chunk.len() > bind_limit {
                 return Err(DbError::BulkInsert(format!(
@@ -133,9 +126,7 @@ impl InnerDbState {
                     .push_bind(item.descriptive_name)
                     .push_bind(item.chromosome)
                     .push_bind(item.phys_loc)
-                    .push_bind(item.gen_loc)
-                    .push_bind(item.recomb_suppressor_start)
-                    .push_bind(item.recomb_suppressor_end);
+                    .push_bind(item.gen_loc);
             });
 
             match qb.build().execute(&self.conn_pool).await {
@@ -331,7 +322,6 @@ mod test {
             chromosome: Some(ChromosomeName::Iii),
             phys_loc: Some(10902641),
             gen_loc: Some(5.59),
-            recomb_suppressor: None,
         };
 
         state.insert_gene(&expected).await?;
@@ -354,7 +344,6 @@ mod test {
             chromosome: None,
             phys_loc: Some(10902633),
             gen_loc: Some(6.78),
-            recomb_suppressor: None,
         };
 
         state.insert_gene(&expected).await?;
@@ -368,11 +357,10 @@ mod test {
     async fn test_insert_genes(pool: Pool<Sqlite>) -> Result<()> {
         let state = InnerDbState { conn_pool: pool };
 
-        let csv_str =
-            "sysName,descName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd
-M142.1,unc-119,III,10902641,5.59,,
-FAKE23.4,unc-new,,10902633,6.78,,"
-                .as_bytes();
+        let csv_str = "sysName,descName,chromosome,physLoc,geneticLoc
+M142.1,unc-119,III,10902641,5.59
+FAKE23.4,unc-new,,10902633,6.78"
+            .as_bytes();
         let buf = BufReader::new(csv_str);
         let mut reader = csv::ReaderBuilder::new().has_headers(true).from_reader(buf);
         let bulk: Bulk<GeneDb> = Bulk::from_reader(&mut reader);
@@ -389,7 +377,6 @@ FAKE23.4,unc-new,,10902633,6.78,,"
                     chromosome: Some(ChromosomeName::Iii),
                     phys_loc: Some(10902641),
                     gen_loc: Some(5.59),
-                    recomb_suppressor: None,
                 },
                 Gene {
                     systematic_name: "FAKE23.4".to_string(),
@@ -397,7 +384,6 @@ FAKE23.4,unc-new,,10902633,6.78,,"
                     chromosome: None,
                     phys_loc: Some(10902633),
                     gen_loc: Some(6.78),
-                    recomb_suppressor: None,
                 }
             ]
         );
@@ -408,11 +394,10 @@ FAKE23.4,unc-new,,10902633,6.78,,"
     async fn test_insert_genes_tabs(pool: Pool<Sqlite>) -> Result<()> {
         let state = InnerDbState { conn_pool: pool };
 
-        let csv_str =
-            "sysName\tdescName\tchromosome\tphysLoc\tgeneticLoc\trecombSuppressorStart\trecombSuppressorEnd
-M142.1\tunc-119\tIII\t10902641\t5.59\t\t
-FAKE23.4\tunc-new\t\t10902633\t6.78\t\t"
-                .as_bytes();
+        let csv_str = "sysName\tdescName\tchromosome\tphysLoc\tgeneticLoc
+M142.1\tunc-119\tIII\t10902641\t5.59
+FAKE23.4\tunc-new\t\t10902633\t6.78"
+            .as_bytes();
         let buf = BufReader::new(csv_str);
         let mut reader = csv::ReaderBuilder::new()
             .has_headers(true)
@@ -432,7 +417,6 @@ FAKE23.4\tunc-new\t\t10902633\t6.78\t\t"
                     chromosome: Some(ChromosomeName::Iii),
                     phys_loc: Some(10902641),
                     gen_loc: Some(5.59),
-                    recomb_suppressor: None,
                 },
                 Gene {
                     systematic_name: "FAKE23.4".to_string(),
@@ -440,7 +424,6 @@ FAKE23.4\tunc-new\t\t10902633\t6.78\t\t"
                     chromosome: None,
                     phys_loc: Some(10902633),
                     gen_loc: Some(6.78),
-                    recomb_suppressor: None,
                 }
             ]
         );
@@ -458,7 +441,6 @@ FAKE23.4\tunc-new\t\t10902633\t6.78\t\t"
             chromosome: Some(ChromosomeName::Ii),
             phys_loc: Some(6710149),
             gen_loc: Some(0.0),
-            recomb_suppressor: None,
         };
         state.insert_gene(&gene).await?;
 

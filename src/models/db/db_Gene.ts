@@ -7,5 +7,4 @@ export interface db_Gene {
   chromosome: ChromosomeName | null;
   physLoc: number | null;
   geneticLoc: number | null;
-  recombSuppressor: [number, number] | null;
 }

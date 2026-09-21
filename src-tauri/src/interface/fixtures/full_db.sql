@@ -6,9 +6,7 @@ INSERT INTO
         descriptive_name,
         chromosome,
         phys_loc,
-        gen_loc,
-        recomb_suppressor_start,
-        recomb_suppressor_end
+        gen_loc
     )
 VALUES
     (
@@ -16,72 +14,56 @@ VALUES
         "unc-24",
         "IV",
         7979870,
-        3.51,
-        NULL,
-        NULL
+        3.51
     ),
     (
         "T22B3.1",
         "dpy-20",
         "IV",
         11696430,
-        5.22,
-        NULL,
-        NULL
+        5.22
     ),
     (
         "F56H11.1",
         "fbl-1",
         "IV",
         9540806,
-        4.3,
-        NULL,
-        NULL
+        4.3
     ),
     (
         "M142.1",
         "unc-119",
         "III",
         10902641,
-        5.59,
-        NULL,
-        NULL
+        5.59
     ),
     (
         "ZK662.4",
         "lin-15B",
         "X",
         15726123,
-        22.95,
-        NULL,
-        NULL
+        22.95
     ),
     (
         "F27D9.1",
         "unc-18",
         "X",
         7682896,
-        -1.35,
-        NULL,
-        NULL
+        -1.35
     ),
     (
         "T14B4.7",
         "dpy-10",
         "II",
         6710149,
-        0,
-        NULL,
-        NULL
+        0
     ),
     (
         "C10C6.1",
         "kin-4",
         "IV",
         11425742,
-        4.98,
-        NULL,
-        NULL
+        4.98
     );
 
 INSERT INTO

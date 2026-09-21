@@ -8,7 +8,6 @@ interface iGene {
   chromosome?: ChromosomeName;
   physLoc?: number; // Physical location of the gene on a chromosome
   geneticLoc?: number; // Gene's genetic distance from the middle of a chromosome
-  recombination?: [number, number];
 }
 
 export class Gene {
@@ -18,7 +17,6 @@ export class Gene {
   physLoc?: number;
 
   geneticLoc?: number;
-  recombination?: [number, number];
 
   constructor(fields: iGene) {
     Object.assign(this, fields);
@@ -31,7 +29,6 @@ export class Gene {
       physLoc: record.physLoc ?? undefined,
       geneticLoc: record.geneticLoc ?? undefined,
       chromosome: record.chromosome ?? undefined,
-      recombination: record.recombSuppressor ?? undefined,
     });
   }
 
@@ -43,7 +40,6 @@ export class Gene {
       physLoc: this.physLoc ?? null,
       geneticLoc: this.geneticLoc ?? null,
       chromosome: this.chromosome ?? null,
-      recombSuppressor: this.recombination ?? null,
     };
   }
 

@@ -305,7 +305,6 @@ mod test {
                 chromosome: Some(ChromosomeName::Ii),
                 phys_loc: Some(6710149),
                 gen_loc: Some(0.0),
-                recomb_suppressor: None,
             })
             .await?;
         state
@@ -354,7 +353,6 @@ mod test {
                 chromosome: Some(ChromosomeName::Ii),
                 phys_loc: Some(6710149),
                 gen_loc: Some(0.0),
-                recomb_suppressor: None,
             })
             .await?;
         state
