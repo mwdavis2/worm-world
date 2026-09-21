@@ -7,6 +7,7 @@ import CrossDesign from 'models/frontend/CrossDesign/CrossDesign';
 import { useEffect, useState } from 'react';
 import { GiEarthWorm as WormIcon } from 'react-icons/gi';
 import { toast } from 'react-toastify';
+import { getErrorMessage } from 'utils/getErrorMessage';
 
 const Index = (): React.JSX.Element => {
   const [newCrossDesignId, setNewCrossDesignId] = useState<string>();
@@ -117,7 +118,17 @@ const NoCrossDesignPlaceholder = (): React.JSX.Element => {
   );
 };
 
+// Tauri's native dialog.open() presents a modal sheet on the app window; firing
+// a second one before the first resolves leaves the extra sheet unresponsive
+// to all input (macOS only tracks one active modal session per window).
+let importInProgress = false;
+
 const importCrossDesign = async (): Promise<void> => {
+  if (importInProgress) {
+    toast.error('An import is already in progress');
+    return;
+  }
+  importInProgress = true;
   try {
     const filepath: string | null = (await open({
       filters: [
@@ -133,7 +144,9 @@ const importCrossDesign = async (): Promise<void> => {
     await insertCrossDesign(clonedCrossDesign.generateRecord());
     toast.success('Successfully imported cross design');
   } catch (err) {
-    toast.error(`Error importing cross design: ${JSON.stringify(err)}`);
+    toast.error(`Error importing cross design: ${getErrorMessage(err)}`);
+  } finally {
+    importInProgress = false;
   }
 };
 

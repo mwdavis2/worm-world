@@ -14,6 +14,7 @@ import { sep } from '@tauri-apps/api/path';
 import { toast } from 'react-toastify';
 import EditableDiv from 'components/EditableDiv/EditableDiv';
 import { ulid } from 'ulid';
+import { getErrorMessage } from 'utils/getErrorMessage';
 
 export interface CrossDesignCardProps {
   crossDesign: CrossDesign;
@@ -127,8 +128,13 @@ const CrossDesignCard = (props: CrossDesignCardProps): React.JSX.Element => {
               className='btn btn-error'
               onClick={() => {
                 deleteCrossDesign(props.crossDesign.id)
-                  .then(props.refreshCrossDesigns)
-                  .catch(console.error);
+                  .then(() => {
+                    setDeleteModalOpen(false);
+                    props.refreshCrossDesigns();
+                  })
+                  .catch((e) => {
+                    toast.error(`Unable to delete: ${getErrorMessage(e)}`);
+                  });
               }}
             >
               Delete
@@ -158,7 +164,17 @@ const copyCrossDesign = async (crossDesign: CrossDesign): Promise<void> => {
   await insertCrossDesign(newCrossDesign.generateRecord());
 };
 
+// Tauri's native dialog.open() presents a modal sheet on the app window; firing
+// a second one before the first resolves leaves the extra sheet unresponsive
+// to all input (macOS only tracks one active modal session per window).
+let exportInProgress = false;
+
 const exportCrossDesign = async (crossDesign: CrossDesign): Promise<void> => {
+  if (exportInProgress) {
+    toast.error('An export is already in progress');
+    return;
+  }
+  exportInProgress = true;
   try {
     const dir: string | null = (await open({
       directory: true,
@@ -172,6 +188,8 @@ const exportCrossDesign = async (crossDesign: CrossDesign): Promise<void> => {
     toast.success('Successfully exported crossDesign');
   } catch (err) {
     toast.error(`Error exporting crossDesign: ${err}`);
+  } finally {
+    exportInProgress = false;
   }
 };
 

@@ -104,6 +104,10 @@ impl InnerDbState {
         .execute(&self.conn_pool)
         .await
         {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No task found with id '{}'",
+                task.id
+            ))),
             Ok(_) => Ok(()),
             Err(e) => {
                 eprint!("Update Task error: {e}");

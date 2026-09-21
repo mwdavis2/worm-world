@@ -268,7 +268,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
         icon: <SaveIcon />,
         text: 'Save strain',
         menuCallback: () => {
-          setSaveStrainModalState({ isOpen: true });
+          setSaveStrainModalState({ isOpen: true, strain: strainNode.data });
         },
       };
 

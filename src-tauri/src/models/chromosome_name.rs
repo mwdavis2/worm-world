@@ -33,3 +33,16 @@ impl From<String> for ChromosomeName {
         ChromosomeName::from_str(to_convert.as_str()).unwrap()
     }
 }
+
+impl ChromosomeName {
+    /// Bulk-import chromosome columns are plain strings, not validated against
+    /// this enum at deserialize time, so a bad CSV value (e.g. "chrI") would
+    /// otherwise get written to the DB and later panic every read of that row
+    /// via `From<String> for ChromosomeName`. Call this before inserting.
+    pub fn validate(value: &Option<String>) -> Result<(), String> {
+        match value {
+            Some(v) if ChromosomeName::from_str(v).is_err() => Err(v.clone()),
+            _ => Ok(()),
+        }
+    }
+}

@@ -1,11 +1,11 @@
-import { path, fs } from '@tauri-apps/api';
+import { fs } from '@tauri-apps/api';
 import { toPng, toSvg } from 'html-to-image';
 import { BsCardImage } from 'react-icons/bs';
 import { FaPlus, FaMinus } from 'react-icons/fa6';
 import { SiMicrogenetics as GeneIcon } from 'react-icons/si';
 import { toast } from 'react-toastify';
 import { type ReactFlowInstance, Controls, ControlButton } from 'reactflow';
-import { open } from '@tauri-apps/api/dialog';
+import { save } from '@tauri-apps/api/dialog';
 import { type Options } from 'html-to-image/lib/types';
 
 interface CustomControlsProps {
@@ -83,49 +83,58 @@ const saveMethodFuncs: Record<
 const downloadImage = async (
   strainUrl: string,
   saveMethod: SaveMethod,
-  dir: string | null
+  filePath: string | null,
+  fallbackFilename: string
 ): Promise<void> => {
-  const a = document.createElement('a');
-  let filename = `cross-crossDesign-${new Date().toISOString()}.${saveMethod}`;
-  // workaround  because of this: https://github.com/tauri-apps/tauri/issues/4633
+  // workaround because of this: https://github.com/tauri-apps/tauri/issues/4633
   if (window.__TAURI_IPC__ !== undefined) {
-    if (dir !== null && dir !== undefined) {
-      filename = await path.join(dir, filename);
+    if (filePath === null) {
+      // user cancelled the save dialog
+      return;
     }
     const strainBlob = await (await fetch(strainUrl)).blob();
     switch (saveMethod) {
       case 'png':
-        fs.writeBinaryFile(filename, await strainBlob.arrayBuffer(), {
-          dir: dir === null ? fs.BaseDirectory.Download : undefined,
-        })
-          .then(() => toast.success('Exported PNG to ' + filename))
+        fs.writeBinaryFile(filePath, await strainBlob.arrayBuffer())
+          .then(() => toast.success('Exported PNG to ' + filePath))
           .catch(toast.error);
         break;
       case 'svg':
-        fs.writeTextFile(filename, await strainBlob.text(), {
-          dir: dir === null ? fs.BaseDirectory.Download : undefined,
-        })
-          .then(() => toast.success('Exported SVG to ' + filename))
+        fs.writeTextFile(filePath, await strainBlob.text())
+          .then(() => toast.success('Exported SVG to ' + filePath))
           .catch(toast.error);
         break;
     }
   } else {
-    a.setAttribute('download', filename);
+    const a = document.createElement('a');
+    a.setAttribute('download', fallbackFilename);
     a.setAttribute('href', strainUrl);
     a.click();
   }
 };
 
+// Tauri's native dialog.save() presents a modal sheet on the app window; firing
+// a second one before the first resolves leaves the extra sheet unresponsive
+// to all input (macOS only tracks one active modal session per window).
+let exportInProgress = false;
+
 const saveImg = (saveMethod: SaveMethod): void => {
+  if (exportInProgress) {
+    toast.error('An export is already in progress');
+    return;
+  }
   const saveFunc = saveMethodFuncs[saveMethod];
   const reactFlowElem = document.querySelector('.react-flow');
   if (reactFlowElem === null) {
     alert('Could not find react-flow element');
     return;
   }
+  exportInProgress = true;
+  const filename = `cross-crossDesign-${new Date().toISOString()}.${saveMethod}`;
   Promise.all([
-    open({
-      directory: true,
+    save({
+      defaultPath: filename,
+      filters: [{ name: saveMethod.toUpperCase(), extensions: [saveMethod] }],
     }),
     saveFunc(reactFlowElem as HTMLElement, {
       width: 1920,
@@ -150,11 +159,14 @@ const saveImg = (saveMethod: SaveMethod): void => {
       },
     }),
   ])
-    .then(async ([dir, strainUrl]) => {
-      await downloadImage(strainUrl, saveMethod, dir as string | null);
+    .then(async ([filePath, strainUrl]) => {
+      await downloadImage(strainUrl, saveMethod, filePath, filename);
     })
     .catch((e) => {
       alert(e);
+    })
+    .finally(() => {
+      exportInProgress = false;
     });
 };
 

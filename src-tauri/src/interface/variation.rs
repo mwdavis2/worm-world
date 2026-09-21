@@ -1,5 +1,6 @@
 use super::bulk::Bulk;
 use super::{DbError, InnerDbState, SQLITE_BIND_LIMIT};
+use crate::models::chromosome_name::ChromosomeName;
 use crate::models::filter::{Count, FilterQueryBuilder};
 use crate::models::variation::VariationDb;
 use crate::models::{
@@ -102,6 +103,15 @@ impl InnerDbState {
             return Err(DbError::BulkInsert(format!(
                 "Found errors on {} lines",
                 bulk.errors.len()
+            )));
+        }
+        if let Some(bad) = bulk
+            .data
+            .iter()
+            .find_map(|item| ChromosomeName::validate(&item.chromosome).err())
+        {
+            return Err(DbError::BulkInsert(format!(
+                "Invalid chromosome name '{bad}'. Expected one of: I, II, III, IV, V, X, MtDNA, Ex"
             )));
         }
         let bind_limit = SQLITE_BIND_LIMIT / 6;
