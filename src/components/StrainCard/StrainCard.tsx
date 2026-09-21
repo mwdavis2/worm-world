@@ -6,7 +6,7 @@ import { Sex } from 'models/enums';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { type ChromosomePair } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { type Strain } from 'models/frontend/Strain/Strain';
-import { useContext, useEffect } from 'react';
+import { memo, useContext, useEffect, useMemo } from 'react';
 import { useFitScale } from 'hooks/useFitScale';
 import { BsLightningCharge as MenuIcon } from 'react-icons/bs';
 import { IoMale as MaleIcon, IoMaleFemale as HermIcon } from 'react-icons/io5';
@@ -17,7 +17,7 @@ interface StrainCardProps {
   id: string;
 }
 
-const StrainCard = (props: StrainCardProps): JSX.Element => {
+const StrainCard = memo((props: StrainCardProps): JSX.Element => {
   const { ref: contentRef, scale: contentScale } = useFitScale<HTMLDivElement>([
     props.strain,
   ]);
@@ -32,22 +32,31 @@ const StrainCard = (props: StrainCardProps): JSX.Element => {
   useEffect(() => {
     context.reportContentScale?.(props.id, contentScale);
   }, [contentScale, props.id]);
-  const strainCardContextValue = {
-    strain: props.strain,
-    toggleHetPair:
-      context.toggleHetPair === undefined
-        ? undefined
-        : (pair: AllelePair) => {
-            context.toggleHetPair?.(props.id, pair);
-          },
-    toggleSex:
-      context.toggleSex === undefined
-        ? undefined
-        : () => {
-            context.toggleSex?.(props.id);
-          },
-    showGenes: context.showGenes,
-  };
+  const strainCardContextValue = useMemo(
+    () => ({
+      strain: props.strain,
+      toggleHetPair:
+        context.toggleHetPair === undefined
+          ? undefined
+          : (pair: AllelePair) => {
+              context.toggleHetPair?.(props.id, pair);
+            },
+      toggleSex:
+        context.toggleSex === undefined
+          ? undefined
+          : () => {
+              context.toggleSex?.(props.id);
+            },
+      showGenes: context.showGenes,
+    }),
+    [
+      props.strain,
+      props.id,
+      context.toggleHetPair,
+      context.toggleSex,
+      context.showGenes,
+    ]
+  );
 
   return (
     <StrainCardContext.Provider value={strainCardContextValue}>
@@ -98,7 +107,8 @@ const StrainCard = (props: StrainCardProps): JSX.Element => {
       </div>
     </StrainCardContext.Provider>
   );
-};
+});
+StrainCard.displayName = 'StrainCard';
 
 const SexButton = (): React.JSX.Element => {
   const context = useContext(StrainCardContext);

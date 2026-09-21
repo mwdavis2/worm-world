@@ -32,13 +32,23 @@ export const useFitScale = <T extends HTMLElement>(
       );
     };
 
-    measure();
+    // jsdom (the test suite) doesn't implement ResizeObserver - measure
+    // synchronously there instead, since nothing else will.
+    if (typeof ResizeObserver === 'undefined') {
+      measure();
+      return;
+    }
 
-    // transform:scale() doesn't affect layout size, so this only fires on
-    // genuine content-size changes (font swap, text changes), not our own
-    // scale updates - no feedback loop. jsdom (used by the test suite)
-    // doesn't implement ResizeObserver, so skip it there.
-    if (typeof ResizeObserver === 'undefined') return;
+    // Deliberately NOT calling measure() synchronously here: ResizeObserver
+    // already delivers an initial measurement for every newly-observed
+    // element, batched asynchronously across all observers in one pass by
+    // the browser. A synchronous scrollWidth/clientWidth read forces the
+    // browser to flush pending layout first - with many cards mounting at
+    // once (e.g. a large self-cross), doing that once per card back-to-back
+    // turns into a chain of forced synchronous reflows that blocks the main
+    // thread before the first paint. Letting ResizeObserver's own async,
+    // batched initial callback do the first measurement avoids that, at the
+    // cost of one frame at scale 1 before content snaps to its fitted size.
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => {

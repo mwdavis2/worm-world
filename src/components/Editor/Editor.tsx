@@ -112,6 +112,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   const [showGenes, setShowGenes] = useState(true);
   const contentScales = useRef(new Map<string, number>());
   const [minZoom, setMinZoom] = useState(DEFAULT_MIN_ZOOM);
+  const minZoomUpdateTimeout = useRef<NodeJS.Timeout>();
   const [isSaving, setIsSaving] = useState(false);
   const timeout = useRef<NodeJS.Timeout>();
 
@@ -171,7 +172,13 @@ const Editor = (props: EditorProps): React.JSX.Element => {
 
   const reportContentScale = useCallback((id: string, scale: number): void => {
     contentScales.current.set(id, scale);
-    setMinZoom(computeMinZoom());
+    // Debounced: a large cross can mount dozens of cards in a burst, each
+    // reporting its own scale - collapse that into a single minZoom update
+    // (and re-render) instead of one per card.
+    clearTimeout(minZoomUpdateTimeout.current);
+    minZoomUpdateTimeout.current = setTimeout(() => {
+      setMinZoom(computeMinZoom());
+    }, 50);
   }, []);
 
   // Drop entries for nodes that no longer exist, so a deleted card's small
@@ -188,101 +195,111 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     if (changed) setMinZoom(computeMinZoom());
   }, [nodes]);
 
-  const editorContextValue = {
-    showGenes,
-    reportContentScale,
-    toggleSex: (id: string): void => {
-      const node = reactFlowInstance.getNode(id);
-      if (node === undefined || node.type !== NodeType.Strain) {
-        console.error(
-          'Cannot toggle sex of node that is undefined or not a strain'
+  // Memoized so unrelated state changes (isSaving, drawerState, minZoom,
+  // etc.) don't recreate this object - every StrainCard subscribes to it via
+  // useContext, so a new reference re-renders all of them regardless of
+  // React.memo. Only recompute when something a consumer actually reads
+  // changes: showGenes/reportContentScale directly, and nodes/edges/name
+  // because scheduleNode (called from getMenuItems) closes over them
+  // directly rather than reading live state.
+  const editorContextValue = useMemo(
+    () => ({
+      showGenes,
+      reportContentScale,
+      toggleSex: (id: string): void => {
+        const node = reactFlowInstance.getNode(id);
+        if (node === undefined || node.type !== NodeType.Strain) {
+          console.error(
+            'Cannot toggle sex of node that is undefined or not a strain'
+          );
+          return;
+        }
+        setNodes((nodes) =>
+          addToArray(nodes, {
+            ...node,
+            data: (node as Node<Strain>).data.toggleSex(),
+          })
         );
-        return;
-      }
-      setNodes((nodes) =>
-        addToArray(nodes, {
-          ...node,
-          data: (node as Node<Strain>).data.toggleSex(),
+      },
+      toggleHetPair: (id: string, pair: AllelePair): void => {
+        const node = reactFlowInstance.getNode(id);
+        if (node === undefined || node.type !== NodeType.Strain) {
+          console.error(
+            'Cannot toggle het pair on a node that is undefined/not a strain'
+          );
+          return;
+        }
+        const strain: Strain = node.data;
+
+        pair.flip();
+        Strain.build({
+          allelePairs: strain.getAllelePairs(),
+          sex: strain.sex,
         })
-      );
-    },
-    toggleHetPair: (id: string, pair: AllelePair): void => {
-      const node = reactFlowInstance.getNode(id);
-      if (node === undefined || node.type !== NodeType.Strain) {
-        console.error(
-          'Cannot toggle het pair on a node that is undefined/not a strain'
-        );
-        return;
-      }
-      const strain: Strain = node.data;
+          .then((strain) => {
+            setNodes((nodes) => addToArray(nodes, { ...node, data: strain }));
+          })
+          .catch(console.error);
+      },
+      openNote: (id: string) => {
+        setDrawerState({ type: DrawerType.EditNote, isOpen: true, id });
+      },
+      getMenuItems: (id: string): MenuItem[] => {
+        const strainNode: Node<Strain> = reactFlowInstance.getNode(
+          id
+        ) as Node<Strain>;
+        if (strainNode === undefined || strainNode.type !== NodeType.Strain) {
+          console.error(
+            'Cannot get menu items for an undefined or non-strain node.'
+          );
+          return [];
+        }
 
-      pair.flip();
-      Strain.build({
-        allelePairs: strain.getAllelePairs(),
-        sex: strain.sex,
-      })
-        .then((strain) => {
-          setNodes((nodes) => addToArray(nodes, { ...node, data: strain }));
-        })
-        .catch(console.error);
-    },
-    openNote: (id: string) => {
-      setDrawerState({ type: DrawerType.EditNote, isOpen: true, id });
-    },
-    getMenuItems: (id: string): MenuItem[] => {
-      const strainNode: Node<Strain> = reactFlowInstance.getNode(
-        id
-      ) as Node<Strain>;
-      if (strainNode === undefined || strainNode.type !== NodeType.Strain) {
-        console.error(
-          'Cannot get menu items for an undefined or non-strain node.'
-        );
-        return [];
-      }
+        const self: MenuItem = {
+          icon: <SelfIcon />,
+          text: 'Self-cross',
+          menuCallback: () => {
+            selfCross(id).catch(console.error);
+          },
+        };
 
-      const self: MenuItem = {
-        icon: <SelfIcon />,
-        text: 'Self-cross',
-        menuCallback: () => {
-          selfCross(id).catch(console.error);
-        },
-      };
+        const cross: MenuItem = {
+          icon: <CrossIcon />,
+          text: 'Cross',
+          menuCallback: () => {
+            setDrawerState({ type: DrawerType.Cross, isOpen: true, id });
+          },
+        };
 
-      const cross: MenuItem = {
-        icon: <CrossIcon />,
-        text: 'Cross',
-        menuCallback: () => {
-          setDrawerState({ type: DrawerType.Cross, isOpen: true, id });
-        },
-      };
+        const schedule: MenuItem = {
+          icon: <ScheduleIcon />,
+          text: 'Schedule',
+          menuCallback: () => {
+            scheduleNode(id);
+          },
+        };
 
-      const schedule: MenuItem = {
-        icon: <ScheduleIcon />,
-        text: 'Schedule',
-        menuCallback: () => {
-          scheduleNode(id);
-        },
-      };
+        const saveStrain: MenuItem = {
+          icon: <SaveIcon />,
+          text: 'Save strain',
+          menuCallback: () => {
+            setSaveStrainModalState({ isOpen: true, strain: strainNode.data });
+          },
+        };
 
-      const saveStrain: MenuItem = {
-        icon: <SaveIcon />,
-        text: 'Save strain',
-        menuCallback: () => {
-          setSaveStrainModalState({ isOpen: true, strain: strainNode.data });
-        },
-      };
-
-      const menuOptions = [schedule];
-      if (!strainNode.data.isParent) menuOptions.push(cross);
-      if (
-        strainNode.data.sex === Sex.Hermaphrodite &&
-        !strainNode.data.isParent
-      )
-        menuOptions.push(self);
-      if (strainNode.data.name === undefined) menuOptions.push(saveStrain);
-      return menuOptions;
-    },
-  };
+        const menuOptions = [schedule];
+        if (!strainNode.data.isParent) menuOptions.push(cross);
+        if (
+          strainNode.data.sex === Sex.Hermaphrodite &&
+          !strainNode.data.isParent
+        )
+          menuOptions.push(self);
+        if (strainNode.data.name === undefined) menuOptions.push(saveStrain);
+        return menuOptions;
+      },
+    }),
+    [showGenes, reportContentScale, nodes, edges, name]
+  );
 
   /**
    * This function sets up right click handler overrides that check if the right click is on an HTML
@@ -831,6 +848,8 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                 zoomOnScroll={true}
                 nodeTypes={nodeTypes}
                 minZoom={minZoom}
+                onlyRenderVisibleElements
+                defaultEdgeOptions={{ type: 'straight' }}
                 defaultViewport={{ x: 0, y: 0, zoom: 5 }}
                 nodes={nodes}
                 edges={edges}

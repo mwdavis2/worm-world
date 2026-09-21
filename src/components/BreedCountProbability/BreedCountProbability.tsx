@@ -1,5 +1,3 @@
-import jStat from 'jstat';
-
 export interface BreedCountProbabilityProps {
   probability?: number;
 }
@@ -15,17 +13,14 @@ const BreedCountProbability = (
     ) {
       return -1;
     }
-    // Increment number -> for when n will get very large
-    const inc = props.probability >= 0.2 ? 1 : 5;
-    let n = 0; // worm counter
-    let cdf = 1 - jStat.binomial.cdf(0, n, props.probability); // Confidence value for n worms
-
-    // loop until we find what n value gives us our required confidence
-    while (cdf < confidence) {
-      n += inc;
-      cdf = 1 - jStat.binomial.cdf(0, n, props.probability);
-    }
-    return n;
+    // Solved directly rather than by stepping n upward: the chance of seeing at
+    // least one worm of interest in n picks is 1 - (1-p)^n, so the smallest
+    // sufficient n is ln(1-confidence) / ln(1-p). The search loop this replaces
+    // ran ~1/p times, which for rare recombinant strains (p ~ 1e-6) meant
+    // millions of iterations per card on every render.
+    const inc = props.probability >= 0.2 ? 1 : 5; // reported granularity
+    const exactN = Math.log(1 - confidence) / Math.log(1 - props.probability);
+    return Math.ceil(exactN / inc) * inc;
   };
 
   return (

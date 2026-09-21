@@ -1,6 +1,7 @@
 import StrainCard from 'components/StrainCard/StrainCard';
 import { Sex } from 'models/enums';
 import { type Strain } from 'models/frontend/Strain/Strain';
+import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 
 export const STRAIN_NODE_WIDTH = 256; // w-64
@@ -13,7 +14,7 @@ export interface StrainNodeProps {
   yPos: number;
 }
 
-const StrainNode = (props: StrainNodeProps): React.JSX.Element => {
+const StrainNode = memo((props: StrainNodeProps): React.JSX.Element => {
   const isHerm = props.data.sex === Sex.Hermaphrodite;
   const bRStyling = isHerm ? '' : 'invisible';
   const lStyling = isHerm ? 'invisible' : '';
@@ -51,6 +52,7 @@ const StrainNode = (props: StrainNodeProps): React.JSX.Element => {
       <StrainCard strain={props.data} {...props} />
     </div>
   );
-};
+});
+StrainNode.displayName = 'StrainNode';
 
 export default StrainNode;
