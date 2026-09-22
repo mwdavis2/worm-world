@@ -116,6 +116,7 @@ interface TableHeaderProps<T> {
   setSortType: (key: SortTuple<T>) => void;
   setFilterField: (key: keyof T) => void;
   applyFilters: () => void;
+  hasRowActions?: boolean;
 }
 
 const TableHeader = <T,>(props: TableHeaderProps<T>): React.JSX.Element => {
@@ -136,12 +137,14 @@ const TableHeader = <T,>(props: TableHeaderProps<T>): React.JSX.Element => {
 
   const rowNumCol = <th className='m-0 rounded-none'></th>;
   const deleteCol = rowNumCol;
+  const rowActionsCol = props.hasRowActions === true ? rowNumCol : null;
 
   return (
     <thead>
       <tr className='rounded-none border-none'>
         {rowNumCol}
         {headers}
+        {rowActionsCol}
         {deleteCol}
       </tr>
     </thead>
@@ -157,6 +160,7 @@ interface TableRowsProps<T> {
     column: ColumnDefinitionType<T>,
     value: string
   ) => Promise<void>;
+  customRowActions?: (row: T) => React.JSX.Element;
   offset?: number;
 }
 
@@ -250,6 +254,7 @@ const TableRows = <T,>({
   offset,
   deleteRecord,
   updateRecord,
+  customRowActions,
 }: TableRowsProps<T>): React.JSX.Element => {
   const rows = data.map((row, rowIndex) => {
     return (
@@ -266,6 +271,9 @@ const TableRows = <T,>({
             updateRecord={updateRecord}
           />
         ))}
+        {customRowActions !== undefined && (
+          <td className='text-center'>{customRowActions(row)}</td>
+        )}
         <DeleteCell
           deleteRecord={async () => {
             await deleteRecord(row).catch(console.error);
@@ -291,6 +299,7 @@ export interface TableProps<T, K> {
     value: string
   ) => Promise<void>;
   deleteRecord: (row: T) => Promise<void>;
+  customRowActions?: (row: T) => React.JSX.Element;
 }
 
 type FilterMap<T> = Map<keyof T, Filter[]>;
@@ -363,6 +372,7 @@ export const Table = <T, K>(props: TableProps<T, K>): React.JSX.Element => {
           sortType={sortType}
           setSortType={setSortType}
           setFilterField={setFocusedFilterField}
+          hasRowActions={props.customRowActions !== undefined}
         />
         <TableRows
           data={props.data}
@@ -370,6 +380,7 @@ export const Table = <T, K>(props: TableProps<T, K>): React.JSX.Element => {
           offset={props.offset}
           deleteRecord={props.deleteRecord}
           updateRecord={props.updateRecord}
+          customRowActions={props.customRowActions}
         />
       </table>
       <input

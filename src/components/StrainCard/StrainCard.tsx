@@ -15,6 +15,11 @@ import { RiArrowUpDownLine as SwapIcon } from 'react-icons/ri';
 interface StrainCardProps {
   strain: Strain;
   id: string;
+  // Stretches the card to fill its container's width instead of the fixed
+  // w-64 used for react-flow's grid-positioned cross-design nodes. For
+  // standalone previews (e.g. AddStrainModal) where there's no grid to align
+  // with and the fixed width leaves the surrounding space unused.
+  wide?: boolean;
 }
 
 const StrainCard = memo((props: StrainCardProps): JSX.Element => {
@@ -59,7 +64,9 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
     <StrainCardContext.Provider value={strainCardContextValue}>
       <div
         data-testid='strainCard'
-        className='flex h-36 w-64 flex-col rounded bg-base-100 shadow-md'
+        className={`flex h-36 flex-col rounded bg-base-100 shadow-md ${
+          props.wide === true ? 'w-full' : 'w-64'
+        }`}
       >
         <div className='flex h-6 justify-between'>
           <SexButton />

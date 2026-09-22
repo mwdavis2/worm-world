@@ -23,6 +23,14 @@ interface DataTableProps<T, K> {
     column: ColumnDefinitionType<T>,
     value: string
   ) => Promise<void>;
+  // Overrides the default flat add-record form (DataImportForm) with a
+  // custom one, e.g. for a record that needs more than a single-table
+  // insert. Receives `refresh` to call once the custom form has saved.
+  customAddForm?: (refresh: () => void) => React.JSX.Element;
+  // Renders extra per-row actions (e.g. a custom "Edit" button) alongside
+  // the default delete button. Receives `refresh` to call once a row action
+  // has changed the data.
+  customRowActions?: (row: T, refresh: () => void) => React.JSX.Element;
 }
 
 const rowsPerPage = 50;
@@ -196,13 +204,17 @@ const DataTableView = <T, K>(
         </div>
         <h1 className='col-start-2 py-6 text-3xl font-bold'>{props.title}</h1>
         <div className='flex w-full flex-row justify-end gap-2'>
-          <DataImportForm
-            title={props.title}
-            className='justify-self-end'
-            dataName={props.dataName}
-            fields={props.fields}
-            onSubmit={onRecordInsertionFormSubmission}
-          />
+          {props.customAddForm !== undefined ? (
+            props.customAddForm(refresh)
+          ) : (
+            <DataImportForm
+              title={props.title}
+              className='justify-self-end'
+              dataName={props.dataName}
+              fields={props.fields}
+              onSubmit={onRecordInsertionFormSubmission}
+            />
+          )}
           <button
             className='btn'
             onClick={() => {
@@ -230,6 +242,11 @@ const DataTableView = <T, K>(
                 }
           }
           deleteRecord={deleteRecord}
+          customRowActions={
+            props.customRowActions === undefined
+              ? undefined
+              : (row) => props.customRowActions?.(row, refresh) ?? <></>
+          }
         />
       </div>
     </div>

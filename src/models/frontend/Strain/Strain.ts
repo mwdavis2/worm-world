@@ -1,5 +1,6 @@
 import { getAllele } from 'api/allele';
 import {
+  deleteFilteredStrainAlleles,
   getFilteredStrainAlleles,
   insertDbStrainAllele,
 } from 'api/strainAllele';
@@ -19,7 +20,7 @@ import { type AlleleExpression } from 'models/frontend/AlleleExpression/AlleleEx
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { type Condition } from 'models/frontend/Condition/Condition';
 import { type Phenotype } from 'models/frontend/Phenotype/Phenotype';
-import { getStrain, insertStrain } from 'api/strain';
+import { getStrain, insertStrain, updateStrain } from 'api/strain';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import {
   type ChromosomeOption,
@@ -279,34 +280,66 @@ export class Strain {
     if (this.name === undefined)
       throw new Error('Tried to save strain without name.');
     await insertStrain(this);
+    await this.insertAllelePairs();
+  }
+
+  /**
+   * Updates an already-saved strain, identified by its previous name (which
+   * may differ from `this.name` if the strain is being renamed). Fully
+   * replaces the strain's `strain_alleles` rows with whatever `this` strain
+   * currently represents, rather than diffing/patching them.
+   */
+  public async update(oldName: string): Promise<void> {
+    if (this.name === undefined)
+      throw new Error('Tried to update strain without name.');
+    await updateStrain(oldName, this.generateRecord());
+    // strain_alleles.strain_name has ON UPDATE CASCADE, so a rename above
+    // already moved any existing rows from oldName to this.name - delete by
+    // the current name (a no-op rename leaves oldName === this.name).
+    await deleteFilteredStrainAlleles({
+      filters: [[['StrainName', { Equal: this.name }]]],
+      orderBy: [],
+    });
+    await this.insertAllelePairs();
+  }
+
+  private async insertAllelePairs(): Promise<void> {
     const simplified = this.simplify();
-    simplified.getAllelePairs().forEach((pair) => {
+    const inserts = simplified.getAllelePairs().flatMap((pair) => {
       if (pair.isHomo()) {
-        insertDbStrainAllele({
-          strainName: this.name ?? '',
-          alleleName: pair.top.name,
-          isOnTop: true,
-          isOnBot: true,
-        }).catch(console.error);
-      } else {
-        if (!pair.top.isWild()) {
+        return [
+          insertDbStrainAllele({
+            strainName: this.name ?? '',
+            alleleName: pair.top.name,
+            isOnTop: true,
+            isOnBot: true,
+          }),
+        ];
+      }
+      const pairInserts = [];
+      if (!pair.top.isWild()) {
+        pairInserts.push(
           insertDbStrainAllele({
             strainName: this.name ?? '',
             alleleName: pair.top.name,
             isOnTop: true,
             isOnBot: false,
-          }).catch(console.error);
-        }
-        if (!pair.bot.isWild()) {
+          })
+        );
+      }
+      if (!pair.bot.isWild()) {
+        pairInserts.push(
           insertDbStrainAllele({
             strainName: this.name ?? '',
             alleleName: pair.bot.name,
             isOnTop: false,
             isOnBot: true,
-          }).catch(console.error);
-        }
+          })
+        );
       }
+      return pairInserts;
     });
+    await Promise.all(inserts);
   }
 
   public toMale(): Strain {
