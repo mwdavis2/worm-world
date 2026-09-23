@@ -38,7 +38,7 @@ describe('Editor', () => {
     renderComponent(crossDesigns.simpleCrossDesign);
 
     const nodes = screen.getAllByTestId('strainCard');
-    expect(nodes).toHaveLength(3 + 1); // Extra is preview node on right drawer
+    expect(nodes).toHaveLength(3 + 1 + 1); // +1 preview node on right drawer, +1 AddStrainModal's always-mounted preview card
 
     const title = screen.getByText(/ed3 Cross/i);
     expect(title).toBeDefined();
@@ -50,7 +50,7 @@ describe('Editor', () => {
     expect(plusses).toHaveLength(2);
 
     const addNewNodeButton = screen.getByRole('button', {
-      name: /add strain/i,
+      name: /^add strain$/i,
     });
     expect(addNewNodeButton).toBeDefined();
   });
@@ -61,15 +61,15 @@ describe('Editor', () => {
     renderComponent(crossDesigns.simpleCrossDesign);
 
     const nodes = screen.getAllByTestId('strainCard');
-    expect(nodes).toHaveLength(3 + 1); // Extra is preview node on right drawer
+    expect(nodes).toHaveLength(3 + 1 + 1); // +1 preview node on right drawer, +1 AddStrainModal's always-mounted preview card
 
     const addNewNodeButton = screen.getByRole('button', {
-      name: /add strain/i,
+      name: /^add strain$/i,
     });
     await user.click(addNewNodeButton);
 
     const formSubmitButton = screen.getByRole('button', {
-      name: /add strain/i,
+      name: /add strain to design/i,
     });
     expect(formSubmitButton).toBeDefined();
     expect(formSubmitButton).toBeVisible();
@@ -77,7 +77,7 @@ describe('Editor', () => {
     await user.click(formSubmitButton);
     await waitFor(() => {
       const nodes = screen.getAllByTestId('strainCard');
-      expect(nodes).toHaveLength(4 + 1);
+      expect(nodes).toHaveLength(4 + 1 + 1); // +1 AddStrainModal's always-mounted preview card
     });
   });
 

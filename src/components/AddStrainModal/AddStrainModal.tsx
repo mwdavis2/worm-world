@@ -14,8 +14,23 @@ interface AddStrainModalProps {
   setIsOpen: (isOpen: boolean) => void;
   // When set, the modal opens pre-populated with this strain's full state
   // (name/description/alleles) for editing rather than creating a new one.
+  // Mutually exclusive with strainToLoad - only one source is ever passed.
   strainToEdit?: db_Strain;
-  onSaved: () => void;
+  // Same idea, but for a strain that's already a fully-built frontend Strain
+  // (e.g. a cross-design canvas node) - no DB round-trip needed to load it.
+  strainToLoad?: Strain;
+  // False for a strain that's already wired into a cross (parent or child) -
+  // its alleles are load-bearing for the cross's already-computed
+  // relationships, so this only lets the name/description be set, never the
+  // genotype. Defaults to true (the data-table catalog's full-edit case).
+  allowAlleleEditing?: boolean;
+  // When set, shows an "Update strain" button that applies the current
+  // edits back to the caller without writing to the database - lets a
+  // freestanding card's alleles/description be changed without forcing an
+  // immediate save. Not passed by the Strains data-table page, since there's
+  // no in-memory canvas node there to apply an unsaved edit to.
+  onUpdate?: (updatedStrain: Strain) => void;
+  onSaved: (savedStrain: Strain) => void;
 }
 
 // Pairs up picked alleles into homozygous/heterozygous AllelePairs and builds
@@ -66,6 +81,7 @@ const buildStrain = async (
 };
 
 const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
+  const allowAlleleEditing = props.allowAlleleEditing ?? true;
   const [strain, setStrain] = useState(new Strain());
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -86,6 +102,12 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
           setDescription(loaded.description ?? '');
         })
         .catch(console.error);
+    } else if (props.strainToLoad !== undefined) {
+      const strainToLoad = props.strainToLoad;
+      setOriginalName(strainToLoad.name === '' ? undefined : strainToLoad.name);
+      setStrain(strainToLoad);
+      setName(strainToLoad.name);
+      setDescription(strainToLoad.description ?? '');
     } else {
       setOriginalName(undefined);
       setStrain(new Strain());
@@ -95,7 +117,7 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
     setShowAdvanced(false);
     // Only (re)load when the modal opens or which strain it's editing
     // changes - not on every keystroke while it's open.
-  }, [props.isOpen, props.strainToEdit?.name]);
+  }, [props.isOpen, props.strainToEdit?.name, props.strainToLoad]);
 
   const regAlleles = new Set(
     strain
@@ -130,15 +152,24 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
 
   const editorContextValue = {
     showGenes: true,
-    toggleHetPair: (id: string, pair: AllelePair) => {
-      pair.flip();
-      Strain.build({ allelePairs: strain.getAllelePairs() })
-        .then((built) => {
-          built.description = strain.description;
-          setStrain(built);
-        })
-        .catch(console.error);
-    },
+    toggleHetPair: !allowAlleleEditing
+      ? undefined
+      : (id: string, pair: AllelePair) => {
+          pair.flip();
+          Strain.build({ allelePairs: strain.getAllelePairs() })
+            .then((built) => {
+              built.description = strain.description;
+              setStrain(built);
+            })
+            .catch(console.error);
+        },
+  };
+
+  const handleUpdate = (): void => {
+    strain.name = name;
+    strain.description = description;
+    props.onUpdate?.(strain);
+    close();
   };
 
   const handleSave = (): void => {
@@ -149,7 +180,7 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
     result
       .then(() => {
         toast.success('Saved strain');
-        props.onSaved();
+        props.onSaved(strain);
         close();
       })
       .catch(() =>
@@ -188,60 +219,71 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
           <EditorContext.Provider value={editorContextValue}>
             <StrainCard strain={strain} id='add-strain-modal-preview' wide />
           </EditorContext.Provider>
-          <AlleleMultiSelect
-            placeholder='Type allele name'
-            label='Alleles'
-            selectedRecords={regAlleles}
-            setSelectedRecords={(regs) => {
-              setStrainFromAlleles(regs, irregAlleles);
-            }}
-            shouldInclude={alleleIsUnused}
-          />
-          {showAdvanced && (
-            <>
-              <AlleleMultiSelect
-                placeholder='Type allele name'
-                label='Heterozygous Alleles'
-                selectedRecords={irregAlleles}
-                setSelectedRecords={(irregs) => {
-                  setStrainFromAlleles(regAlleles, irregs);
+          {allowAlleleEditing && (
+            <AlleleMultiSelect
+              placeholder='Type allele name'
+              label='Alleles'
+              selectedRecords={regAlleles}
+              setSelectedRecords={(regs) => {
+                setStrainFromAlleles(regs, irregAlleles);
+              }}
+              shouldInclude={alleleIsUnused}
+            />
+          )}
+          {allowAlleleEditing && showAdvanced && (
+            <AlleleMultiSelect
+              placeholder='Type allele name'
+              label='Heterozygous Alleles'
+              selectedRecords={irregAlleles}
+              setSelectedRecords={(irregs) => {
+                setStrainFromAlleles(regAlleles, irregs);
+              }}
+              shouldInclude={(allele) =>
+                alleleIsUnused(allele) && !isEcaAlleleName(allele.name)
+              }
+            />
+          )}
+          {(!allowAlleleEditing || showAdvanced) && (
+            <div className='form-control my-2'>
+              <label
+                className='label'
+                htmlFor='new-strain-description-textarea'
+              >
+                <span className='label-text'>Description</span>
+              </label>
+              <textarea
+                id='new-strain-description-textarea'
+                className='textarea textarea-bordered w-full'
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value);
                 }}
-                shouldInclude={(allele) =>
-                  alleleIsUnused(allele) && !isEcaAlleleName(allele.name)
-                }
               />
-              <div className='form-control my-2'>
-                <label
-                  className='label'
-                  htmlFor='new-strain-description-textarea'
-                >
-                  <span className='label-text'>Description</span>
-                </label>
-                <textarea
-                  id='new-strain-description-textarea'
-                  className='textarea textarea-bordered w-full'
-                  value={description}
-                  onChange={(e) => {
-                    setDescription(e.target.value);
-                  }}
-                />
-              </div>
-            </>
+            </div>
           )}
           <div className='modal-action justify-between'>
-            <button
-              className='btn btn-ghost'
-              disabled={irregAlleles.size > 0}
-              onClick={() => {
-                setShowAdvanced(!showAdvanced);
-              }}
-            >
-              {showAdvanced ? 'Hide advanced options' : 'Show advanced options'}
-            </button>
+            {allowAlleleEditing && (
+              <button
+                className='btn btn-ghost'
+                disabled={irregAlleles.size > 0}
+                onClick={() => {
+                  setShowAdvanced(!showAdvanced);
+                }}
+              >
+                {showAdvanced
+                  ? 'Hide advanced options'
+                  : 'Show advanced options'}
+              </button>
+            )}
             <div className='flex gap-2'>
               <button className='btn btn-ghost' onClick={close}>
                 Cancel
               </button>
+              {props.onUpdate !== undefined && (
+                <button className='btn btn-secondary' onClick={handleUpdate}>
+                  Update strain
+                </button>
+              )}
               <button
                 className='btn btn-primary'
                 disabled={name === ''}

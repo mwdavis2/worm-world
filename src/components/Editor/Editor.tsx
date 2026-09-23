@@ -59,7 +59,7 @@ import ReactFlow, {
   getOutgoers,
 } from 'reactflow';
 import { BiX as CloseIcon } from 'react-icons/bi';
-import SaveStrainModal from 'components/SaveStrainModal/SaveStrainModal';
+import AddStrainModal from 'components/AddStrainModal/AddStrainModal';
 import 'reactflow/dist/style.css';
 import { NoteNode } from 'components/NoteNode/NoteNode';
 import StrainNode from 'components/StrainNode/StrainNode';
@@ -87,7 +87,9 @@ enum DrawerType {
 }
 interface StrainModalState {
   isOpen: boolean;
+  id?: string;
   strain?: Strain;
+  allowAlleleEditing?: boolean;
 }
 
 const Editor = (props: EditorProps): React.JSX.Element => {
@@ -101,7 +103,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     type: DrawerType.AddStrain,
     isOpen: false,
   });
-  const [saveStrainModalState, setSaveStrainModalState] =
+  const [editStrainModalState, setEditStrainModalState] =
     useState<StrainModalState>({ isOpen: false, strain: new Strain() });
   const [showGenes, setShowGenes] = useState(true);
   const [preferences] = useState(getPreferences);
@@ -147,6 +149,16 @@ const Editor = (props: EditorProps): React.JSX.Element => {
         })
       )
     );
+  };
+
+  // Shared by AddStrainModal's onSaved and onUpdate - the canvas-side effect
+  // is identical either way (the node's data just reflects the latest
+  // edited strain); the only difference is whether a DB write happened
+  // first, which AddStrainModal itself already handles.
+  const applyEditedStrainToNode = (editedStrain: Strain): void => {
+    const node = reactFlowInstance.getNode(editStrainModalState.id ?? '');
+    if (node !== undefined)
+      setNodes((nodes) => addToArray(nodes, { ...node, data: editedStrain }));
   };
 
   // Memoized so unrelated state changes (isSaving, drawerState, etc.) don't
@@ -244,11 +256,24 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           },
         };
 
-        const saveStrain: MenuItem = {
+        // Freestanding cards (not wired into any cross as a parent or
+        // child) can be fully edited - renamed, re-described, alleles
+        // changed - at any time. Cross-participant cards can only be
+        // named once (their alleles are load-bearing for the cross's
+        // already-computed relationships, so changing them here would
+        // silently invalidate the cross) - once saved, no further action.
+        const isFreestanding =
+          !strainNode.data.isParent && !strainNode.data.isChild;
+        const editStrain: MenuItem = {
           icon: <SaveIcon />,
-          text: 'Save strain',
+          text: isFreestanding ? 'Edit strain' : 'Save strain',
           menuCallback: () => {
-            setSaveStrainModalState({ isOpen: true, strain: strainNode.data });
+            setEditStrainModalState({
+              isOpen: true,
+              id,
+              strain: strainNode.data,
+              allowAlleleEditing: isFreestanding,
+            });
           },
         };
 
@@ -259,7 +284,8 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           !strainNode.data.isParent
         )
           menuOptions.push(self);
-        if (strainNode.data.name === undefined) menuOptions.push(saveStrain);
+        if (isFreestanding || strainNode.data.name === '')
+          menuOptions.push(editStrain);
         return menuOptions;
       },
     }),
@@ -809,146 +835,144 @@ const Editor = (props: EditorProps): React.JSX.Element => {
               />
             </Fragment>
           ))}
-        <div className='drawer drawer-end'>
-          <input
-            id='right-drawer'
-            type='checkbox'
-            className='drawer-toggle'
-            checked={drawerState.isOpen}
-            readOnly
-          />
-          <div className='drawer-content flex h-screen flex-col'>
-            {showRightClickMenu && props.crossDesign.editable && (
-              <ContextMenu xPos={rightClickXPos} yPos={rightClickYPos}>
-                <li
-                  onClick={() => {
-                    setDrawerState({
-                      type: DrawerType.AddStrain,
-                      isOpen: true,
-                    });
-                  }}
-                >
-                  <button className='flex flex-row' name='add-cross-node'>
-                    <AddIcon className='text-xl text-base-content' />
-                    <p>Add Strain</p>
-                  </button>
-                </li>
-                <li
-                  onClick={() => {
-                    setDrawerState({ type: DrawerType.AddNote, isOpen: true });
-                  }}
-                >
-                  <button className='flex flex-row' name='add-note'>
-                    <div>
-                      <NoteIcon className='fill-base-content text-xl' />
-                    </div>
-                    <p>Add Note</p>
-                  </button>
-                </li>
-              </ContextMenu>
-            )}
-            <EditorTop
-              crossDesign={props.crossDesign}
-              isSaving={isSaving}
-              name={name}
-              setName={setName}
-            />
-            <EditorContext.Provider value={editorContextValue}>
-              <ReactFlow
-                fitView
-                ref={flowRef}
-                deleteKeyCode={['Backspace', 'Delete']}
-                zoomOnScroll={true}
-                nodeTypes={nodeTypes}
-                minZoom={preferences.minZoom}
-                defaultEdgeOptions={{ type: preferences.edgeStyle }}
-                defaultViewport={{ x: 0, y: 0, zoom: 5 }}
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onConnect={onConnect}
-                onConnectStart={onConnectStart}
-                onConnectEnd={onConnectEnd}
-                connectionMode={ConnectionMode.Loose}
-                nodesDraggable={props.crossDesign.editable}
-                nodesConnectable={props.crossDesign.editable}
-                elementsSelectable={props.crossDesign.editable}
+        <div className='flex h-screen flex-col'>
+          {showRightClickMenu && props.crossDesign.editable && (
+            <ContextMenu xPos={rightClickXPos} yPos={rightClickYPos}>
+              <li
+                onClick={() => {
+                  setDrawerState({
+                    type: DrawerType.AddStrain,
+                    isOpen: true,
+                  });
+                }}
               >
-                <CustomControls
-                  reactFlowInstance={reactFlowInstance}
-                  toggleGenes={() => {
-                    setShowGenes(!showGenes);
-                  }}
-                  crossDesignEditable={props.crossDesign.editable}
-                />
-                <MiniMap
-                  position='bottom-left'
-                  className='bg-base-300'
-                  nodeClassName='bg-base-100'
-                />
-                <Background className='-z-50 bg-base-300' size={1} gap={16} />
-              </ReactFlow>
-            </EditorContext.Provider>
-          </div>
-          <div className={'drawer-side'}>
-            <label
-              htmlFor='cross-editor-drawer'
-              className='drawer-overlay'
-              onClick={closeDrawer}
-            />
-            <div
-              className={
-                'flex h-screen flex-col overflow-y-auto bg-base-100 p-4'
-              }
-              hidden={!drawerState.isOpen}
+                <button className='flex flex-row' name='add-cross-node'>
+                  <AddIcon className='text-xl text-base-content' />
+                  <p>Add Strain</p>
+                </button>
+              </li>
+              <li
+                onClick={() => {
+                  setDrawerState({ type: DrawerType.AddNote, isOpen: true });
+                }}
+              >
+                <button className='flex flex-row' name='add-note'>
+                  <div>
+                    <NoteIcon className='fill-base-content text-xl' />
+                  </div>
+                  <p>Add Note</p>
+                </button>
+              </li>
+            </ContextMenu>
+          )}
+          <EditorTop
+            crossDesign={props.crossDesign}
+            isSaving={isSaving}
+            name={name}
+            setName={setName}
+          />
+          <EditorContext.Provider value={editorContextValue}>
+            <ReactFlow
+              fitView
+              ref={flowRef}
+              deleteKeyCode={['Backspace', 'Delete']}
+              zoomOnScroll={true}
+              nodeTypes={nodeTypes}
+              minZoom={preferences.minZoom}
+              defaultEdgeOptions={{ type: preferences.edgeStyle }}
+              defaultViewport={{ x: 0, y: 0, zoom: 5 }}
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onConnect={onConnect}
+              onConnectStart={onConnectStart}
+              onConnectEnd={onConnectEnd}
+              connectionMode={ConnectionMode.Loose}
+              nodesDraggable={props.crossDesign.editable}
+              nodesConnectable={props.crossDesign.editable}
+              elementsSelectable={props.crossDesign.editable}
             >
-              <button className='self-end' onClick={closeDrawer}>
-                <CloseIcon className='text-3xl' />
-              </button>
-              {drawerState.type === DrawerType.AddNote ||
-              drawerState.type === DrawerType.EditNote ? (
-                <NoteForm
-                  header={
-                    drawerState.type === DrawerType.AddNote
-                      ? 'Add Note'
-                      : 'Edit Note'
-                  }
-                  buttonText={
-                    drawerState.type === DrawerType.AddNote
-                      ? 'Add Note'
-                      : 'Edit Note'
-                  }
-                  callback={getNoteFormCallback()}
-                  content={
-                    drawerState.id !== undefined
-                      ? reactFlowInstance.getNode(drawerState.id)?.data
-                      : ''
-                  }
-                />
-              ) : (
-                <StrainForm
-                  onSubmit={getStrainFormCallback()}
-                  newId={props.crossDesign.createId()}
-                  showGenes={showGenes}
-                  enforcedSex={
-                    drawerState.id === undefined
-                      ? undefined
-                      : reactFlowInstance.getNode(drawerState.id)?.data.sex ===
-                        Sex.Hermaphrodite
-                      ? Sex.Male
-                      : Sex.Hermaphrodite
-                  }
-                />
-              )}
-            </div>
-          </div>
+              <CustomControls
+                reactFlowInstance={reactFlowInstance}
+                toggleGenes={() => {
+                  setShowGenes(!showGenes);
+                }}
+                crossDesignEditable={props.crossDesign.editable}
+              />
+              <MiniMap
+                position='bottom-left'
+                className='bg-base-300'
+                nodeClassName='bg-base-100'
+              />
+              <Background className='-z-50 bg-base-300' size={1} gap={16} />
+            </ReactFlow>
+          </EditorContext.Provider>
         </div>
-        <SaveStrainModal
-          isOpen={saveStrainModalState.isOpen}
+        <input
+          type='checkbox'
+          className='modal-toggle'
+          readOnly
+          checked={drawerState.isOpen}
+        />
+        <div className='modal'>
+          <div className='modal-box max-w-2xl'>
+            <button
+              className='btn btn-circle btn-ghost btn-sm absolute right-2 top-2'
+              onClick={closeDrawer}
+            >
+              <CloseIcon className='text-xl' />
+            </button>
+            {drawerState.type === DrawerType.AddNote ||
+            drawerState.type === DrawerType.EditNote ? (
+              <NoteForm
+                header={
+                  drawerState.type === DrawerType.AddNote
+                    ? 'Add Note'
+                    : 'Edit Note'
+                }
+                buttonText={
+                  drawerState.type === DrawerType.AddNote
+                    ? 'Add Note'
+                    : 'Edit Note'
+                }
+                callback={getNoteFormCallback()}
+                content={
+                  drawerState.id !== undefined
+                    ? reactFlowInstance.getNode(drawerState.id)?.data
+                    : ''
+                }
+              />
+            ) : (
+              <StrainForm
+                onSubmit={getStrainFormCallback()}
+                newId={props.crossDesign.createId()}
+                showGenes={showGenes}
+                enforcedSex={
+                  drawerState.id === undefined
+                    ? undefined
+                    : reactFlowInstance.getNode(drawerState.id)?.data.sex ===
+                      Sex.Hermaphrodite
+                    ? Sex.Male
+                    : Sex.Hermaphrodite
+                }
+              />
+            )}
+          </div>
+          <label className='modal-backdrop' onClick={closeDrawer} />
+        </div>
+        <AddStrainModal
+          isOpen={editStrainModalState.isOpen}
           setIsOpen={(isOpen: boolean) => {
-            setSaveStrainModalState({ ...saveStrainModalState, isOpen });
+            setEditStrainModalState({ ...editStrainModalState, isOpen });
           }}
-          strain={saveStrainModalState.strain ?? new Strain()}
+          strainToLoad={editStrainModalState.strain ?? new Strain()}
+          allowAlleleEditing={editStrainModalState.allowAlleleEditing ?? true}
+          onSaved={applyEditedStrainToNode}
+          onUpdate={
+            editStrainModalState.allowAlleleEditing === true
+              ? applyEditedStrainToNode
+              : undefined
+          }
         />
       </div>
     </div>
