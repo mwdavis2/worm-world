@@ -166,10 +166,23 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           );
           return;
         }
+        const strainNode = node as Node<Strain>;
+        const parentMiddleNode =
+          strainNode.parentNode !== undefined
+            ? reactFlowInstance.getNode(strainNode.parentNode)
+            : undefined;
+        if (
+          strainNode.data.sex === Sex.Hermaphrodite &&
+          parentMiddleNode?.type === NodeType.Self
+        ) {
+          toast.warning(
+            'Male offspring from a self-cross are rare unless in a Him background.'
+          );
+        }
         setNodes((nodes) =>
           addToArray(nodes, {
             ...node,
-            data: (node as Node<Strain>).data.toggleSex(),
+            data: strainNode.data.toggleSex(),
           })
         );
       },
