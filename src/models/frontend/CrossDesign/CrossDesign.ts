@@ -42,7 +42,7 @@ export const addToArray = <T extends { id: string }>(
   items = [...items];
   newItems.forEach((newItem) => {
     const idx = items.findIndex((item) => item.id === newItem.id);
-    if (idx > 0) {
+    if (idx !== -1) {
       items.splice(idx, 1, newItem);
     } else {
       items.push(newItem);

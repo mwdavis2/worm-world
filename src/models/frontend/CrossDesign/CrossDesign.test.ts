@@ -1,6 +1,7 @@
 import { StrainFilter } from 'models/frontend/StrainFilter/StrainFilter';
 import { NodeType, Sex } from 'models/enums';
 import CrossDesign, {
+  addToArray,
   type ICrossDesign,
 } from 'models/frontend/CrossDesign/CrossDesign';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
@@ -439,5 +440,36 @@ describe('cross crossDesign', () => {
         .filter((node) => node.type === NodeType.Strain)
         .every((node) => (node.data as Strain).getAllelePairs !== undefined)
     );
+  });
+});
+
+describe('addToArray', () => {
+  // Regression test: findIndex() returns 0 for a match at the first
+  // position, same as -1 for no match at all if you only check truthiness -
+  // a prior version checked `idx > 0` instead of `idx !== -1`, which meant
+  // an item at index 0 was never recognized as already present and got
+  // pushed as a duplicate on every update instead of replaced in place.
+  test('replaces an existing item at index 0 instead of duplicating it', () => {
+    const original = { id: 'a', value: 1 };
+    const updated = { id: 'a', value: 2 };
+    const result = addToArray([original, { id: 'b', value: 1 }], updated);
+
+    expect(result).toHaveLength(2);
+    expect(result.filter((item) => item.id === 'a')).toEqual([updated]);
+  });
+
+  test('replaces an existing item at a later index', () => {
+    const original = { id: 'a', value: 1 };
+    const updated = { id: 'a', value: 2 };
+    const result = addToArray([{ id: 'b', value: 1 }, original], updated);
+
+    expect(result).toHaveLength(2);
+    expect(result.filter((item) => item.id === 'a')).toEqual([updated]);
+  });
+
+  test('appends an item with a new id', () => {
+    const result = addToArray([{ id: 'a', value: 1 }], { id: 'b', value: 2 });
+
+    expect(result).toHaveLength(2);
   });
 });
