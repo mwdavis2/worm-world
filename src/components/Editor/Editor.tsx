@@ -898,6 +898,8 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                   setShowGenes(!showGenes);
                 }}
                 crossDesignEditable={props.crossDesign.editable}
+                edgeStyle={preferences.edgeStyle}
+                showGenes={showGenes}
               />
               <MiniMap
                 position='bottom-left'

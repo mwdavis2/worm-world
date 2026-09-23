@@ -39,7 +39,6 @@
 
 a {
   font-weight: 500;
-  color: black;
   text-decoration: inherit;
 }
 
@@ -83,8 +82,24 @@ html, body, #root {
   @apply -right-1 h-12 w-2 bg-primary border-white rounded-sm opacity-50 
 }
 
-.react-flow .strain-node .react-flow__handle-right { 
+.react-flow .strain-node .react-flow__handle-right {
   @apply -right-1 h-12 w-2  border-white rounded-sm bg-primary-focus opacity-50
+}
+
+/* Applied temporarily to .react-flow__viewport during image export - drops
+   the on-screen depth/interaction cues that don't belong in a static image. */
+.react-flow__viewport.exporting-cross-design .react-flow__handle {
+  visibility: hidden !important;
+}
+.react-flow__viewport.exporting-cross-design .dropdown {
+  visibility: hidden !important;
+}
+.react-flow__viewport.exporting-cross-design .export-hide-icon {
+  visibility: hidden !important;
+}
+.react-flow__viewport.exporting-cross-design .shadow,
+.react-flow__viewport.exporting-cross-design .shadow-md {
+  box-shadow: none !important;
 }
 
 /* Minimap and control styling */

@@ -39,7 +39,7 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
       />
       <label
         htmlFor={`filtered-out-modal-${props.id}`}
-        className={`absolute -top-4 left-24 hover:cursor-pointer ${
+        className={`export-hide-icon absolute -top-4 left-24 hover:cursor-pointer ${
           props.data.isEmpty() ? 'invisible' : ''
         }`}
       >
@@ -47,7 +47,7 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
       </label>
       <label
         htmlFor={`strain-filter-modal-${props.id}`}
-        className={`absolute -top-4 left-16 hover:cursor-pointer ${
+        className={`export-hide-icon absolute -top-4 left-16 hover:cursor-pointer ${
           props.data.isEmpty() ? 'invisible group-hover:visible' : ''
         }`}
       >
@@ -59,7 +59,7 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
       </label>
 
       <div
-        className={`h-16 w-16 rounded-full p-4 shadow transition hover:cursor-grab ${
+        className={`h-16 w-16 rounded-full p-4 transition hover:cursor-grab ${
           props.type === NodeType.Self ? 'bg-secondary' : 'bg-primary'
         }`}
       >
