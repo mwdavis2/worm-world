@@ -605,10 +605,20 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     };
 
     xNode.parentNode = hermNode.id;
+    // Preserve an already-placed parent's position from an earlier cross -
+    // only reposition a node here if it's genuinely new/unplaced (no prior
+    // parentNode link), mirroring the same preservation already applied to
+    // parentNode itself just below. Overwriting position unconditionally
+    // while keeping the old parentNode link produces an incoherent jump,
+    // since react-flow renders position relative to parentNode.
+    const maleAlreadyPlaced = maleNode.parentNode !== undefined;
+    const hermAlreadyPlaced = hermNode.parentNode !== undefined;
     maleNode.parentNode = maleNode.parentNode ?? hermNode.id;
 
-    if (fromHerm) maleNode.position = CrossDesign.getRelStrainPos(hermNode);
-    else {
+    if (fromHerm) {
+      if (!maleAlreadyPlaced)
+        maleNode.position = CrossDesign.getRelStrainPos(hermNode);
+    } else if (!hermAlreadyPlaced) {
       const tempPos = CrossDesign.getRelStrainPos(maleNode);
       hermNode.position = CrossDesign.getAbsolutePos(tempPos, maleNode);
     }
