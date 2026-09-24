@@ -14,7 +14,13 @@ import {
 } from 'components/StrainNode/StrainNode';
 import { type EdgeStyle } from 'utils/preferences';
 import { sampleThemeColors, type ThemeColors } from './theme';
-import { createTextRenderer, type TextRenderer } from './textToPath';
+import {
+  createTextRenderer,
+  EXPORT_TEXT_CLASS,
+  type FontWeight,
+  type TextExportMode,
+  type TextRenderer,
+} from './textToPath';
 import {
   MALE_ICON,
   HERM_ICON,
@@ -28,12 +34,14 @@ const NOTE_NODE_WIDTH = 320;
 const NOTE_NODE_HEIGHT = 112;
 const EXPORT_PADDING = 50;
 
-const CHROM_LABEL_SIZE = 16;
-const ALLELE_TEXT_SIZE = 16;
+// Exported for tests to independently recompute expected layout numbers
+// against, without duplicating these as separate magic-number literals.
+export const CHROM_LABEL_SIZE = 16;
+export const ALLELE_TEXT_SIZE = 16;
 const NAME_TEXT_SIZE = 14;
 const PROB_TEXT_SIZE = 10;
 const ICON_SIZE = 16;
-const COLUMN_GAP = 8; // approximates the card's mx-2 spacing
+export const COLUMN_GAP = 8; // approximates the card's mx-2 spacing
 
 interface Size {
   width: number;
@@ -96,26 +104,41 @@ const isExportable = (node: Node): boolean =>
     node.type === NodeType.X ||
     node.type === NodeType.Note);
 
-// Centers `text` horizontally at `centerX`, baseline at `baselineY`.
-const centeredGlyphMarkup = (
-  tr: TextRenderer,
-  text: string,
-  centerX: number,
-  baselineY: number,
-  size: number,
-  weight: 'normal' | 'bold',
-  color: string
-): string => {
-  const width = tr.measureWidth(text, size, weight);
-  return tr.glyphMarkup(
-    text,
-    centerX - width / 2,
-    baselineY,
-    size,
-    weight,
-    color
-  );
-};
+// Data describing a genotype-block text/line element in NATURAL (unscaled,
+// scale=1) coordinates - resolved to final absolute numbers explicitly (see
+// the `toFinal`/`layoutItems` handling in renderStrainCard) before any SVG is
+// emitted, rather than relying on a wrapping SVG transform to compose the
+// shrink-to-fit scale at render time. This is what makes a text element's
+// final position/size a concrete, independently-verifiable number instead of
+// something only knowable by mentally composing nested transforms - the
+// exact pattern that caused a real shipped left-drift bug earlier.
+type LayoutItem =
+  | {
+      kind: 'centeredText';
+      text: string;
+      naturalCenterX: number;
+      naturalBaselineY: number;
+      naturalFontSize: number;
+      weight: FontWeight;
+      color: string;
+    }
+  | {
+      kind: 'leftText';
+      text: string;
+      naturalX: number;
+      naturalBaselineY: number;
+      naturalFontSize: number;
+      weight: FontWeight;
+      color: string;
+    }
+  | {
+      kind: 'line';
+      naturalX1: number;
+      naturalY1: number;
+      naturalX2: number;
+      naturalY2: number;
+      color: string;
+    };
 
 const iconMarkup = (
   icon: IconSpec,
@@ -200,8 +223,7 @@ const renderStrainCard = (
   if (strain.isChild) {
     const probText = `${(strain.probability * 100).toFixed(2)}%`;
     parts.push(
-      centeredGlyphMarkup(
-        tr,
+      tr.centeredGlyphMarkup(
         probText,
         centerX,
         y + 17,
@@ -214,8 +236,7 @@ const renderStrainCard = (
 
   if (strain.isEmptyWild()) {
     parts.push(
-      centeredGlyphMarkup(
-        tr,
+      tr.centeredGlyphMarkup(
         '(Wild)',
         centerX,
         contentTop + 56,
@@ -250,26 +271,23 @@ const renderStrainCard = (
     // Mirrors the live app's useFitScale: the card is a fixed size, so wide
     // genotypes (many chromosome columns / long allele names) get the whole
     // content block shrunk to fit rather than overflowing into neighboring
-    // cards. Scaled around the content's own top-left, matching
-    // StrainCard.tsx's transformOrigin: 'top left'.
+    // cards.
     const contentScale =
       totalWidth > 0 ? Math.min(1, STRAIN_NODE_WIDTH / totalWidth) : 1;
-    const contentParts: string[] = [];
+    const layoutItems: LayoutItem[] = [];
 
     let cursorX = centerX - totalWidth / 2;
     measured.forEach((m, i) => {
       const boxCenterX = cursorX + m.boxWidth / 2;
-      contentParts.push(
-        centeredGlyphMarkup(
-          tr,
-          m.name,
-          boxCenterX,
-          contentTop + 16,
-          CHROM_LABEL_SIZE,
-          'bold',
-          colors.contentText
-        )
-      );
+      layoutItems.push({
+        kind: 'centeredText',
+        text: m.name,
+        naturalCenterX: boxCenterX,
+        naturalBaselineY: contentTop + 16,
+        naturalFontSize: CHROM_LABEL_SIZE,
+        weight: 'bold',
+        color: colors.contentText,
+      });
 
       const colsWidth =
         m.cols.reduce((sum, c) => sum + c.width + COLUMN_GAP, 0) - COLUMN_GAP;
@@ -277,87 +295,137 @@ const renderStrainCard = (
       m.cols.forEach((c) => {
         if (c.isEca) {
           if (c.ecaLabel !== undefined) {
-            contentParts.push(
-              centeredGlyphMarkup(
-                tr,
-                c.ecaLabel,
-                colX + c.width / 2,
-                contentTop + 56,
-                ALLELE_TEXT_SIZE,
-                'normal',
-                colors.contentText
-              )
-            );
+            layoutItems.push({
+              kind: 'centeredText',
+              text: c.ecaLabel,
+              naturalCenterX: colX + c.width / 2,
+              naturalBaselineY: contentTop + 56,
+              naturalFontSize: ALLELE_TEXT_SIZE,
+              weight: 'normal',
+              color: colors.contentText,
+            });
           }
         } else {
           const columnCenterX = colX + c.width / 2;
-          contentParts.push(
-            centeredGlyphMarkup(
-              tr,
-              c.topName ?? '',
-              columnCenterX,
-              contentTop + 40,
-              ALLELE_TEXT_SIZE,
-              'normal',
-              colors.contentText
-            )
-          );
-          contentParts.push(
-            `<line x1="${colX}" y1="${contentTop + 50}" x2="${
-              colX + c.width
-            }" y2="${contentTop + 50}" stroke="${
-              colors.contentText
-            }" stroke-width="1" />`
-          );
-          contentParts.push(
-            centeredGlyphMarkup(
-              tr,
-              c.botName ?? '',
-              columnCenterX,
-              contentTop + 70,
-              ALLELE_TEXT_SIZE,
-              'normal',
-              colors.contentText
-            )
-          );
+          layoutItems.push({
+            kind: 'centeredText',
+            text: c.topName ?? '',
+            naturalCenterX: columnCenterX,
+            naturalBaselineY: contentTop + 40,
+            naturalFontSize: ALLELE_TEXT_SIZE,
+            weight: 'normal',
+            color: colors.contentText,
+          });
+          layoutItems.push({
+            kind: 'line',
+            naturalX1: colX,
+            naturalY1: contentTop + 50,
+            naturalX2: colX + c.width,
+            naturalY2: contentTop + 50,
+            color: colors.contentText,
+          });
+          layoutItems.push({
+            kind: 'centeredText',
+            text: c.botName ?? '',
+            naturalCenterX: columnCenterX,
+            naturalBaselineY: contentTop + 70,
+            naturalFontSize: ALLELE_TEXT_SIZE,
+            weight: 'normal',
+            color: colors.contentText,
+          });
         }
         colX += c.width + COLUMN_GAP;
       });
 
       cursorX += m.boxWidth;
       if (i < measured.length - 1) {
-        contentParts.push(
-          tr.glyphMarkup(
-            ';',
-            cursorX + 2,
-            contentTop + 56,
-            ALLELE_TEXT_SIZE,
-            'normal',
-            colors.contentText
-          )
-        );
+        layoutItems.push({
+          kind: 'leftText',
+          text: ';',
+          naturalX: cursorX + 2,
+          naturalBaselineY: contentTop + 56,
+          naturalFontSize: ALLELE_TEXT_SIZE,
+          weight: 'normal',
+          color: colors.contentText,
+        });
         cursorX += semicolonWidth + 4;
       }
     });
 
-    // Anchor the shrink-to-fit scale on the card's own center, not the
-    // unscaled content's left edge - anchoring on the content's left edge
-    // drifts further left the wider (and more-shrunk) the genotype is,
-    // pulling the whole block off-center to the left instead of keeping it
-    // centered in the card.
-    const originX = centerX;
-    const originY = contentTop;
+    // Resolve every layout item to a final, absolute (already-scaled)
+    // position/size explicitly, then emit flat markup with no wrapping
+    // transform - anchored on the card's own center, not the unscaled
+    // content's left edge (anchoring on the content's left edge drifts
+    // further left the wider, and more-shrunk, the genotype is). This
+    // makes each element's final position/size a concrete, independently
+    // verifiable number instead of something only knowable by mentally
+    // composing nested SVG transforms - the exact pattern that caused a
+    // real shipped left-drift bug earlier.
+    const anchorX = centerX;
+    const anchorY = contentTop;
+    const toFinal = (nx: number, ny: number): { x: number; y: number } => ({
+      x: anchorX + (nx - anchorX) * contentScale,
+      y: anchorY + (ny - anchorY) * contentScale,
+    });
+
     parts.push(
-      `<g transform="translate(${originX}, ${originY}) scale(${contentScale}) translate(${-originX}, ${-originY})">${contentParts.join(
-        ''
-      )}</g>`
+      layoutItems
+        .map((item) => {
+          switch (item.kind) {
+            case 'centeredText': {
+              const { x, y: fy } = toFinal(
+                item.naturalCenterX,
+                item.naturalBaselineY
+              );
+              return tr.centeredGlyphMarkup(
+                item.text,
+                x,
+                fy,
+                item.naturalFontSize * contentScale,
+                item.weight,
+                item.color
+              );
+            }
+            case 'leftText': {
+              const { x, y: fy } = toFinal(
+                item.naturalX,
+                item.naturalBaselineY
+              );
+              return tr.glyphMarkup(
+                item.text,
+                x,
+                fy,
+                item.naturalFontSize * contentScale,
+                item.weight,
+                item.color
+              );
+            }
+            case 'line': {
+              const p1 = toFinal(item.naturalX1, item.naturalY1);
+              const p2 = toFinal(item.naturalX2, item.naturalY2);
+              // Scale stroke-width too, to preserve the current visual
+              // result exactly - under the old wrapping transform, SVG
+              // scales stroke-width along with everything else inside a
+              // scaled group, so an unscaled literal "1" here would make
+              // dividers visually thicker relative to shrunk text than
+              // they are today.
+              return `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${
+                p2.y
+              }" stroke="${item.color}" stroke-width="${1 * contentScale}" />`;
+            }
+            default: {
+              const exhaustiveCheck: never = item;
+              return exhaustiveCheck;
+            }
+          }
+        })
+        .join('')
     );
   }
 
   if (strain.name !== '') {
     parts.push(
-      centeredGlyphMarkup(
-        tr,
+      tr.centeredGlyphMarkup(
         strain.name,
         centerX,
         y + STRAIN_NODE_HEIGHT - 8,
@@ -522,7 +590,8 @@ export const buildCrossDesignSvg = async (
   allNodes: Node[],
   edges: Edge[],
   edgeStyle: EdgeStyle,
-  showGenes: boolean
+  showGenes: boolean,
+  textMode: TextExportMode
 ): Promise<string> => {
   // Defensive: a saved CrossDesign's node array can end up with duplicate
   // entries sharing the same id (seen directly in real, exported app data -
@@ -560,7 +629,7 @@ export const buildCrossDesignSvg = async (
     (hasContent ? bounds.maxY - bounds.minY : 0) + EXPORT_PADDING * 2;
 
   const colors = sampleThemeColors();
-  const textRenderer = await createTextRenderer();
+  const textRenderer = await createTextRenderer(textMode);
 
   const edgeMarkup = edges
     .filter((edge) => !(edge.hidden ?? false))
@@ -593,8 +662,18 @@ export const buildCrossDesignSvg = async (
     })
     .join('');
 
+  // Only relevant/emitted in 'text' mode - 'textPath' mode has no <text>
+  // elements to style. Lato may not be installed on whatever machine opens
+  // this file (it's a Google Font, not an OS default), so a real fallback
+  // stack is needed rather than a bare unfallbacked font-family.
+  const styleBlock =
+    textMode === 'text'
+      ? `<style>.${EXPORT_TEXT_CLASS} { font-family: 'Lato', 'Helvetica Neue', Helvetica, Arial, sans-serif; }</style>`
+      : '';
+
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}">` +
+    styleBlock +
     `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="${colors.canvasBackground}" />` +
     edgeMarkup +
     nodeMarkup +

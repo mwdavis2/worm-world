@@ -900,6 +900,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                 crossDesignEditable={props.crossDesign.editable}
                 edgeStyle={preferences.edgeStyle}
                 showGenes={showGenes}
+                textExportMode={preferences.textExportMode}
               />
               <MiniMap
                 position='bottom-left'

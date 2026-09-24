@@ -1,6 +1,9 @@
+import { type TextExportMode } from 'utils/svgExport/textToPath';
+
 const STORAGE_KEY = 'worm-world:preferences';
 
 export type EdgeStyle = 'straight' | 'default'; // 'default' is react-flow's built-in bezier edge
+export type { TextExportMode };
 
 export interface Preferences {
   minZoom: number;
@@ -9,12 +12,14 @@ export interface Preferences {
   // cross is created. 0 disables the feature, since a probability can never
   // be less than 0.
   minChildProbability: number;
+  textExportMode: TextExportMode;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   minZoom: 0.5,
   edgeStyle: 'straight',
   minChildProbability: 0,
+  textExportMode: 'text',
 };
 
 export const getPreferences = (): Preferences => {

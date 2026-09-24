@@ -2,6 +2,7 @@ import { TopNav } from 'components/TopNav/TopNav';
 import { useState } from 'react';
 import {
   type EdgeStyle,
+  type TextExportMode,
   getPreferences,
   setPreferences,
 } from 'utils/preferences';
@@ -22,6 +23,10 @@ const Settings = (): React.JSX.Element => {
       ? Math.min(100, Math.max(0, percent))
       : 0;
     setLocalPreferences(setPreferences({ minChildProbability: clamped / 100 }));
+  };
+
+  const updateTextExportMode = (value: TextExportMode): void => {
+    setLocalPreferences(setPreferences({ textExportMode: value }));
   };
 
   return (
@@ -102,6 +107,32 @@ const Settings = (): React.JSX.Element => {
               Children below this percentage are hidden automatically when a
               cross is created; use the cross&apos;s filter menu to reveal them.
               0% disables this.
+            </span>
+          </label>
+        </div>
+
+        <div className='form-control'>
+          <label className='label' htmlFor='textExportMode'>
+            <span className='label-text'>SVG export text rendering</span>
+          </label>
+          <select
+            id='textExportMode'
+            className='select select-bordered'
+            value={preferences.textExportMode}
+            onChange={(e) => {
+              updateTextExportMode(e.target.value as TextExportMode);
+            }}
+          >
+            <option value='text'>Text</option>
+            <option value='textPath'>Text path</option>
+          </select>
+          <label className='label'>
+            <span className='label-text-alt'>
+              &quot;Text&quot; produces editable, selectable text (relies on a
+              fallback font if Lato isn&apos;t installed on the machine that
+              opens the file). &quot;Text path&quot; embeds exact glyph
+              outlines, so text is always pixel-perfect but no longer editable
+              as text.
             </span>
           </label>
         </div>

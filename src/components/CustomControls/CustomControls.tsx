@@ -11,7 +11,7 @@ import {
   getRectOfNodes,
 } from 'reactflow';
 import { save } from '@tauri-apps/api/dialog';
-import { type EdgeStyle } from 'utils/preferences';
+import { type EdgeStyle, type TextExportMode } from 'utils/preferences';
 import { buildCrossDesignSvg } from 'utils/svgExport/svgExport';
 
 interface CustomControlsProps {
@@ -20,6 +20,7 @@ interface CustomControlsProps {
   crossDesignEditable: boolean;
   edgeStyle: EdgeStyle;
   showGenes: boolean;
+  textExportMode: TextExportMode;
 }
 
 const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
@@ -57,7 +58,8 @@ const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
                     'png',
                     props.reactFlowInstance,
                     props.edgeStyle,
-                    props.showGenes
+                    props.showGenes,
+                    props.textExportMode
                   );
                   // This is a CSS/focus-driven daisyUI dropdown (tabIndex +
                   // :focus-within), not React state - it only closes when
@@ -77,7 +79,8 @@ const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
                     'svg',
                     props.reactFlowInstance,
                     props.edgeStyle,
-                    props.showGenes
+                    props.showGenes,
+                    props.textExportMode
                   );
                   (document.activeElement as HTMLElement | null)?.blur();
                 }}
@@ -105,13 +108,15 @@ type SaveMethod = 'png' | 'svg';
 const exportSvg = async (
   reactFlowInstance: ReactFlowInstance,
   edgeStyle: EdgeStyle,
-  showGenes: boolean
+  showGenes: boolean,
+  textExportMode: TextExportMode
 ): Promise<string> => {
   const svgString = await buildCrossDesignSvg(
     reactFlowInstance.getNodes(),
     reactFlowInstance.getEdges(),
     edgeStyle,
-    showGenes
+    showGenes,
+    textExportMode
   );
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
 };
@@ -162,7 +167,8 @@ const saveImg = (
   saveMethod: SaveMethod,
   reactFlowInstance: ReactFlowInstance | undefined,
   edgeStyle: EdgeStyle,
-  showGenes: boolean
+  showGenes: boolean,
+  textExportMode: TextExportMode
 ): void => {
   if (exportInProgress) {
     toast.error('An export is already in progress');
@@ -227,7 +233,7 @@ const saveImg = (
             transform: `translate(${x}px, ${y}px) scale(1)`,
           },
         })
-      : exportSvg(reactFlowInstance, edgeStyle, showGenes);
+      : exportSvg(reactFlowInstance, edgeStyle, showGenes, textExportMode);
 
   Promise.all([
     save({
