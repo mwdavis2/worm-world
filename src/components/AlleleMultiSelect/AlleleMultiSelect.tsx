@@ -17,6 +17,11 @@ export interface AlleleMultiSelectProps {
   placeholder?: string;
 
   label?: string;
+  // When set, shows a "+ New allele" option whenever the typed search text
+  // has no matches - the parent owns the actual NewAlleleModal instance
+  // (this component is used 4 times across StrainForm/AddStrainModal, so one
+  // modal per parent rather than per picker).
+  onRequestNewAllele?: (prefillName: string) => void;
 }
 
 export const AlleleMultiSelect = (
@@ -74,7 +79,21 @@ export const AlleleMultiSelect = (
           value={userInput}
         />
         {searchRes.length === 0 ? (
-          <></> // Don't show list if no results
+          userInput !== '' && props.onRequestNewAllele !== undefined ? (
+            <ul className='menu dropdown-content rounded-box z-50 my-2 w-52 overflow-auto bg-base-100 p-2 shadow'>
+              <li
+                tabIndex={0}
+                onClick={() => {
+                  props.onRequestNewAllele?.(userInput);
+                  setUserInput('');
+                }}
+              >
+                <a>+ New allele &quot;{userInput}&quot;</a>
+              </li>
+            </ul>
+          ) : (
+            <></> // Don't show list if no results
+          )
         ) : (
           <ul className='menu dropdown-content rounded-box z-50 my-2 w-52 overflow-auto bg-base-100 p-2 shadow'>
             {searchRes.map((record, idx) => {

@@ -4,6 +4,7 @@ import StrainCard from 'components/StrainCard/StrainCard';
 import { type Sex } from 'models/enums';
 import { getFilteredStrains } from 'api/strain';
 import { AlleleMultiSelect } from 'components/AlleleMultiSelect/AlleleMultiSelect';
+import NewAlleleModal from 'components/NewAlleleModal/NewAlleleModal';
 import { type db_Allele } from 'models/db/db_Allele';
 import { type db_Strain } from 'models/db/db_Strain';
 import { type FilterGroup } from 'models/db/filter/FilterGroup';
@@ -33,6 +34,11 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
   const [state, setState] = useState(defaultState);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [prevEnforcedSex, setPrevEnforcedSex] = useState<Sex>();
+  const [newAlleleModalState, setNewAlleleModalState] = useState<{
+    isOpen: boolean;
+    targetSet: 'reg' | 'irreg';
+    prefillName: string;
+  }>({ isOpen: false, targetSet: 'reg', prefillName: '' });
 
   if (prevEnforcedSex !== props.enforcedSex) {
     setPrevEnforcedSex(props.enforcedSex);
@@ -128,17 +134,24 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
         source={state.source}
       />
       <AlleleMultiSelect
-        placeholder='Type allele name'
+        placeholder='Allele name'
         label='Alleles'
         selectedRecords={regAlleles}
         setSelectedRecords={(regs) => {
           setStrainFromAlleles({ sex: state.strain.sex, regs });
         }}
         shouldInclude={alleleIsUnused}
+        onRequestNewAllele={(prefillName) => {
+          setNewAlleleModalState({
+            isOpen: true,
+            targetSet: 'reg',
+            prefillName,
+          });
+        }}
       />
       {showAdvanced && (
         <AlleleMultiSelect
-          placeholder='Type allele name'
+          placeholder='Allele name'
           label='Heterozygous Alleles'
           selectedRecords={irregAlleles}
           setSelectedRecords={(irregs) => {
@@ -147,8 +160,36 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
           shouldInclude={(allele) =>
             alleleIsUnused(allele) && !isEcaAlleleName(allele.name)
           }
+          onRequestNewAllele={(prefillName) => {
+            setNewAlleleModalState({
+              isOpen: true,
+              targetSet: 'irreg',
+              prefillName,
+            });
+          }}
         />
       )}
+      <NewAlleleModal
+        isOpen={newAlleleModalState.isOpen}
+        setIsOpen={(isOpen) => {
+          setNewAlleleModalState({ ...newAlleleModalState, isOpen });
+        }}
+        initialName={newAlleleModalState.prefillName}
+        onCreated={(allele) => {
+          const record = allele.generateRecord();
+          if (newAlleleModalState.targetSet === 'reg') {
+            setStrainFromAlleles({
+              sex: state.strain.sex,
+              regs: new Set([...regAlleles, record]),
+            });
+          } else {
+            setStrainFromAlleles({
+              sex: state.strain.sex,
+              irregs: new Set([...irregAlleles, record]),
+            });
+          }
+        }}
+      />
       <button
         className='btn btn-primary mt-4'
         onClick={() => {
@@ -214,7 +255,7 @@ export const StrainSelect = (props: StrainSelectProps): React.JSX.Element => {
         <input
           type='text'
           id='strain-select-input'
-          placeholder='Type strain name'
+          placeholder='Strain name'
           className='input input-bordered w-full max-w-xs'
           onChange={onInputChange}
           value={text}
@@ -222,7 +263,7 @@ export const StrainSelect = (props: StrainSelectProps): React.JSX.Element => {
         {searchRes.length === 0 ? (
           <></>
         ) : (
-          <ul className='dropdown-content menu rounded-box z-50 my-2 max-h-80 w-52 overflow-auto bg-base-100 p-2 shadow'>
+          <ul className='menu dropdown-content rounded-box z-50 my-2 max-h-80 w-52 overflow-auto bg-base-100 p-2 shadow'>
             {searchRes.map((strain, idx) => {
               return (
                 <li

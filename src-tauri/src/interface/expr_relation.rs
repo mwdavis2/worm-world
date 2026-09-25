@@ -348,6 +348,8 @@ mod test {
                 phys_loc: None,
                 gen_loc: None,
                 recomb_suppressor: None,
+                is_location_reference: false,
+                percent_loss: None,
             })
             .await?;
         // oxIs644 Allele
@@ -434,6 +436,8 @@ oxIs644,YFP(pharynx),0,Flp,1,,0"
                 phys_loc: None,
                 gen_loc: None,
                 recomb_suppressor: None,
+                is_location_reference: false,
+                percent_loss: None,
             })
             .await?;
         // oxIs644 Allele
@@ -512,6 +516,8 @@ oxIs644,YFP(pharynx),0,Flp,1,,0"
                 phys_loc: None,
                 gen_loc: None,
                 recomb_suppressor: None,
+                is_location_reference: false,
+                percent_loss: None,
             })
             .await
             .unwrap();

@@ -67,6 +67,7 @@ async fn main() {
             get_variations,
             get_filtered_variations,
             get_count_filtered_variations,
+            get_location_reference_variations,
             insert_variation,
             insert_variations_from_file,
             delete_filtered_variations,
@@ -375,6 +376,14 @@ async fn get_count_filtered_variations(
 ) -> Result<u32, DbError> {
     let state_guard = state.0.read().await;
     state_guard.get_count_filtered_variations(&filter).await
+}
+
+#[tauri::command]
+async fn get_location_reference_variations(
+    state: tauri::State<'_, DbState>,
+) -> Result<Vec<Variation>, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.get_location_reference_variations().await
 }
 
 #[tauri::command]

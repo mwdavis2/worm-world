@@ -1,4 +1,5 @@
 import { AlleleMultiSelect } from 'components/AlleleMultiSelect/AlleleMultiSelect';
+import NewAlleleModal from 'components/NewAlleleModal/NewAlleleModal';
 import EditorContext from 'components/EditorContext/EditorContext';
 import StrainCard from 'components/StrainCard/StrainCard';
 import { type db_Allele } from 'models/db/db_Allele';
@@ -89,6 +90,11 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
   // The strain's name at the moment it was loaded for editing - saving may
   // rename it, so this is what identifies which row to update/replace.
   const [originalName, setOriginalName] = useState<string>();
+  const [newAlleleModalState, setNewAlleleModalState] = useState<{
+    isOpen: boolean;
+    targetSet: 'reg' | 'irreg';
+    prefillName: string;
+  }>({ isOpen: false, targetSet: 'reg', prefillName: '' });
 
   useEffect(() => {
     if (!props.isOpen) return;
@@ -221,18 +227,25 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
           </EditorContext.Provider>
           {allowAlleleEditing && (
             <AlleleMultiSelect
-              placeholder='Type allele name'
+              placeholder='Allele name'
               label='Alleles'
               selectedRecords={regAlleles}
               setSelectedRecords={(regs) => {
                 setStrainFromAlleles(regs, irregAlleles);
               }}
               shouldInclude={alleleIsUnused}
+              onRequestNewAllele={(prefillName) => {
+                setNewAlleleModalState({
+                  isOpen: true,
+                  targetSet: 'reg',
+                  prefillName,
+                });
+              }}
             />
           )}
           {allowAlleleEditing && showAdvanced && (
             <AlleleMultiSelect
-              placeholder='Type allele name'
+              placeholder='Allele name'
               label='Heterozygous Alleles'
               selectedRecords={irregAlleles}
               setSelectedRecords={(irregs) => {
@@ -241,6 +254,36 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
               shouldInclude={(allele) =>
                 alleleIsUnused(allele) && !isEcaAlleleName(allele.name)
               }
+              onRequestNewAllele={(prefillName) => {
+                setNewAlleleModalState({
+                  isOpen: true,
+                  targetSet: 'irreg',
+                  prefillName,
+                });
+              }}
+            />
+          )}
+          {allowAlleleEditing && (
+            <NewAlleleModal
+              isOpen={newAlleleModalState.isOpen}
+              setIsOpen={(isOpen) => {
+                setNewAlleleModalState({ ...newAlleleModalState, isOpen });
+              }}
+              initialName={newAlleleModalState.prefillName}
+              onCreated={(allele) => {
+                const record = allele.generateRecord();
+                if (newAlleleModalState.targetSet === 'reg') {
+                  setStrainFromAlleles(
+                    new Set([...regAlleles, record]),
+                    irregAlleles
+                  );
+                } else {
+                  setStrainFromAlleles(
+                    regAlleles,
+                    new Set([...irregAlleles, record])
+                  );
+                }
+              }}
             />
           )}
           {(!allowAlleleEditing || showAdvanced) && (

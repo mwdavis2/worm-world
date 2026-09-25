@@ -17,7 +17,7 @@ export interface MiddleNodeProps {
 
 const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
   return (
-    <div className='group'>
+    <div className='middle-node group'>
       {props.type === NodeType.Self ? (
         <Handle key='top' id='top' type='target' position={Position.Top} />
       ) : (

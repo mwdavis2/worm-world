@@ -49,6 +49,8 @@ const nameMapping: { [key in keyof db_Variation]: VariationFieldName } = {
   physLoc: 'PhysLoc',
   geneticLoc: 'GenLoc',
   recombSuppressor: 'RecombSuppressor',
+  isLocationReference: 'IsLocationReference',
+  percentLoss: 'PercentLoss',
 };
 
 export default function VariationDataTable(): React.JSX.Element {

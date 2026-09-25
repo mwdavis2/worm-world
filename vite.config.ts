@@ -6,7 +6,20 @@ import Pages from 'vite-plugin-pages';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), tsconfigPaths(), Pages()],
+  plugins: [
+    react(),
+    tsconfigPaths(),
+    Pages({
+      // The cross designer (editor.tsx) is opened almost every session, so
+      // its route is loaded synchronously (folded into the main bundle)
+      // instead of lazily - confirmed via timing instrumentation that the
+      // lazy chunk's one-time load/parse cost, not any data fetch or
+      // render work, was responsible for a ~1.7s delay on first open.
+      // Every other route keeps the default lazy/async behavior.
+      importMode: (filepath) =>
+        filepath.includes('/editor.tsx') ? 'sync' : 'async',
+    }),
+  ],
 
   // Vite optons tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   // prevent vite from obscuring rust errors

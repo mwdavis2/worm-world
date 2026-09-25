@@ -27,6 +27,14 @@ export const getCountFilteredVariations = async (
   });
 };
 
+// Eligible for the New Allele dialog's "Location lookup" control - see
+// InnerDbState::get_location_reference_variations for the exact filter.
+export const getLocationReferenceVariations = async (): Promise<
+  db_Variation[]
+> => {
+  return await invoke('get_location_reference_variations');
+};
+
 export const getVariation = async (
   alleleName: string
 ): Promise<db_Variation> => {

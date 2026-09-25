@@ -86,6 +86,13 @@ html, body, #root {
   @apply -right-1 h-12 w-2  border-white rounded-sm bg-primary-focus opacity-50
 }
 
+/* The X/Self circle icon's handles are real drag-connect points (see
+   Editor.tsx's onConnect/onConnectStart), so hide them with opacity rather
+   than visibility - keeps them hit-testable/draggable, just invisible. */
+.react-flow .middle-node .react-flow__handle {
+  @apply opacity-0
+}
+
 /* Applied temporarily to .react-flow__viewport during image export - drops
    the on-screen depth/interaction cues that don't belong in a static image. */
 .react-flow__viewport.exporting-cross-design .react-flow__handle {

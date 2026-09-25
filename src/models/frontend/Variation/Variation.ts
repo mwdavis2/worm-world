@@ -8,6 +8,13 @@ interface iVariation {
   physLoc?: number; // Physical location of the gene on a chromosome
   geneticLoc?: number; // Gene's genetic distance from the middle of a chromosome
   recombination?: [number, number];
+  // Flags this Variation as eligible for the New Allele dialog's "Location
+  // lookup" control - only actually surfaced there if physLoc or geneticLoc
+  // is also set (flag-true with neither set is silently excluded).
+  isLocationReference?: boolean;
+  // The extrachromosomal array's mitotic/germline loss rate (0-100). Not yet
+  // consumed by the cross-calculation logic (backlog #4) - persisted only.
+  percentLoss?: number;
 }
 
 export class Variation {
@@ -16,6 +23,8 @@ export class Variation {
   physLoc?: number; // Physical location of the gene on a chromosome
   geneticLoc?: number; // Gene's genetic distance from the middle of a chromosome
   recombination?: [number, number];
+  isLocationReference: boolean = false;
+  percentLoss?: number;
 
   constructor(fields: iVariation) {
     Object.assign(this, fields);
@@ -28,6 +37,8 @@ export class Variation {
       geneticLoc: record.geneticLoc ?? undefined,
       chromosome: record.chromosome ?? undefined,
       recombination: record.recombSuppressor ?? undefined,
+      isLocationReference: record.isLocationReference,
+      percentLoss: record.percentLoss ?? undefined,
     });
   }
 
@@ -39,6 +50,8 @@ export class Variation {
       geneticLoc: this.geneticLoc ?? null,
       chromosome: this.chromosome ?? null,
       recombSuppressor: this.recombination ?? null,
+      isLocationReference: this.isLocationReference,
+      percentLoss: this.percentLoss ?? null,
     };
   }
 

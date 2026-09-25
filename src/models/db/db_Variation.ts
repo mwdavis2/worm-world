@@ -7,4 +7,6 @@ export interface db_Variation {
   physLoc: number | null;
   geneticLoc: number | null;
   recombSuppressor: [number, number] | null;
+  isLocationReference: boolean;
+  percentLoss: number | null;
 }

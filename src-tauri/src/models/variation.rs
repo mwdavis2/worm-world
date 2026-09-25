@@ -15,6 +15,10 @@ pub struct Variation {
     pub gen_loc: Option<f64>,
     #[serde(rename = "recombSuppressor")]
     pub recomb_suppressor: Option<(i32, i32)>,
+    #[serde(rename = "isLocationReference")]
+    pub is_location_reference: bool,
+    #[serde(rename = "percentLoss")]
+    pub percent_loss: Option<f64>,
 }
 
 impl From<VariationDb> for Variation {
@@ -28,6 +32,8 @@ impl From<VariationDb> for Variation {
                 (Some(start), Some(end)) => Some((start as i32, end as i32)),
                 _ => None,
             },
+            is_location_reference: item.is_location_reference,
+            percent_loss: item.percent_loss,
         }
     }
 }
@@ -45,6 +51,13 @@ pub struct VariationDb {
     pub recomb_suppressor_start: Option<i64>,
     #[serde(rename = "recombSuppressorEnd")]
     pub recomb_suppressor_end: Option<i64>,
+    // #[serde(default)] so existing bulk-import CSVs (which predate these
+    // columns) still parse - a missing column defaults to false/None rather
+    // than failing deserialization.
+    #[serde(rename = "isLocationReference", default)]
+    pub is_location_reference: bool,
+    #[serde(rename = "percentLoss", default)]
+    pub percent_loss: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Hash, PartialEq, Eq, TS)]
@@ -55,6 +68,8 @@ pub enum VariationFieldName {
     PhysLoc,
     GenLoc,
     RecombSuppressor,
+    IsLocationReference,
+    PercentLoss,
 }
 impl FieldNameEnum for VariationFieldName {
     fn get_col_name(self: &VariationFieldName) -> String {
@@ -64,6 +79,8 @@ impl FieldNameEnum for VariationFieldName {
             VariationFieldName::PhysLoc => "phys_loc".to_owned(),
             VariationFieldName::GenLoc => "gen_loc".to_owned(),
             VariationFieldName::RecombSuppressor => "recomb_suppressor".to_owned(),
+            VariationFieldName::IsLocationReference => "is_location_reference".to_owned(),
+            VariationFieldName::PercentLoss => "percent_loss".to_owned(),
         }
     }
 }

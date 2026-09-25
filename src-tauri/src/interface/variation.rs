@@ -15,7 +15,7 @@ impl InnerDbState {
         match sqlx::query_as!(
             VariationDb,
             "
-            SELECT allele_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end FROM variations ORDER BY allele_name
+            SELECT allele_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end, is_location_reference, percent_loss FROM variations ORDER BY allele_name
             "
         )
         .fetch_all(&self.conn_pool)
@@ -33,7 +33,7 @@ impl InnerDbState {
         filter: &FilterGroup<VariationFieldName>,
     ) -> Result<Vec<Variation>, DbError> {
         let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "SELECT allele_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end FROM variations",
+            "SELECT allele_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end, is_location_reference, percent_loss FROM variations",
         );
         filter.add_filtered_query(&mut qb, true, true);
         match qb
@@ -44,6 +44,31 @@ impl InnerDbState {
             Ok(exprs) => Ok(exprs.into_iter().map(|e| e.into()).collect()),
             Err(e) => {
                 eprint!("Get Filtered Variation Info error: {e}");
+                Err(DbError::Query(e.to_string()))
+            }
+        }
+    }
+
+    // Eligible for the New Allele dialog's "Location lookup" control: flagged
+    // via is_location_reference AND has at least one of phys_loc/gen_loc set
+    // (flag-true with both unset is deliberately excluded - see the New
+    // Allele dialog plan).
+    pub async fn get_location_reference_variations(&self) -> Result<Vec<Variation>, DbError> {
+        match sqlx::query_as!(
+            VariationDb,
+            "
+            SELECT allele_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end, is_location_reference, percent_loss
+            FROM variations
+            WHERE is_location_reference = TRUE AND (phys_loc IS NOT NULL OR gen_loc IS NOT NULL)
+            ORDER BY allele_name
+            "
+        )
+        .fetch_all(&self.conn_pool)
+        .await
+        {
+            Ok(v) => Ok(v.into_iter().map(|e| e.into()).collect()),
+            Err(e) => {
+                eprint!("Get location reference variations error: {e}");
                 Err(DbError::Query(e.to_string()))
             }
         }
@@ -77,15 +102,17 @@ impl InnerDbState {
             None => (None, None),
         };
         match sqlx::query!(
-            "INSERT INTO variations (allele_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end)
-            VALUES(?, ?, ?, ?, ?, ?)
+            "INSERT INTO variations (allele_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end, is_location_reference, percent_loss)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
             ",
             v.allele_name,
             chromosome,
             v.phys_loc,
             v.gen_loc,
             start,
-            end
+            end,
+            v.is_location_reference,
+            v.percent_loss
         )
         .execute(&self.conn_pool)
         .await
@@ -115,7 +142,7 @@ impl InnerDbState {
                 "Invalid chromosome name '{bad}'. Expected one of: I, II, III, IV, V, X, MtDNA, Ex"
             )));
         }
-        let bind_limit = SQLITE_BIND_LIMIT / 6;
+        let bind_limit = SQLITE_BIND_LIMIT / 8;
         let mut data = bulk.data.into_iter().peekable();
         while data.peek().is_some() {
             let chunk = data.by_ref().take(bind_limit - 1).collect::<Vec<_>>();
@@ -126,7 +153,7 @@ impl InnerDbState {
                 )));
             }
             let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-                "INSERT OR IGNORE INTO variations (allele_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end) "
+                "INSERT OR IGNORE INTO variations (allele_name, chromosome, phys_loc, gen_loc, recomb_suppressor_start, recomb_suppressor_end, is_location_reference, percent_loss) "
             );
             qb.push_values(chunk, |mut b, item| {
                 b.push_bind(item.allele_name)
@@ -134,7 +161,9 @@ impl InnerDbState {
                     .push_bind(item.phys_loc)
                     .push_bind(item.gen_loc)
                     .push_bind(item.recomb_suppressor_start)
-                    .push_bind(item.recomb_suppressor_end);
+                    .push_bind(item.recomb_suppressor_end)
+                    .push_bind(item.is_location_reference)
+                    .push_bind(item.percent_loss);
             });
 
             match qb.build().execute(&self.conn_pool).await {
@@ -261,6 +290,8 @@ mod test {
             phys_loc: None,
             gen_loc: None,
             recomb_suppressor: None,
+            is_location_reference: false,
+            percent_loss: None,
         };
 
         state.insert_variation(&expected).await?;
@@ -283,6 +314,8 @@ mod test {
             phys_loc: None,
             gen_loc: None,
             recomb_suppressor: None,
+            is_location_reference: false,
+            percent_loss: None,
         };
 
         state.insert_variation(&expected).await?;
@@ -306,6 +339,8 @@ mod test {
                 phys_loc: None,
                 gen_loc: None,
                 recomb_suppressor: None,
+                is_location_reference: false,
+                percent_loss: None,
             },
             Variation {
                 allele_name: "oxIs12".to_string(),
@@ -313,6 +348,8 @@ mod test {
                 phys_loc: None,
                 gen_loc: None,
                 recomb_suppressor: None,
+                is_location_reference: false,
+                percent_loss: None,
             },
             Variation {
                 allele_name: "oxIs13".to_string(),
@@ -320,6 +357,8 @@ mod test {
                 phys_loc: None,
                 gen_loc: None,
                 recomb_suppressor: None,
+                is_location_reference: false,
+                percent_loss: None,
             },
         ];
 

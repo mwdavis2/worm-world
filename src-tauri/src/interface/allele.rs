@@ -275,6 +275,8 @@ mod test {
             phys_loc: Some(10166146),
             gen_loc: Some(4.72),
             recomb_suppressor: None,
+            is_location_reference: false,
+            percent_loss: None,
         };
 
         state.insert_variation(&new_vi).await?;
@@ -347,6 +349,8 @@ mod test {
             phys_loc: Some(10166146),
             gen_loc: Some(4.72),
             recomb_suppressor: None,
+            is_location_reference: false,
+            percent_loss: None,
         };
 
         state.insert_variation(&new_vi).await?;
