@@ -34,6 +34,7 @@ interface TaskItemProps {
   refresh: () => Promise<void>;
   onTaskChecked: (task: Task) => void;
   selectTask: (task: Task) => void;
+  isOverdue?: boolean;
 }
 
 const TaskItem = (props: TaskItemProps): React.JSX.Element => {
@@ -70,6 +71,9 @@ const TaskItem = (props: TaskItemProps): React.JSX.Element => {
             props.onTaskChecked(props.task);
           }}
         />
+        {props.isOverdue === true && (
+          <span className='badge badge-error'>Overdue</span>
+        )}
         {hermStrain !== undefined && <StrainCard strain={hermStrain} id={''} />}
         <div
           className={`flex h-8 w-8 items-center justify-center rounded-full text-primary-content ${getIconColor(
@@ -153,6 +157,29 @@ const TaskItem = (props: TaskItemProps): React.JSX.Element => {
       )}
     </div>
   );
+};
+
+/**
+ * Plain-string rendering of a task's action/genotypes, shared between
+ * TaskStatement's JSX and the Google Tasks sync engine's title field (see
+ * api/taskSync.ts) - one switch over `action`, not two.
+ */
+export const getTaskStatementText = (task: Task): string => {
+  const { action, hermStrain, maleStrain, resultStrain } = task;
+  switch (action) {
+    case 'Cross':
+      return `Cross ${hermStrain.genotype} with ${
+        maleStrain?.genotype ?? ''
+      } to yield ${resultStrain?.genotype ?? ''}`;
+    case 'SelfCross':
+      return `Self-cross ${hermStrain.genotype} to yield ${
+        resultStrain?.genotype ?? ''
+      }`;
+    case 'Freeze':
+      return `Freeze ${hermStrain.genotype}`;
+    case 'Pcr':
+      return `Do PCR test on ${hermStrain.genotype}`;
+  }
 };
 
 export const TaskStatement = (props: { task: Task }): React.JSX.Element => {

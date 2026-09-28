@@ -16,6 +16,8 @@ export interface ITask {
   completed: boolean;
   crossDesignId: string;
   childTaskId?: string;
+  updatedAt?: Date;
+  completedAt?: Date;
 }
 
 export class Task {
@@ -38,6 +40,11 @@ export class Task {
   completed: boolean;
   crossDesignId: string;
   childTaskId?: string;
+  @Type(() => Date)
+  updatedAt?: Date;
+
+  @Type(() => Date)
+  completedAt?: Date;
 
   constructor(task?: db_Task) {
     if (task === null || task === undefined) {
@@ -63,10 +70,29 @@ export class Task {
       this.completed = task.completed;
       this.crossDesignId = task.crossDesignId;
       this.childTaskId = task.childTaskId ?? undefined;
+      this.updatedAt =
+        task.updatedAt === null ? undefined : new Date(task.updatedAt);
+      this.completedAt =
+        task.completedAt === null ? undefined : new Date(task.completedAt);
     }
   }
 
+  /**
+   * Stamps updatedAt/completedAt based on the current completed value before
+   * serializing - the single choke point both insertTask and updateTask flows
+   * pass through, so callers don't need to track completion transitions
+   * themselves (see backlog #8's two-way task sync, which needs updatedAt for
+   * conflict detection and completedAt for a completion record).
+   */
   public generateRecord(): db_Task {
+    const now = new Date();
+    if (this.completed && this.completedAt === undefined) {
+      this.completedAt = now;
+    } else if (!this.completed) {
+      this.completedAt = undefined;
+    }
+    this.updatedAt = now;
+
     return {
       id: this.id,
       dueDate: this.dueDate?.toString() ?? null,
@@ -78,6 +104,8 @@ export class Task {
       completed: this.completed,
       crossDesignId: this.crossDesignId,
       childTaskId: this.childTaskId ?? null,
+      updatedAt: this.updatedAt.toString(),
+      completedAt: this.completedAt?.toString() ?? null,
     };
   }
 

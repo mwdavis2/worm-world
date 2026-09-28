@@ -1,0 +1,3 @@
+ALTER TABLE tasks ADD COLUMN updated_at TEXT NULL;
+
+ALTER TABLE tasks ADD COLUMN completed_at TEXT NULL;

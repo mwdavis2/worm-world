@@ -40,8 +40,14 @@ const getDateSections = (tasks: Task[]): Map<string, Set<Task>> => {
   return dates;
 };
 
+export const isOverdue = (task: Task): boolean => {
+  return !task.completed && diffDays(task.dueDate, new Date()) > 0;
+};
+
 const TaskList = (props: TaskListProps): React.JSX.Element => {
-  const sections = Array.from(getDateSections(props.tasks)).sort(
+  const overdueTasks = props.tasks.filter(isOverdue);
+  const upcomingTasks = props.tasks.filter((task) => !isOverdue(task));
+  const sections = Array.from(getDateSections(upcomingTasks)).sort(
     ([date1], [date2]) => (moment(date1).isAfter(moment(date2)) ? 1 : -1)
   );
   const [task, setTask] = useState<Task>(props.tasks[0] ?? new Task());
@@ -60,6 +66,29 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
       />
       <TaskConditionModal task={task} />
       <div className='flex flex-col gap-2'>
+        {overdueTasks.length > 0 && (
+          <div className='collapse overflow-visible'>
+            <input type='checkbox' defaultChecked />
+            <div className='collapse-title border-b-2 border-error text-xl text-error'>
+              Overdue
+            </div>
+            <div className='collapse-content mt-2'>
+              {overdueTasks.map((task, idx) => (
+                <div key={idx}>
+                  {idx !== 0 && <div className='divider m-0' />}
+                  <TaskItem
+                    refresh={props.refresh}
+                    task={task}
+                    updateTask={props.updateTask}
+                    onTaskChecked={onTaskChecked}
+                    selectTask={setTask}
+                    isOverdue
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {sections.map(([date, section]) => (
           <div key={date} className='collapse overflow-visible'>
             <input type='checkbox' defaultChecked />

@@ -12,4 +12,6 @@ export interface db_Task {
   completed: boolean;
   crossDesignId: string;
   childTaskId: string | null;
+  updatedAt: string | null;
+  completedAt: string | null;
 }

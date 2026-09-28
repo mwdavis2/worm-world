@@ -10,4 +10,6 @@ export type TaskFieldName =
   | 'Notes'
   | 'Completed'
   | 'CrossDesignId'
-  | 'ChildTaskId';
+  | 'ChildTaskId'
+  | 'UpdatedAt'
+  | 'CompletedAt';

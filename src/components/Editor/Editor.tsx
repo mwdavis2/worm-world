@@ -1,6 +1,8 @@
 import { insertCrossDesign, updateCrossDesign } from 'api/crossDesign';
 import { getPreferences } from 'utils/preferences';
 import { insertTasks } from 'api/task';
+import { pushTaskToGoogle } from 'api/taskSync';
+import { getTaskStatementText } from 'components/TaskItem/TaskItem';
 import {
   ContextMenu,
   useContextMenuState,
@@ -760,12 +762,18 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       name,
       lastSaved: new Date(),
     });
-    const tasks = design.getTasks(node).map((task) => task.generateRecord());
+    const scheduledTasks = design.getTasks(node);
+    const tasks = scheduledTasks.map((task) => task.generateRecord());
     insertCrossDesign(design.generateRecord())
       .then(async () => {
         await insertTasks(tasks);
       })
       .then(() => {
+        scheduledTasks.forEach((task, idx) => {
+          pushTaskToGoogle(tasks[idx], getTaskStatementText(task)).catch(
+            () => {}
+          );
+        });
         navigate('/schedules/todo');
       })
       .catch(console.error);

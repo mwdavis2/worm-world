@@ -12,6 +12,8 @@ pub fn get_tasks() -> Vec<Task> {
             cross_design_id: "1".to_string(),
             completed: true,
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         },
         Task {
             id: "2".to_string(),
@@ -24,6 +26,8 @@ pub fn get_tasks() -> Vec<Task> {
             cross_design_id: "1".to_string(),
             completed: false,
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         },
         Task {
             id: "3".to_string(),
@@ -36,6 +40,8 @@ pub fn get_tasks() -> Vec<Task> {
             cross_design_id: "2".to_string(),
             completed: false,
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         },
         Task {
             id: "4".to_string(),
@@ -48,6 +54,8 @@ pub fn get_tasks() -> Vec<Task> {
             cross_design_id: "2".to_string(),
             completed: true,
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         },
         Task {
             id: "5".to_string(),
@@ -60,6 +68,8 @@ pub fn get_tasks() -> Vec<Task> {
             cross_design_id: "3".to_string(),
             completed: true,
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         },
     ]
 }
@@ -76,5 +86,7 @@ pub fn get_filtered_tasks() -> Vec<Task> {
         cross_design_id: "1".to_string(),
         completed: true,
         child_task_id: None,
+        updated_at: None,
+        completed_at: None,
     }]
 }

@@ -43,6 +43,10 @@ pub struct Task {
     pub cross_design_id: String,
     #[serde(rename = "childTaskId")]
     pub child_task_id: Option<String>,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: Option<String>,
+    #[serde(rename = "completedAt")]
+    pub completed_at: Option<String>,
 }
 
 impl From<TaskDb> for Task {
@@ -58,6 +62,8 @@ impl From<TaskDb> for Task {
             completed: item.completed == 1,
             cross_design_id: item.cross_design_id,
             child_task_id: item.child_task_id,
+            updated_at: item.updated_at,
+            completed_at: item.completed_at,
         }
     }
 }
@@ -74,6 +80,8 @@ pub struct TaskDb {
     pub completed: i64,
     pub cross_design_id: String,
     pub child_task_id: Option<String>,
+    pub updated_at: Option<String>,
+    pub completed_at: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Hash, PartialEq, Eq, TS)]
@@ -89,6 +97,8 @@ pub enum TaskFieldName {
     Completed,
     CrossDesignId,
     ChildTaskId,
+    UpdatedAt,
+    CompletedAt,
 }
 
 impl FieldNameEnum for TaskFieldName {
@@ -104,6 +114,8 @@ impl FieldNameEnum for TaskFieldName {
             TaskFieldName::Completed => "completed".to_owned(),
             TaskFieldName::CrossDesignId => "cross_design_id".to_owned(),
             TaskFieldName::ChildTaskId => "child_task_id".to_owned(),
+            TaskFieldName::UpdatedAt => "updated_at".to_owned(),
+            TaskFieldName::CompletedAt => "completed_at".to_owned(),
         }
     }
 }

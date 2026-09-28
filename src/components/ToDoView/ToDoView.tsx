@@ -1,11 +1,13 @@
 import { deleteAllTasks, deleteTasks, getTasks, updateTask } from 'api/task';
+import { pushTaskToGoogle, syncGoogleTasksNow } from 'api/taskSync';
 import TaskList from 'components/TaskList/TaskList';
+import { getTaskStatementText } from 'components/TaskItem/TaskItem';
 import { Task } from 'models/frontend/Task/Task';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { GiCheckboxTree as CrossDesignIcon } from 'react-icons/gi';
 import { deleteCrossDesign, getFilteredCrossDesigns } from 'api/crossDesign';
-import { BiHide, BiShow } from 'react-icons/bi';
+import { BiHide, BiShow, BiRefresh as SyncIcon } from 'react-icons/bi';
 import { SiMicrogenetics as GeneIcon } from 'react-icons/si';
 import EditorContext from 'components/EditorContext/EditorContext';
 import { getErrorMessage } from 'utils/getErrorMessage';
@@ -29,6 +31,10 @@ export const ToDoView = (): React.JSX.Element => {
     refreshDesignNames().catch((e) =>
       toast.error('Unable to get crossDesignIds: ' + getErrorMessage(e))
     );
+
+    // Best-effort - a task's local save should never depend on this, and
+    // most alpha users won't have a Google account connected at all.
+    handleSyncNow().catch(() => {});
   }, []);
 
   const refreshTasks = async (): Promise<void> => {
@@ -49,11 +55,40 @@ export const ToDoView = (): React.JSX.Element => {
   };
 
   const handleUpdateTask = (task: Task): void => {
-    updateTask(task.generateRecord())
+    const record = task.generateRecord();
+    updateTask(record)
       .then(refreshTasks)
       .catch((e) =>
         toast.error('Unable to update task: ' + getErrorMessage(e))
       );
+    pushTaskToGoogle(record, getTaskStatementText(task)).catch((e) =>
+      toast.error('Unable to sync task to Google Tasks: ' + getErrorMessage(e))
+    );
+  };
+
+  const handleSyncNow = async (): Promise<void> => {
+    // Pull remote changes first - otherwise pushing a task's stale local
+    // state (e.g. still "incomplete" because it was only checked off on the
+    // Google side) would immediately overwrite the very change we're about
+    // to pull, undoing it before it's even applied locally.
+    await syncGoogleTasksNow();
+
+    // Push every currently-known task (now reflecting anything just pulled)
+    // - covers tasks created before a Google account was connected, which
+    // otherwise never get pushed at all since push only fires automatically
+    // on new inserts/updates. push_task is idempotent (inserts once, patches
+    // thereafter), so re-pushing an already-synced, unchanged task is
+    // harmless.
+    const currentTasks = (await getTasks()).map((record) => new Task(record));
+    await Promise.all(
+      currentTasks.map(async (task) => {
+        await pushTaskToGoogle(
+          task.generateRecord(),
+          getTaskStatementText(task)
+        );
+      })
+    );
+    await refreshTasks();
   };
 
   const handleDeleteTasks = (designId?: string): void => {
@@ -120,6 +155,15 @@ export const ToDoView = (): React.JSX.Element => {
               />
             </div>
             <div className='flex gap-2 justify-self-end'>
+              <SyncNowButton
+                onClick={() => {
+                  handleSyncNow().catch((e) =>
+                    toast.error(
+                      'Unable to sync with Google Tasks: ' + getErrorMessage(e)
+                    )
+                  );
+                }}
+              />
               <ShowCompletedButton
                 showCompleted={showCompleted}
                 toggleShowCompleted={() => {
@@ -163,6 +207,16 @@ const NoTaskPlaceholder = (): React.JSX.Element => {
         Tasks can be scheduled when viewing a cross design in the editor.
       </h3>
       <CrossDesignIcon className='my-4 text-9xl text-base-300' />
+    </div>
+  );
+};
+
+const SyncNowButton = (props: { onClick: () => void }): React.JSX.Element => {
+  return (
+    <div className='tooltip tooltip-bottom' data-tip={'Sync with Google Tasks'}>
+      <button className='btn btn-outline' onClick={props.onClick}>
+        <SyncIcon size='20' />
+      </button>
     </div>
   );
 };

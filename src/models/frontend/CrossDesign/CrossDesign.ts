@@ -263,6 +263,8 @@ export default class CrossDesign {
       completed: false,
       crossDesignId: this.id,
       childTaskId: childTaskId ?? null,
+      updatedAt: null,
+      completedAt: null,
     });
 
     const parents = ancestorTree.parents.flatMap(

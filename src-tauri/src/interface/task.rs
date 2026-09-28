@@ -11,7 +11,7 @@ impl InnerDbState {
         match sqlx::query_as!(
             TaskDb,
             "
-            SELECT id, due_date, action, herm_strain, male_strain, result_strain, notes, cross_design_id, child_task_id, completed FROM tasks ORDER BY id
+            SELECT id, due_date, action, herm_strain, male_strain, result_strain, notes, cross_design_id, child_task_id, completed, updated_at, completed_at FROM tasks ORDER BY id
             "
         )
         .fetch_all(&self.conn_pool)
@@ -30,7 +30,7 @@ impl InnerDbState {
         filter: &FilterGroup<TaskFieldName>,
     ) -> Result<Vec<Task>, DbError> {
         let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "SELECT id, due_date, action, herm_strain, male_strain, result_strain, notes, cross_design_id, child_task_id, completed FROM tasks",
+            "SELECT id, due_date, action, herm_strain, male_strain, result_strain, notes, cross_design_id, child_task_id, completed, updated_at, completed_at FROM tasks",
         );
         filter.add_filtered_query(&mut qb, true, true);
 
@@ -50,8 +50,8 @@ impl InnerDbState {
     pub async fn insert_task(&self, task: &Task) -> Result<(), DbError> {
         let action_val: i32 = (task.action as u8).into();
         match sqlx::query!(
-            "INSERT INTO tasks (id, due_date, action, herm_strain, male_strain, result_strain, notes, cross_design_id, completed, child_task_id)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "INSERT INTO tasks (id, due_date, action, herm_strain, male_strain, result_strain, notes, cross_design_id, completed, child_task_id, updated_at, completed_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ",
             task.id,
             task.due_date,
@@ -63,6 +63,8 @@ impl InnerDbState {
             task.cross_design_id,
             task.completed,
             task.child_task_id,
+            task.updated_at,
+            task.completed_at,
         )
         .execute(&self.conn_pool)
         .await
@@ -87,7 +89,9 @@ impl InnerDbState {
                 notes = ?,
                 cross_design_id = ?,
                 completed = ?,
-                child_task_id = ?
+                child_task_id = ?,
+                updated_at = ?,
+                completed_at = ?
             WHERE
                 id = ?",
             task.due_date,
@@ -99,6 +103,8 @@ impl InnerDbState {
             task.cross_design_id,
             task.completed,
             task.child_task_id,
+            task.updated_at,
+            task.completed_at,
             task.id
         )
         .execute(&self.conn_pool)
@@ -231,6 +237,8 @@ mod test {
             cross_design_id: "1".to_string(),
             completed: true,
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         };
 
         state.insert_task(&expected).await?;
@@ -267,6 +275,8 @@ mod test {
             cross_design_id: "1".to_string(),
             completed: true,
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         };
 
         state.insert_task(&expected).await?;
@@ -285,6 +295,8 @@ mod test {
             cross_design_id: "1".to_string(),
             completed: false,
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         };
         state.update_task(&new_expected).await?;
         let tasks: Vec<Task> = state.get_tasks().await?;
@@ -320,6 +332,8 @@ mod test {
             cross_design_id: "1".to_string(),
             completed: true,
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         };
 
         state.insert_task(&expected).await?;
@@ -369,6 +383,8 @@ mod test {
             completed: true,
             result_strain: Some("".to_string()),
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         };
         let task2 = Task {
             id: "4".to_string(),
@@ -381,6 +397,8 @@ mod test {
             completed: true,
             result_strain: Some("".to_string()),
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         };
         let task3 = Task {
             id: "5".to_string(),
@@ -393,6 +411,8 @@ mod test {
             completed: true,
             result_strain: Some("".to_string()),
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         };
 
         state.insert_task(&task1).await?;
@@ -445,6 +465,8 @@ mod test {
             completed: true,
             result_strain: Some("".to_string()),
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         };
         let task2 = Task {
             id: "4".to_string(),
@@ -457,6 +479,8 @@ mod test {
             completed: true,
             result_strain: Some("".to_string()),
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         };
         let task3 = Task {
             id: "5".to_string(),
@@ -469,6 +493,8 @@ mod test {
             completed: true,
             result_strain: Some("".to_string()),
             child_task_id: None,
+            updated_at: None,
+            completed_at: None,
         };
 
         state.insert_task(&task1).await?;

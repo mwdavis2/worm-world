@@ -9,6 +9,7 @@ use sqlx::{
     Pool, Sqlite,
 };
 use std::{path::Path, str::FromStr, time::Duration};
+use tauri::Manager;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
@@ -27,18 +28,48 @@ use models::{
     phenotype::{Phenotype, PhenotypeDb, PhenotypeFieldName},
     strain::{Strain, StrainFieldName},
     strain_allele::{StrainAllele, StrainAlleleFieldName},
+    sync_account::SyncAccount,
     task::{Task, TaskFieldName},
     variation::{Variation, VariationDb, VariationFieldName},
 };
 
+mod sync;
+use sync::SyncError;
+
+/// How often the app polls Google Tasks for remote changes while running -
+/// Google Tasks has no push/webhook support, so periodic polling (plus a
+/// pull on launch and a manual "Sync now") is the only way to pick up
+/// changes made on the Google side (e.g. checking a task off on a phone).
+const SYNC_POLL_INTERVAL: Duration = Duration::from_secs(300);
+
 #[tokio::main]
 async fn main() {
+    // Populates GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET (and anything else in
+    // src-tauri/.env) into the process environment; harmless if the file is
+    // absent (e.g. a build with sync not configured).
+    dotenvy::dotenv().ok();
+
     let pool = sqlite_setup()
         .await
         .expect("Failed to set up sqlite3 database.");
 
     tauri::Builder::default()
         .manage(DbState(RwLock::new(InnerDbState { conn_pool: pool })))
+        .setup(|app| {
+            let handle = app.handle();
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(SYNC_POLL_INTERVAL);
+                loop {
+                    interval.tick().await;
+                    let state = handle.state::<DbState>();
+                    let state_guard = state.0.read().await;
+                    if let Err(e) = sync::google_tasks::pull_updates(&state_guard).await {
+                        eprintln!("Background Google Tasks sync failed: {e}");
+                    }
+                }
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             // genes
             get_genes,
@@ -101,6 +132,12 @@ async fn main() {
             delete_task,
             delete_tasks,
             delete_all_tasks,
+            // task sync
+            get_sync_accounts,
+            connect_google_tasks,
+            disconnect_google_tasks,
+            push_task_to_google,
+            sync_google_tasks_now,
             // cross_designs
             get_cross_designs,
             get_filtered_cross_designs,
@@ -637,6 +674,46 @@ async fn delete_tasks(
 async fn delete_all_tasks(state: tauri::State<'_, DbState>) -> Result<(), DbError> {
     let state_guard = state.0.read().await;
     state_guard.delete_all_tasks().await
+}
+
+#[tauri::command]
+async fn get_sync_accounts(state: tauri::State<'_, DbState>) -> Result<Vec<SyncAccount>, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.get_sync_accounts().await
+}
+
+#[tauri::command]
+async fn connect_google_tasks(
+    state: tauri::State<'_, DbState>,
+    app_handle: tauri::AppHandle,
+) -> Result<SyncAccount, SyncError> {
+    let state_guard = state.0.read().await;
+    sync::google_tasks::connect(&state_guard, &app_handle).await
+}
+
+#[tauri::command]
+async fn disconnect_google_tasks(
+    state: tauri::State<'_, DbState>,
+    sync_account_id: String,
+) -> Result<(), SyncError> {
+    let state_guard = state.0.read().await;
+    sync::google_tasks::disconnect(&state_guard, &sync_account_id).await
+}
+
+#[tauri::command]
+async fn push_task_to_google(
+    state: tauri::State<'_, DbState>,
+    task: Task,
+    title: String,
+) -> Result<(), SyncError> {
+    let state_guard = state.0.read().await;
+    sync::google_tasks::push_task(&state_guard, &task, &title).await
+}
+
+#[tauri::command]
+async fn sync_google_tasks_now(state: tauri::State<'_, DbState>) -> Result<Vec<Task>, SyncError> {
+    let state_guard = state.0.read().await;
+    sync::google_tasks::pull_updates(&state_guard).await
 }
 
 #[tauri::command]

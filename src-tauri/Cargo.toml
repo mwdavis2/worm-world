@@ -6,7 +6,10 @@ authors = ["you"]
 license = ""
 repository = ""
 edition = "2021"
-rust-version = "1.57"
+# Bumped from 1.57 for backlog #8's Google Tasks sync (std::sync::OnceLock,
+# stable since 1.70) - the new reqwest/oauth2/keyring dependencies already
+# require a modern toolchain regardless.
+rust-version = "1.70"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -30,6 +33,11 @@ uuid = { version = "1.2", features = ["v4", "fast-rng"] }
 directories = "4.0"
 anyhow = "1.0"
 thiserror = "1.0"
+reqwest = { version = "0.11.18", default-features = false, features = ["json", "rustls-tls"] }
+oauth2 = "4.4.2"
+keyring = "2.3.0"
+tiny_http = "0.12.0"
+dotenvy = "0.15.7"
 
 [dev-dependencies]
 pretty_assertions = "1.3"

@@ -1,5 +1,13 @@
 import { TopNav } from 'components/TopNav/TopNav';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
+import {
+  connectGoogleTasks,
+  disconnectGoogleTasks,
+  getSyncAccounts,
+} from 'api/taskSync';
+import { type db_SyncAccount } from 'models/db/sync/db_SyncAccount';
+import { getErrorMessage } from 'utils/getErrorMessage';
 import {
   type EdgeStyle,
   type TextExportMode,
@@ -9,6 +17,38 @@ import {
 
 const Settings = (): React.JSX.Element => {
   const [preferences, setLocalPreferences] = useState(getPreferences());
+  const [syncAccounts, setSyncAccounts] = useState<db_SyncAccount[]>([]);
+  const [connecting, setConnecting] = useState(false);
+
+  useEffect(() => {
+    refreshSyncAccounts().catch((e) =>
+      toast.error('Unable to get connected accounts: ' + getErrorMessage(e))
+    );
+  }, []);
+
+  const refreshSyncAccounts = async (): Promise<void> => {
+    setSyncAccounts(await getSyncAccounts());
+  };
+
+  const handleConnectGoogle = (): void => {
+    setConnecting(true);
+    connectGoogleTasks()
+      .then(refreshSyncAccounts)
+      .catch((e) =>
+        toast.error('Unable to connect Google Tasks: ' + getErrorMessage(e))
+      )
+      .finally(() => {
+        setConnecting(false);
+      });
+  };
+
+  const handleDisconnect = (accountId: string): void => {
+    disconnectGoogleTasks(accountId)
+      .then(refreshSyncAccounts)
+      .catch((e) =>
+        toast.error('Unable to disconnect account: ' + getErrorMessage(e))
+      );
+  };
 
   const updateMinZoom = (value: number): void => {
     setLocalPreferences(setPreferences({ minZoom: value }));
@@ -133,6 +173,45 @@ const Settings = (): React.JSX.Element => {
               opens the file). &quot;Text path&quot; embeds exact glyph
               outlines, so text is always pixel-perfect but no longer editable
               as text.
+            </span>
+          </label>
+        </div>
+
+        <div className='form-control'>
+          <label className='label'>
+            <span className='label-text'>Connected accounts</span>
+          </label>
+          {syncAccounts.length === 0 ? (
+            <button
+              className='btn btn-outline'
+              disabled={connecting}
+              onClick={handleConnectGoogle}
+            >
+              {connecting ? 'Connecting...' : 'Connect Google Tasks'}
+            </button>
+          ) : (
+            syncAccounts.map((account) => (
+              <div
+                key={account.id}
+                className='flex items-center justify-between gap-4'
+              >
+                <span>Connected as {account.accountLabel}</span>
+                <button
+                  className='btn btn-error btn-outline'
+                  onClick={() => {
+                    handleDisconnect(account.id);
+                  }}
+                >
+                  Disconnect
+                </button>
+              </div>
+            ))
+          )}
+          <label className='label'>
+            <span className='label-text-alt'>
+              Two-way syncs worm-world tasks with Google Tasks - checking a task
+              off or rescheduling it in either app updates the other. Only tasks
+              that started in worm-world are synced.
             </span>
           </label>
         </div>

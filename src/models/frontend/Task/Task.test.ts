@@ -17,11 +17,51 @@ describe('Task', () => {
       completed: false,
       crossDesignId: '3',
       childTaskId: null,
+      updatedAt: null,
+      completedAt: null,
     });
     const str = task.toJSON();
     const taskBack = Task.fromJSON(str);
     expect(taskBack).toEqual(task);
     expect(taskBack.toJSON).toBeDefined();
+  });
+
+  test('generateRecord() stamps completedAt when a task is newly checked off', () => {
+    const task = new Task();
+    task.completed = true;
+    const record = task.generateRecord();
+    expect(record.completedAt).not.toBeNull();
+    expect(task.completedAt).toBeDefined();
+  });
+
+  test('generateRecord() clears completedAt when a task is unchecked', () => {
+    const task = new Task();
+    task.completed = true;
+    task.generateRecord();
+    expect(task.completedAt).toBeDefined();
+
+    task.completed = false;
+    const record = task.generateRecord();
+    expect(record.completedAt).toBeNull();
+    expect(task.completedAt).toBeUndefined();
+  });
+
+  test('generateRecord() preserves an already-set completedAt on unrelated updates', () => {
+    const task = new Task();
+    task.completed = true;
+    task.generateRecord();
+    const firstCompletedAt = task.completedAt;
+
+    task.notes = 'a note';
+    task.generateRecord();
+    expect(task.completedAt).toEqual(firstCompletedAt);
+  });
+
+  test('generateRecord() always stamps updatedAt', () => {
+    const task = new Task();
+    const record = task.generateRecord();
+    expect(record.updatedAt).not.toBeNull();
+    expect(task.updatedAt).toBeDefined();
   });
 });
 

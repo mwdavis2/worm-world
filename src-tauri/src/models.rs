@@ -13,5 +13,7 @@ pub mod gene;
 pub mod phenotype;
 pub mod strain;
 pub mod strain_allele;
+pub mod sync_account;
 pub mod task;
+pub mod task_sync_link;
 pub mod variation;
