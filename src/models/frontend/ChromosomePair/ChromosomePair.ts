@@ -10,7 +10,9 @@ export interface ChromosomeOption {
 
 /**
  * Two homologous chromosomes of a specimen, represented as an array of allele pairs
- * kept in sorted order by genetic position. Also extrachromosomal array.
+ * kept in sorted order by genetic position. Also extrachromosomal array - Ex pairs
+ * are crossed via `crossEx()`, not `meiosis()` (which must never be called on the
+ * `'Ex'` pseudo-chromosome; see `Strain.meiosis()`).
  */
 export class ChromosomePair {
   @Type(() => AllelePair)
@@ -282,32 +284,76 @@ export class ChromosomePair {
     AllelePair.sort(this.allelePairs);
   }
 
-  // Assumed equal probabilities of all possible sets
+  /**
+   * Every distinct Ex array carried by either parent is transmitted to an
+   * offspring as its own independent event, with probability
+   * `allele.getTransmissionProb()` - not linked/correlated segregation the
+   * way a real chromosome's `meiosis()` would model it (Ex arrays have no
+   * genetic location, so there's nothing for recombination math to act on).
+   * A given array is counted once even if both parents carry it - it's the
+   * same array, not two independent copies.
+   */
   public static crossEx(
-    leftChromPair: ChromosomePair,
-    rightChromPair: ChromosomePair
+    leftChromPair: ChromosomePair | undefined,
+    rightChromPair: ChromosomePair | undefined
   ): ChromosomePairOption[] {
-    const allelePairs = Array.from(
-      new Set(
-        [...rightChromPair.allelePairs, ...leftChromPair.allelePairs].filter(
-          (allelePair) => !allelePair.isWild()
-        )
-      )
-    );
+    const alleles = ChromosomePair.collectUniqueEcaAlleles([
+      leftChromPair,
+      rightChromPair,
+    ]);
 
-    const noPairs: AllelePair[][] = [[]];
-    const allSubsets = allelePairs.reduce(
-      (subsets, value) => subsets.concat(subsets.map((set) => [value, ...set])),
-      noPairs
-    );
-    const chromOptions = allSubsets.map((allelePairs) => {
-      return {
-        pair: new ChromosomePair(allelePairs),
-        prob: 1 / allSubsets.length,
-      };
-    });
+    let options: Array<{ alleles: Allele[]; prob: number }> = [
+      { alleles: [], prob: 1 },
+    ];
+    for (const allele of alleles) {
+      const transmissionProb = allele.getTransmissionProb();
+      const next: Array<{ alleles: Allele[]; prob: number }> = [];
+      if (transmissionProb > 0) {
+        next.push(
+          ...options.map((opt) => ({
+            alleles: [...opt.alleles, allele],
+            prob: opt.prob * transmissionProb,
+          }))
+        );
+      }
+      if (transmissionProb < 1) {
+        next.push(
+          ...options.map((opt) => ({
+            alleles: opt.alleles,
+            prob: opt.prob * (1 - transmissionProb),
+          }))
+        );
+      }
+      options = next;
+    }
 
-    return chromOptions;
+    return options.map((option) => ({
+      pair: new ChromosomePair(option.alleles.map((allele) => allele.toTopHet())),
+      prob: option.prob,
+    }));
+  }
+
+  /**
+   * Non-wild Ex alleles from both chromosome pairs, deduped by allele name
+   * (the same array present in both parents must count once, not twice)
+   * and sorted by name for deterministic output order.
+   */
+  private static collectUniqueEcaAlleles(
+    chromPairs: Array<ChromosomePair | undefined>
+  ): Allele[] {
+    const alleles = chromPairs
+      .flatMap((chromPair) => chromPair?.allelePairs ?? [])
+      .filter((allelePair) => !allelePair.isWild())
+      .map((allelePair) =>
+        allelePair.top.isWild() ? allelePair.bot : allelePair.top
+      );
+
+    const unique: Allele[] = [];
+    for (const allele of alleles) {
+      if (!unique.some((existing) => existing.equals(allele)))
+        unique.push(allele);
+    }
+    return unique.sort((a, b) => (a.name < b.name ? -1 : 1));
   }
 
   /**

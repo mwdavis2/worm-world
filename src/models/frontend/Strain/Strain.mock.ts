@@ -723,6 +723,12 @@ export const intermediateCross: Strain[] = [
   }),
 ];
 
+// Both arrays independently have a 50% transmission probability
+// (Variation.mock.ts's oxEx219999/oxEx2254 both have percentLoss: 50), so
+// all 4 combinations tie at 0.25 - order here follows crossEx()'s actual
+// generation order (per-array Bernoulli trials, alleles sorted by name:
+// oxEx219999 before oxEx2254; each trial emits every existing option's
+// "present" branch before any "absent" branch).
 export const ecaCross: Strain[] = [
   new Strain({
     allelePairs: [alleles.oxEx219999.toTopHet(), alleles.oxEx2254.toTopHet()],
@@ -730,12 +736,12 @@ export const ecaCross: Strain[] = [
   }),
 
   new Strain({
-    allelePairs: [alleles.oxEx219999.toTopHet()],
+    allelePairs: [alleles.oxEx2254.toTopHet()],
     probability: 0.25,
   }),
 
   new Strain({
-    allelePairs: [alleles.oxEx2254.toTopHet()],
+    allelePairs: [alleles.oxEx219999.toTopHet()],
     probability: 0.25,
   }),
 

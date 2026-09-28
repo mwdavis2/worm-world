@@ -443,6 +443,178 @@ describe('Cross algorithm', () => {
     testStrains(crossStrains, strains.ecaCross);
   });
 
+  test('.meiosis() excludes the Ex pseudo-chromosome', () => {
+    const gametes = new Strain({
+      allelePairs: [alleles.e204.toTopHet(), alleles.oxEx2254.toTopHet()],
+    }).meiosis();
+    const expected: Gamete[] = [
+      { chromosomes: [[alleles.e204]], prob: 0.5 },
+      { chromosomes: [[alleles.e204.toWild()]], prob: 0.5 },
+    ];
+    testGametes(gametes, expected);
+  });
+
+  test('self-cross of a single Ex array at a non-50% loss rate', async () => {
+    // oxEx200 has percentLoss: 30 -> transmission prob 0.7
+    const strain = new Strain({ allelePairs: [alleles.oxEx200.toTopHet()] });
+    const crossStrains = await strain.selfCross();
+    const expected: Strain[] = [
+      new Strain({
+        allelePairs: [alleles.oxEx200.toTopHet()],
+        probability: 0.7,
+      }),
+      new Strain({ allelePairs: [], probability: 0.3 }),
+    ];
+    testStrains(crossStrains, expected);
+  });
+
+  test('self-cross of three independent Ex arrays at different loss rates', async () => {
+    // oxEx100/200/300 have percentLoss 10/30/40 -> transmission probs 0.9/0.7/0.6
+    const strain = new Strain({
+      allelePairs: [
+        alleles.oxEx100.toTopHet(),
+        alleles.oxEx200.toTopHet(),
+        alleles.oxEx300.toTopHet(),
+      ],
+    });
+    const crossStrains = await strain.selfCross();
+    const expected: Strain[] = [
+      new Strain({
+        allelePairs: [
+          alleles.oxEx100.toTopHet(),
+          alleles.oxEx200.toTopHet(),
+          alleles.oxEx300.toTopHet(),
+        ],
+        probability: 0.378,
+      }),
+      new Strain({
+        allelePairs: [alleles.oxEx100.toTopHet(), alleles.oxEx200.toTopHet()],
+        probability: 0.252,
+      }),
+      new Strain({
+        allelePairs: [alleles.oxEx100.toTopHet(), alleles.oxEx300.toTopHet()],
+        probability: 0.162,
+      }),
+      new Strain({
+        allelePairs: [alleles.oxEx100.toTopHet()],
+        probability: 0.108,
+      }),
+      new Strain({
+        allelePairs: [alleles.oxEx200.toTopHet(), alleles.oxEx300.toTopHet()],
+        probability: 0.042,
+      }),
+      new Strain({
+        allelePairs: [alleles.oxEx200.toTopHet()],
+        probability: 0.028,
+      }),
+      new Strain({
+        allelePairs: [alleles.oxEx300.toTopHet()],
+        probability: 0.018,
+      }),
+      new Strain({ allelePairs: [], probability: 0.012 }),
+    ];
+    testStrains(crossStrains, expected);
+  });
+
+  test('self-cross of an Ex array with no percentLoss recorded is always transmitted', async () => {
+    const strain = new Strain({ allelePairs: [alleles.oxEx12345.toTopHet()] });
+    const crossStrains = await strain.selfCross();
+    const expected: Strain[] = [
+      new Strain({
+        allelePairs: [alleles.oxEx12345.toTopHet()],
+        probability: 1,
+      }),
+    ];
+    testStrains(crossStrains, expected);
+  });
+
+  test('self-cross mixing a null-percentLoss array with a real-rate array', async () => {
+    const strain = new Strain({
+      allelePairs: [
+        alleles.oxEx12345.toTopHet(), // no percentLoss -> always transmitted
+        alleles.oxEx200.toTopHet(), // percentLoss: 30 -> transmission prob 0.7
+      ],
+    });
+    const crossStrains = await strain.selfCross();
+    const expected: Strain[] = [
+      new Strain({
+        allelePairs: [alleles.oxEx12345.toTopHet(), alleles.oxEx200.toTopHet()],
+        probability: 0.7,
+      }),
+      new Strain({
+        allelePairs: [alleles.oxEx12345.toTopHet()],
+        probability: 0.3,
+      }),
+    ];
+    testStrains(crossStrains, expected);
+  });
+
+  test('cross with an Ex array present in only one parent', async () => {
+    const strain1 = new Strain({
+      allelePairs: [alleles.oxEx100.toTopHet()], // percentLoss: 10 -> prob 0.9
+    });
+    const strain2 = new Strain({
+      allelePairs: [alleles.oxEx300.toTopHet()], // percentLoss: 40 -> prob 0.6
+    });
+    const crossStrains = await strain1.crossWith(strain2);
+    const expected: Strain[] = [
+      new Strain({
+        allelePairs: [alleles.oxEx100.toTopHet(), alleles.oxEx300.toTopHet()],
+        probability: 0.54,
+      }),
+      new Strain({
+        allelePairs: [alleles.oxEx100.toTopHet()],
+        probability: 0.36,
+      }),
+      new Strain({
+        allelePairs: [alleles.oxEx300.toTopHet()],
+        probability: 0.06,
+      }),
+      new Strain({ allelePairs: [], probability: 0.04 }),
+    ];
+    testStrains(crossStrains, expected);
+  });
+
+  test('Ex array segregates independently alongside a regular chromosomal pair', async () => {
+    const strain = new Strain({
+      allelePairs: [
+        alleles.e204.toTopHet(),
+        alleles.oxEx300.toTopHet(), // percentLoss: 40 -> transmission prob 0.6
+      ],
+    });
+    const crossStrains = await strain.selfCross();
+    const expected: Strain[] = [
+      new Strain({
+        allelePairs: [alleles.e204.toTopHet(), alleles.oxEx300.toTopHet()],
+        probability: 0.3,
+      }),
+      new Strain({
+        allelePairs: [alleles.e204.toTopHet()],
+        probability: 0.2,
+      }),
+      new Strain({
+        allelePairs: [alleles.e204.toHomo(), alleles.oxEx300.toTopHet()],
+        probability: 0.15,
+      }),
+      new Strain({
+        allelePairs: [
+          alleles.e204.toWild().toHomo(),
+          alleles.oxEx300.toTopHet(),
+        ],
+        probability: 0.15,
+      }),
+      new Strain({
+        allelePairs: [alleles.e204.toHomo()],
+        probability: 0.1,
+      }),
+      new Strain({
+        allelePairs: [alleles.e204.toWild().toHomo()],
+        probability: 0.1,
+      }),
+    ];
+    testStrains(crossStrains, expected);
+  });
+
   test('should output a single child for wild-wild crosses', async () => {
     const wildStrain1 = new Strain({ allelePairs: [] });
     const wildStrain2 = wildStrain1.clone();

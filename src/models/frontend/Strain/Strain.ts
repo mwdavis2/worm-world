@@ -24,6 +24,7 @@ import { getStrain, insertStrain, updateStrain } from 'api/strain';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import {
   type ChromosomeOption,
+  type ChromosomePairOption,
   ChromosomePair,
 } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { chromosomes } from 'models/frontend/Chromosome';
@@ -456,7 +457,11 @@ export class Strain {
 
     const gametes1 = this.meiosis();
     const gametes2 = other.meiosis();
-    return await Strain.fertilize(gametes1, gametes2);
+    const exOptions = ChromosomePair.crossEx(
+      this.chromPairMap.get('Ex'),
+      other.chromPairMap.get('Ex')
+    );
+    return await Strain.fertilize(gametes1, gametes2, exOptions);
   }
 
   public getAllelePairs(): AllelePair[] {
@@ -467,60 +472,46 @@ export class Strain {
 
   public static async fertilize(
     gametes1: Gamete[],
-    gametes2: Gamete[] = gametes1
+    gametes2: Gamete[] = gametes1,
+    exOptions: ChromosomePairOption[] = [
+      { pair: new ChromosomePair([]), prob: 1 },
+    ]
   ): Promise<Strain[]> {
     const strains = await Promise.all(
       gametes1.flatMap((gamete1) =>
-        gametes2.map(async (gamete2) => {
-          const chromPairs = gamete1.chromosomes.map((chrom, idx) =>
-            ChromosomePair.buildFromChroms(chrom, gamete2.chromosomes[idx])
-          );
-          const strain = await Strain.buildFromChromPairs(chromPairs);
-          strain.probability = gamete1.prob * gamete2.prob;
-          strain.isChild = true;
-          return strain;
-        })
+        gametes2.flatMap((gamete2) =>
+          exOptions.map(async (exOption) => {
+            const chromPairs = gamete1.chromosomes.map((chrom, idx) =>
+              ChromosomePair.buildFromChroms(chrom, gamete2.chromosomes[idx])
+            );
+            chromPairs.push(exOption.pair);
+            const strain = await Strain.buildFromChromPairs(chromPairs);
+            strain.probability =
+              gamete1.prob * gamete2.prob * exOption.prob;
+            strain.isChild = true;
+            return strain;
+          })
+        )
       )
     );
     Strain.reduceStrains(strains);
-    Strain.normalizeEcaOptions(strains);
     strains.sort((a, b) => (b?.probability ?? 0) - (a?.probability ?? 0));
     return strains;
   }
 
   /**
-   * Strain options differing only by extrachromosomal array contents should have same probability
-   * (for simplicity, not necessarily biologically accurate)
+   * Produce all distinct "gametes", meaning top-heterozygous strains
+   * representing eggs/sperm. Excludes the `'Ex'` pseudo-chromosome (filtered
+   * by map key, not `chromPair.isEca()`, which can read false for an empty/
+   * all-wild Ex pair) - extrachromosomal arrays have no genetic location for
+   * recombination math to act on, and are instead resolved independently at
+   * fertilization via `ChromosomePair.crossEx()`.
    */
-  private static normalizeEcaOptions(strains: Strain[]): void {
-    // Partition options according to non-ECA equality
-    const partition = new Map<string, Strain[]>();
-    strains.forEach((strain) => {
-      const genotype = strain.toString({
-        simplify: false,
-        excludeEca: true,
-      });
-      partition.has(genotype)
-        ? partition.get(genotype)?.push(strain)
-        : partition.set(genotype, [strain]);
-    });
-
-    // Normalize each set
-    [...partition.values()].forEach((optionSet) => {
-      const totalProb = optionSet.reduce<number>(
-        (totalProb, currOpt) => totalProb + (currOpt.probability ?? 0),
-        0
-      );
-      optionSet.forEach(
-        (option) => (option.probability = totalProb / optionSet.length)
-      );
-    });
-  }
-
-  /** Produce all distinct "gametes", meaning top-heterozygous strains representing eggs/sperm */
   public meiosis(): Gamete[] {
-    return this.getSortedChromPairs()
-      .map((pair) => pair.meiosis())
+    return Array.from(this.chromPairMap.entries())
+      .filter(([chromName]) => chromName !== 'Ex')
+      .sort((a, b) => cmpChromName(a[0], b[0]))
+      .map(([, pair]) => pair.meiosis())
       .reduce<ChromosomeOption[][]>(
         // Cartesian product
         (a, b) => a.flatMap((d) => b.map((e) => [d, e].flat())),

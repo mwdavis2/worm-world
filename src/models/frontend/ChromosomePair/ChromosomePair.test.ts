@@ -5,6 +5,10 @@ import {
   ox1059,
   oxIs363,
   md299,
+  oxEx100,
+  oxEx200,
+  oxEx300,
+  oxEx2254,
 } from 'models/frontend/Allele/Allele.mock';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import {
@@ -200,5 +204,60 @@ describe('ChromosomePair', () => {
     expect(chromPairBack).toEqual(chromPair);
     expect(chromPairBack.allelePairs).toBeDefined();
     expect(chromPairBack.toJSON).toBeDefined();
+  });
+});
+
+describe('ChromosomePair.crossEx()', () => {
+  test('undefined inputs return a single empty-pair option at probability 1', () => {
+    const options = ChromosomePair.crossEx(undefined, undefined);
+
+    expect(options).toHaveLength(1);
+    expect(options[0].pair.allelePairs).toHaveLength(0);
+    expect(options[0].prob).toBeCloseTo(1, 6);
+  });
+
+  test('same array present in both parents is counted once, not twice', () => {
+    // oxEx2254 has percentLoss: 50 -> transmission prob 0.5
+    const leftPair = new ChromosomePair([oxEx2254.toTopHet()]);
+    const rightPair = new ChromosomePair([oxEx2254.toBotHet()]);
+
+    const options = ChromosomePair.crossEx(leftPair, rightPair);
+
+    expect(options).toHaveLength(2);
+    options.forEach((option) => {
+      expect(option.pair.allelePairs.length).toBeLessThanOrEqual(1);
+    });
+
+    const present = options.find((o) => o.pair.allelePairs.length === 1);
+    const absent = options.find((o) => o.pair.allelePairs.length === 0);
+    expect(present?.prob).toBeCloseTo(0.5, 6);
+    expect(absent?.prob).toBeCloseTo(0.5, 6);
+  });
+
+  test('reads a bottom-het Ex pair correctly', () => {
+    // oxEx200 has percentLoss: 30 -> transmission prob 0.7
+    const pair = new ChromosomePair([oxEx200.toBotHet()]);
+
+    const options = ChromosomePair.crossEx(pair, undefined);
+
+    expect(options).toHaveLength(2);
+    const present = options.find((o) => o.pair.allelePairs.length === 1);
+    const absent = options.find((o) => o.pair.allelePairs.length === 0);
+    expect(present?.prob).toBeCloseTo(0.7, 6);
+    expect(absent?.prob).toBeCloseTo(0.3, 6);
+  });
+
+  test('probabilities across all options sum to 1 for three independent arrays', () => {
+    const pair = new ChromosomePair([
+      oxEx100.toTopHet(), // 10% loss
+      oxEx200.toTopHet(), // 30% loss
+      oxEx300.toTopHet(), // 40% loss
+    ]);
+
+    const options = ChromosomePair.crossEx(pair, undefined);
+
+    expect(options).toHaveLength(8);
+    const probSum = options.reduce((sum, option) => sum + option.prob, 0);
+    expect(probSum).toBeCloseTo(1, 6);
   });
 });

@@ -164,6 +164,19 @@ export class Allele {
     return this.getChromName() === 'Ex';
   }
 
+  /**
+   * The probability this allele (an Ex array, in practice) is transmitted
+   * to a given offspring - `1 - percentLoss / 100`. A null/undefined
+   * percentLoss (no rate recorded, e.g. the array predates this field)
+   * counts as always transmitted, not a guessed default rate.
+   */
+  public getTransmissionProb(): number {
+    const loss = this.variation?.percentLoss;
+    if (loss == null) return 1;
+    const clamped = Math.min(100, Math.max(0, loss));
+    return 1 - clamped / 100;
+  }
+
   public isX(): boolean {
     return this.getChromName() === 'X';
   }

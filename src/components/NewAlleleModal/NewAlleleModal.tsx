@@ -110,7 +110,7 @@ const ConditionSearchInput = (props: {
           <></>
         )
       ) : (
-        <ul className='dropdown-content menu rounded-box z-50 my-2 max-h-60 w-52 overflow-auto bg-base-100 p-2 shadow'>
+        <ul className='menu dropdown-content rounded-box z-50 my-2 max-h-60 w-52 overflow-auto bg-base-100 p-2 shadow'>
           {searchRes.map((condition, idx) => (
             <li
               key={idx}
@@ -401,7 +401,12 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
           }
           const variation = new Variation({
             name: finalName,
-            chromosome: tab.chromosome,
+            // Ex arrays aren't chromosomally located, but 'Ex' is still the
+            // load-bearing sentinel Allele.isEca()/getChromName() and
+            // Strain's chromPairMap bucketing key off of - leaving this
+            // blank would silently make the extrachromosomal-genetics logic
+            // (backlog #4) never recognize the array at all.
+            chromosome: activeTab === 'ex' ? 'Ex' : tab.chromosome,
             physLoc:
               tab.positionMode === 'physical' ? tab.positionValue : undefined,
             geneticLoc,

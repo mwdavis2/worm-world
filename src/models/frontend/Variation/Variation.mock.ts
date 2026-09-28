@@ -56,6 +56,7 @@ export const oxEx2254 = new Variation({
   chromosome: 'Ex',
   physLoc: undefined,
   geneticLoc: undefined,
+  percentLoss: 50,
 });
 export const oxSi1168 = new Variation({
   name: 'oxSi1168',
@@ -68,12 +69,31 @@ export const oxEx219999 = new Variation({
   chromosome: 'Ex',
   physLoc: undefined,
   geneticLoc: undefined,
+  percentLoss: 50,
 });
 export const oxEx12345 = new Variation({
   name: 'oxEx12345',
   chromosome: 'Ex',
   physLoc: undefined,
   geneticLoc: undefined,
+});
+
+// Distinct, non-tying loss rates for testing multiple independent Ex arrays
+// in the same cross (backlog #4).
+export const oxEx100 = new Variation({
+  name: 'oxEx100',
+  chromosome: 'Ex',
+  percentLoss: 10,
+});
+export const oxEx200 = new Variation({
+  name: 'oxEx200',
+  chromosome: 'Ex',
+  percentLoss: 30,
+});
+export const oxEx300 = new Variation({
+  name: 'oxEx300',
+  chromosome: 'Ex',
+  percentLoss: 40,
 });
 
 export const jsSi1949 = new Variation({

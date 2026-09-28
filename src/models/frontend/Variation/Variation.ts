@@ -12,8 +12,10 @@ interface iVariation {
   // lookup" control - only actually surfaced there if physLoc or geneticLoc
   // is also set (flag-true with neither set is silently excluded).
   isLocationReference?: boolean;
-  // The extrachromosomal array's mitotic/germline loss rate (0-100). Not yet
-  // consumed by the cross-calculation logic (backlog #4) - persisted only.
+  // The extrachromosomal array's mitotic/germline loss rate (0-100) - the
+  // per-offspring probability of NOT transmitting the array. Consumed by
+  // Allele.getTransmissionProb()/ChromosomePair.crossEx() (backlog #4). A
+  // null/undefined value counts as always transmitted, not a default rate.
   percentLoss?: number;
 }
 

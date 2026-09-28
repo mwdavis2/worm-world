@@ -144,6 +144,18 @@ export const oxEx12345 = new Allele({
   variation: variationMock.oxEx12345,
   contents: '[Psnt-1::GFP, unc-119(+), FRT]',
 });
+export const oxEx100 = new Allele({
+  name: 'oxEx100',
+  variation: variationMock.oxEx100,
+});
+export const oxEx200 = new Allele({
+  name: 'oxEx200',
+  variation: variationMock.oxEx200,
+});
+export const oxEx300 = new Allele({
+  name: 'oxEx300',
+  variation: variationMock.oxEx300,
+});
 export const ox750 = new Allele({
   name: 'ox750',
   gene: geneMock.unc44,
