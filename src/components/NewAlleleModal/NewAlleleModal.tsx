@@ -16,6 +16,7 @@ import { Dominance } from 'models/enums';
 import { Allele } from 'models/frontend/Allele/Allele';
 import { Variation } from 'models/frontend/Variation/Variation';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import { interpolateGeneticLoc } from 'utils/geneticLocation';
 import {
@@ -33,8 +34,10 @@ import {
   defaultGeneTabState,
   defaultPhenotypeRow,
   defaultVariationTabState,
+  deriveRowsFromBasicState,
   parseInitialAlleleName,
 } from 'components/NewAlleleModal/newAlleleTypes';
+import { persistPhenotypeRows } from 'components/NewAlleleModal/persistPhenotypeRows';
 
 const CHROMOSOME_OPTIONS: ChromosomeName[] = [
   'I',
@@ -107,7 +110,7 @@ const ConditionSearchInput = (props: {
           <></>
         )
       ) : (
-        <ul className='dropdown-content menu rounded-box z-50 my-2 max-h-60 w-52 overflow-auto bg-base-100 p-2 shadow'>
+        <ul className='menu dropdown-content rounded-box z-50 my-2 max-h-60 w-52 overflow-auto bg-base-100 p-2 shadow'>
           {searchRes.map((condition, idx) => (
             <li
               key={idx}
@@ -140,6 +143,7 @@ const ResistantToDrugControl = (props: {
     <div className='flex items-center gap-2'>
       <input
         type='checkbox'
+        aria-label='Resistant to Drug'
         className='checkbox checkbox-sm'
         checked={props.state.enabled}
         disabled={!hasEffect}
@@ -182,6 +186,7 @@ const RescuesGeneControl = (props: {
         <GeneSearchInput
           selectedGene={props.state.gene}
           placeholder='Gene name'
+          ariaLabel='Rescues gene'
           onSelect={(gene) => {
             props.onChange({
               ...props.state,
@@ -361,24 +366,24 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
         let allele: Allele;
         if (activeTab === 'gene') {
           if (gene.gene === undefined) return;
+          const geneName = gene.gene.descName ?? gene.gene.sysName ?? '';
           const rows =
             activeView === 'basic'
-              ? resyncGeneTab(gene).phenotypeRows
+              ? deriveRowsFromBasicState('gene', gene, geneName)
               : gene.phenotypeRows;
-          void rows; // held for the future #4/#11 wiring pass - not persisted yet
           allele = new Allele({
             name: gene.name,
             gene: gene.gene,
             contents: gene.qualifiers === '' ? undefined : gene.qualifiers,
           });
           await insertAllele(allele);
+          await persistPhenotypeRows(allele.name, rows);
         } else {
           const tab = activeVariationTab;
           const rows =
             activeView === 'basic'
-              ? resyncVariationTab(tab).phenotypeRows
+              ? deriveRowsFromBasicState(activeTab, tab, '')
               : tab.phenotypeRows;
-          void rows; // held for the future #4/#11 wiring pass - not persisted yet
 
           const finalName = buildAlleleName(activeTab, tab);
           let geneticLoc =
@@ -419,6 +424,11 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
             );
             throw e;
           }
+          // Deliberately outside the try/catch above: if this fails, the
+          // Allele/Variation already exist - a known, accepted partial-
+          // failure edge case (see persistPhenotypeRows.ts), not something
+          // this pass cleans up further.
+          await persistPhenotypeRows(allele.name, rows);
         }
         props.onCreated(allele);
         close();
@@ -455,7 +465,14 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
     });
   };
 
-  return (
+  // Rendered via a portal to document.body - this modal is owned by
+  // StrainForm/AddStrainModal, both of which are themselves rendered inside
+  // another modal-box. That ancestor's own (even no-op) CSS transform makes
+  // it the containing block for any nested `position: fixed` element,
+  // which silently shrinks this modal's available space/viewport down to
+  // that ancestor's own box instead of the real window. A portal escapes
+  // that entirely.
+  return createPortal(
     <>
       <input
         type='checkbox'
@@ -588,6 +605,7 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
             <div className='my-2'>
               <GeneSearchInput
                 selectedGene={gene.gene}
+                ariaLabel='Gene'
                 onSelect={(selectedGene) => {
                   updateGene({ gene: selectedGene });
                 }}
@@ -1017,6 +1035,12 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                   key={row.id}
                   row={row}
                   onChange={(updated) => {
+                    // Deliberately bypasses updateGene/setActiveVariationTab
+                    // (and therefore resyncGeneTab/resyncVariationTab) - this
+                    // is a direct manual edit to an existing row (tagged or
+                    // not), and re-running the Basic-derived resync here
+                    // would silently overwrite it on every keystroke/toggle
+                    // as long as any Basic control is still active.
                     const update = (
                       rows: Array<typeof row>
                     ): Array<typeof row> =>
@@ -1026,10 +1050,16 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                         ...prev,
                         phenotypeRows: update(prev.phenotypeRows),
                       }));
+                    else if (activeTab === 'ex')
+                      setEx((prev) => ({
+                        ...prev,
+                        phenotypeRows: update(prev.phenotypeRows),
+                      }));
                     else
-                      setActiveVariationTab({
-                        phenotypeRows: update(activeVariationTab.phenotypeRows),
-                      });
+                      setTiSiIs((prev) => ({
+                        ...prev,
+                        phenotypeRows: update(prev.phenotypeRows),
+                      }));
                   }}
                   onDelete={() => {
                     const filtered = (
@@ -1038,8 +1068,17 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                         : activeVariationTab.phenotypeRows
                     ).filter((r) => r.id !== row.id);
                     if (activeTab === 'gene')
-                      setGene((prev) => ({ ...prev, phenotypeRows: filtered }));
-                    else setActiveVariationTab({ phenotypeRows: filtered });
+                      setGene((prev) => ({
+                        ...prev,
+                        phenotypeRows: filtered,
+                      }));
+                    else if (activeTab === 'ex')
+                      setEx((prev) => ({ ...prev, phenotypeRows: filtered }));
+                    else
+                      setTiSiIs((prev) => ({
+                        ...prev,
+                        phenotypeRows: filtered,
+                      }));
                   }}
                 />
               ))}
@@ -1084,7 +1123,8 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
         </div>
         <label className='modal-backdrop' onClick={close} />
       </div>
-    </>
+    </>,
+    document.body
   );
 };
 

@@ -9,6 +9,9 @@ export interface GeneSearchInputProps {
   selectedGene?: Gene;
   onSelect: (gene: Gene) => void;
   placeholder?: string;
+  // For disambiguating multiple GeneSearchInput instances on the same page
+  // (e.g. by role+name in tests) when their placeholders are identical.
+  ariaLabel?: string;
 }
 
 // A single-pick gene search field - forked from StrainForm.tsx's unexported
@@ -64,7 +67,8 @@ export const GeneSearchInput = (
     <div className='dropdown w-full'>
       <input
         type='text'
-        placeholder={props.placeholder ?? 'Type gene name'}
+        aria-label={props.ariaLabel}
+        placeholder={props.placeholder ?? 'Gene name'}
         className='input input-bordered w-full'
         onChange={onInputChange}
         value={text}

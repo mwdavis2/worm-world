@@ -17,6 +17,8 @@ export const cols: Array<ColumnDefinitionType<db_Variation>> = [
   { key: 'chromosome', header: 'Chromosome' },
   { key: 'physLoc', header: 'Physical Location' },
   { key: 'geneticLoc', header: 'Genetic Location' },
+  { key: 'isLocationReference', header: 'Location Reference' },
+  { key: 'percentLoss', header: '% Loss' },
 ];
 
 const fields: Array<Field<db_Variation>> = [
@@ -39,6 +41,16 @@ const fields: Array<Field<db_Variation>> = [
   {
     name: 'geneticLoc',
     title: 'Genetic Location',
+    type: 'number',
+  },
+  {
+    name: 'isLocationReference',
+    title: 'Location Reference',
+    type: 'boolean',
+  },
+  {
+    name: 'percentLoss',
+    title: '% Loss',
     type: 'number',
   },
 ];

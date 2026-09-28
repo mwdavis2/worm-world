@@ -22,7 +22,15 @@ const RELATIONSHIP_OPTIONS: Array<{
   label: string;
 }> = [
   { value: 'suppressedByPhenotype', label: 'Suppressed by Phenotype' },
+  {
+    value: 'rescuedByWildTypePhenotype',
+    label: 'Rescued by Wild-type Phenotype',
+  },
   { value: 'requiresPhenotype', label: 'Requires Phenotype' },
+  {
+    value: 'requiresWildTypePhenotype',
+    label: 'Requires Wild-type Phenotype',
+  },
   { value: 'suppressedByCondition', label: 'Suppressed by Condition' },
   { value: 'requiresCondition', label: 'Requires Condition' },
 ];

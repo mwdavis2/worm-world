@@ -8,7 +8,9 @@ export type CopyNumber = '0' | '1' | '2' | '1or2';
 
 export type PhenotypeRelationship =
   | 'suppressedByPhenotype'
+  | 'rescuedByWildTypePhenotype'
   | 'requiresPhenotype'
+  | 'requiresWildTypePhenotype'
   | 'suppressedByCondition'
   | 'requiresCondition';
 
@@ -177,20 +179,25 @@ export const computeResistantToDrugRows = (
   const drug = state.drugName;
   return [
     {
+      // 0 copies of the resistance transgene is the wild-type genetic
+      // background (sensitive, dies from the drug) - isWildType: true.
       id: 'resistantToDrug-0',
       copyNumber: '0',
-      name: `${drug}S`,
-      isWildType: false,
+      name: `${drug}R`,
+      isWildType: true,
       isLethal: true,
       relationship: 'suppressedByPhenotype',
       relationshipText: `${drug}R`,
       derivedFrom: 'resistantToDrug',
     },
     {
+      // 1 or 2 copies of the transgene is the non-wild-type state -
+      // isWildType: false. Same name as the row above; phenotypes' PK is
+      // (name, wild), so these two rows are distinguished by wild alone.
       id: 'resistantToDrug-1or2',
       copyNumber: '1or2',
       name: `${drug}R`,
-      isWildType: true,
+      isWildType: false,
       isLethal: false,
       relationship: 'requiresCondition',
       relationshipText: drug,
@@ -207,7 +214,7 @@ export const computeRescuesGeneRows = (
     {
       id: 'rescuesGene-0',
       copyNumber: '1or2',
-      name: `${state.geneName}(+)`,
+      name: state.geneName,
       isWildType: true,
       isLethal: false,
       relationshipText: '',
@@ -272,8 +279,8 @@ export const computeDominanceRows = (
       name: box.name,
       isWildType: false,
       isLethal: false,
-      relationship: box.rescuedByWT ? 'suppressedByPhenotype' : undefined,
-      relationshipText: box.rescuedByWT ? `${geneName}(+)` : '',
+      relationship: box.rescuedByWT ? 'rescuedByWildTypePhenotype' : undefined,
+      relationshipText: box.rescuedByWT ? geneName : '',
       derivedFrom: 'dominance',
     };
   };

@@ -27,7 +27,7 @@ describe('computeResistantToDrugRows', () => {
     ).toEqual([]);
   });
 
-  test('synthesizes the 0-copies (sensitive) and 1or2-copies (resistant) rows', () => {
+  test('synthesizes the 0-copies (sensitive, wild-type) and 1or2-copies (resistant, non-wild-type) rows, both sharing one name', () => {
     const rows = computeResistantToDrugRows({
       enabled: true,
       drugName: 'Hyg',
@@ -36,8 +36,8 @@ describe('computeResistantToDrugRows', () => {
       {
         id: 'resistantToDrug-0',
         copyNumber: '0',
-        name: 'HygS',
-        isWildType: false,
+        name: 'HygR',
+        isWildType: true,
         isLethal: true,
         relationship: 'suppressedByPhenotype',
         relationshipText: 'HygR',
@@ -47,7 +47,7 @@ describe('computeResistantToDrugRows', () => {
         id: 'resistantToDrug-1or2',
         copyNumber: '1or2',
         name: 'HygR',
-        isWildType: true,
+        isWildType: false,
         isLethal: false,
         relationship: 'requiresCondition',
         relationshipText: 'Hyg',
@@ -72,7 +72,7 @@ describe('computeRescuesGeneRows', () => {
       {
         id: 'rescuesGene-0',
         copyNumber: '1or2',
-        name: 'unc-119(+)',
+        name: 'unc-119',
         isWildType: true,
         isLethal: false,
         relationshipText: '',
@@ -151,7 +151,7 @@ describe('computeDominanceRows', () => {
     );
   });
 
-  test('Recessive: one row at 2 copies, suppressed-by-phenotype when rescued by WT', () => {
+  test('Recessive: one row at 2 copies, rescued-by-wild-type-phenotype when rescued by WT', () => {
     const state = {
       enabled: true,
       mode: Dominance.Recessive,
@@ -165,8 +165,8 @@ describe('computeDominanceRows', () => {
         name: 'Unc',
         isWildType: false,
         isLethal: false,
-        relationship: 'suppressedByPhenotype',
-        relationshipText: 'unc-119(+)',
+        relationship: 'rescuedByWildTypePhenotype',
+        relationshipText: 'unc-119',
         derivedFrom: 'dominance',
       },
     ]);

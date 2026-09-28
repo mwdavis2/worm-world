@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import user from '@testing-library/user-event';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import NewAlleleModal from 'components/NewAlleleModal/NewAlleleModal';
@@ -49,7 +49,7 @@ describe('NewAlleleModal', () => {
 
     await user.type(screen.getByLabelText('Allele name'), 'ed3');
 
-    const geneInput = screen.getByPlaceholderText('Type gene name');
+    const geneInput = screen.getByRole('textbox', { name: 'Gene' });
     await user.type(geneInput, 'unc');
     const option = await screen.findByText(/unc-119/i);
     await user.click(option);
@@ -168,5 +168,83 @@ describe('NewAlleleModal', () => {
       );
     });
     expect(onCreated).not.toHaveBeenCalled();
+  });
+
+  test('a manually-added Advanced row does not survive submission when Basic is active', async () => {
+    setupIPC();
+    const onCreated = vi.fn();
+    render(
+      <NewAlleleModal isOpen setIsOpen={() => {}} onCreated={onCreated} />
+    );
+
+    await user.type(screen.getByLabelText('Allele name'), 'ed3');
+    const geneInput = screen.getByRole('textbox', { name: 'Gene' });
+    await user.type(geneInput, 'unc');
+    await user.click(await screen.findByText(/unc-119/i));
+
+    // Switch to Advanced, type a name into the default (manual, untagged)
+    // row, then switch back to Basic - which is what's active at submit.
+    await user.click(screen.getByRole('button', { name: 'Advanced' }));
+    await user.type(screen.getByPlaceholderText('Name'), 'ManualPhenotype');
+    await user.click(screen.getByRole('button', { name: 'Basic' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add Allele' })).toBeEnabled();
+    });
+    await user.click(screen.getByRole('button', { name: 'Add Allele' }));
+
+    await waitFor(() => {
+      expect(onCreated).toHaveBeenCalled();
+    });
+
+    // No Basic control was checked, so with the manual row correctly
+    // excluded, nothing should have been persisted for it at all.
+    expect(calls.some((c) => c.cmd === 'insert_phenotype')).toBe(false);
+    expect(calls.some((c) => c.cmd === 'insert_allele_expr')).toBe(false);
+  });
+
+  test('editing a Basic-derived Advanced row on a Variation tab (e.g. unchecking Wild-type) actually sticks', async () => {
+    // Regression test: setActiveVariationTab (used by the Advanced row list
+    // for Ti/Si/Is/Ex) used to always run resyncVariationTab, which
+    // regenerates every Basic-derived tagged row fresh on every single
+    // change - silently reverting any manual edit to one of those rows as
+    // long as its originating Basic control was still checked.
+    setupIPC((cmd) => {
+      if (cmd === 'get_filtered_conditions') {
+        return [
+          {
+            name: 'Hyg',
+            description: null,
+            maleMating: null,
+            lethal: null,
+            femaleSterile: null,
+            arrested: null,
+            maturationDays: null,
+          },
+        ];
+      }
+      return NOT_HANDLED;
+    });
+    render(<NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />);
+
+    await user.click(screen.getByRole('button', { name: 'Ex' }));
+    // The checkbox is disabled until a drug is picked - pick it first.
+    await user.type(screen.getByPlaceholderText('Drug name'), 'Hyg');
+    await user.click(await screen.findByText('Hyg'));
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Resistant to Drug' })
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Advanced' }));
+
+    const zeroCopiesRow = screen
+      .getByDisplayValue('0 copies')
+      .closest('div') as HTMLElement;
+    const wildTypeCheckbox =
+      within(zeroCopiesRow).getByLabelText<HTMLInputElement>('Wild-type');
+    expect(wildTypeCheckbox.checked).toBe(true);
+
+    await user.click(wildTypeCheckbox);
+    expect(wildTypeCheckbox.checked).toBe(false);
   });
 });
