@@ -44,8 +44,28 @@ export const isOverdue = (task: Task): boolean => {
   return !task.completed && diffDays(task.dueDate, new Date()) > 0;
 };
 
+/**
+ * For a completed task whose product hasn't been consumed yet: days from
+ * today until the child task (the one using this task's result) is due -
+ * negative if that child task is already overdue. Lets the user notice the
+ * gap is looking slow and reschedule the child before it's too late.
+ * Undefined if the task isn't completed, has no child, or the child is
+ * already completed (nothing left to watch for).
+ */
+export const getDaysUntilChildTaskDue = (
+  task: Task,
+  tasks: Task[]
+): number | undefined => {
+  if (!task.completed) return undefined;
+  const child = task.getChildTask(tasks);
+  if (child === undefined || child.completed) return undefined;
+  return diffDays(new Date(), child.dueDate);
+};
+
 const TaskList = (props: TaskListProps): React.JSX.Element => {
-  const overdueTasks = props.tasks.filter(isOverdue);
+  const overdueTasks = props.tasks
+    .filter(isOverdue)
+    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   const upcomingTasks = props.tasks.filter((task) => !isOverdue(task));
   const sections = Array.from(getDateSections(upcomingTasks)).sort(
     ([date1], [date2]) => (moment(date1).isAfter(moment(date2)) ? 1 : -1)
@@ -67,10 +87,13 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
       <TaskConditionModal task={task} />
       <div className='flex flex-col gap-2'>
         {overdueTasks.length > 0 && (
-          <div className='collapse overflow-visible'>
+          <div className='collapse collapse-arrow overflow-visible'>
             <input type='checkbox' defaultChecked />
             <div className='collapse-title border-b-2 border-error text-xl text-error'>
               Overdue
+              <span className='badge badge-error badge-outline ml-2 align-middle'>
+                {overdueTasks.length}
+              </span>
             </div>
             <div className='collapse-content mt-2'>
               {overdueTasks.map((task, idx) => (
@@ -82,7 +105,11 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
                     updateTask={props.updateTask}
                     onTaskChecked={onTaskChecked}
                     selectTask={setTask}
-                    isOverdue
+                    daysOverdue={diffDays(task.dueDate, new Date())}
+                    daysUntilChildTaskDue={getDaysUntilChildTaskDue(
+                      task,
+                      props.tasks
+                    )}
                   />
                 </div>
               ))}
@@ -90,9 +117,12 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
           </div>
         )}
         {sections.map(([date, section]) => (
-          <div key={date} className='collapse overflow-visible'>
+          <div key={date} className='collapse collapse-arrow overflow-visible'>
             <input type='checkbox' defaultChecked />
-            <div className='collapse-title border-b-2 text-xl'>{date}</div>
+            <div className='collapse-title border-b-2 text-xl'>
+              {date}
+              <span className='badge ml-2 align-middle'>{section.size}</span>
+            </div>
             <div className='collapse-content mt-2'>
               {[...section].map((task, idx) => (
                 <div key={idx}>
@@ -103,6 +133,10 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
                     updateTask={props.updateTask}
                     onTaskChecked={onTaskChecked}
                     selectTask={setTask}
+                    daysUntilChildTaskDue={getDaysUntilChildTaskDue(
+                      task,
+                      props.tasks
+                    )}
                   />
                 </div>
               ))}

@@ -35,7 +35,8 @@ interface TaskItemProps {
   refresh: () => Promise<void>;
   onTaskChecked: (task: Task) => void;
   selectTask: (task: Task) => void;
-  isOverdue?: boolean;
+  daysOverdue?: number;
+  daysUntilChildTaskDue?: number;
 }
 
 const TaskItem = (props: TaskItemProps): React.JSX.Element => {
@@ -45,7 +46,14 @@ const TaskItem = (props: TaskItemProps): React.JSX.Element => {
       state: { crossDesignId: props.task.crossDesignId },
     });
   }, [props.task.crossDesignId]);
-  const { action, hermStrain, maleStrain, resultStrain, completed } = {
+  const {
+    action,
+    hermStrain,
+    maleStrain,
+    resultStrain,
+    completed,
+    completedAt,
+  } = {
     ...props.task,
   };
   const [textareaRef, setTextareaFocus] = useFocus();
@@ -72,8 +80,29 @@ const TaskItem = (props: TaskItemProps): React.JSX.Element => {
             props.onTaskChecked(props.task);
           }}
         />
-        {props.isOverdue === true && (
-          <span className='badge badge-error'>Overdue</span>
+        {props.daysOverdue !== undefined && (
+          <span className='badge badge-error'>
+            {props.daysOverdue} {props.daysOverdue === 1 ? 'day' : 'days'}{' '}
+            overdue (due {props.task.dueDate.toLocaleDateString()})
+          </span>
+        )}
+        {completed && completedAt !== undefined && (
+          <span className='badge badge-success'>
+            Completed {completedAt.toLocaleDateString()}
+          </span>
+        )}
+        {props.daysUntilChildTaskDue !== undefined && (
+          <span
+            className={`badge ${
+              props.daysUntilChildTaskDue <= 0 ? 'badge-warning' : 'badge-ghost'
+            }`}
+          >
+            {props.daysUntilChildTaskDue > 0
+              ? `Next task in ${props.daysUntilChildTaskDue}d`
+              : props.daysUntilChildTaskDue === 0
+              ? 'Next task due today'
+              : `Next task ${Math.abs(props.daysUntilChildTaskDue)}d overdue`}
+          </span>
         )}
         {hermStrain !== undefined && <StrainCard strain={hermStrain} id={''} />}
         <div
@@ -139,22 +168,28 @@ const TaskItem = (props: TaskItemProps): React.JSX.Element => {
         </div>
       </div>
       {props.task.notes !== undefined && (
-        <textarea
-          ref={textareaRef}
-          value={props.task.notes}
-          onChange={(e) => {
-            props.task.notes = e.target.value;
-            props.updateTask(props.task);
-          }}
-          className='ml-8 flex-grow resize-none rounded border-2 bg-inherit p-2'
-          autoFocus={props.task.notes === ''}
-          onBlur={() => {
-            if (props.task.notes === '') {
-              props.task.notes = undefined;
+        <div className='ml-8 flex flex-col gap-1'>
+          <span className='text-xs font-semibold text-base-content/60'>
+            Notes
+          </span>
+          <textarea
+            ref={textareaRef}
+            value={props.task.notes}
+            onChange={(e) => {
+              props.task.notes = e.target.value;
               props.updateTask(props.task);
-            }
-          }}
-        />
+            }}
+            placeholder='Record anything of consequence before or during this task...'
+            className='flex-grow resize-none rounded border-2 bg-inherit p-2'
+            autoFocus={props.task.notes === ''}
+            onBlur={() => {
+              if (props.task.notes === '') {
+                props.task.notes = undefined;
+                props.updateTask(props.task);
+              }
+            }}
+          />
+        </div>
       )}
     </div>
   );
