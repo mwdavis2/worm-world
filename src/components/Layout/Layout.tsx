@@ -76,7 +76,7 @@ const Layout = (props: LayoutProps): React.JSX.Element => {
       <input id='nav-drawer' type='checkbox' className='drawer-toggle' />
       <div className='drawer-content h-full'>{props.children}</div>
 
-      <div className='drawer-side z-50' data-testid='side-drawer'>
+      <div className='no-print drawer-side z-50' data-testid='side-drawer'>
         <label htmlFor='nav-drawer' className='drawer-overlay' />
         <div className='flex h-screen flex-col justify-between bg-base-300'>
           <ul className='menu p-4'>

@@ -143,3 +143,12 @@ html, body, #root {
 .react-flow__attribution {
   @apply !text-base-content !bg-transparent;
 }
+
+/* Applied to persistent app chrome (sidebar nav, per-section header) so
+   window.print() (used for the printable task schedule) shows only the
+   dedicated printable content, not the rest of the UI. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

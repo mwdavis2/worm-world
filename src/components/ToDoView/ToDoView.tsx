@@ -2,12 +2,21 @@ import { deleteAllTasks, deleteTasks, getTasks, updateTask } from 'api/task';
 import { pushTask, syncTasksNow } from 'api/taskSync';
 import TaskList from 'components/TaskList/TaskList';
 import { getTaskStatementText } from 'components/TaskItem/TaskItem';
+import PrintableSchedule, {
+  exportScheduleAsText,
+} from 'components/ToDoView/PrintableSchedule';
 import { Task } from 'models/frontend/Task/Task';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { GiCheckboxTree as CrossDesignIcon } from 'react-icons/gi';
 import { deleteCrossDesign, getFilteredCrossDesigns } from 'api/crossDesign';
-import { BiHide, BiShow, BiRefresh as SyncIcon } from 'react-icons/bi';
+import {
+  BiHide,
+  BiShow,
+  BiRefresh as SyncIcon,
+  BiPrinter as PrintIcon,
+  BiDownload as DownloadIcon,
+} from 'react-icons/bi';
 import { SiMicrogenetics as GeneIcon } from 'react-icons/si';
 import EditorContext from 'components/EditorContext/EditorContext';
 import { getErrorMessage } from 'utils/getErrorMessage';
@@ -126,68 +135,81 @@ export const ToDoView = (): React.JSX.Element => {
         <NoTaskPlaceholder />
       ) : (
         <EditorContext.Provider value={{ showGenes }}>
-          <TaskDeleteModal
-            tasks={tasks.filter(
-              (task) => task.crossDesignId === stagedDesignId
-            )}
-            crossDesignName={
-              stagedDesignId !== undefined
-                ? designNames.get(stagedDesignId)
-                : ''
-            }
-            stagedId={stagedDesignId}
-            clearStagedDesignId={() => {
-              setStagedDesignId(undefined);
-            }}
-            deleteTasks={() => {
-              handleDeleteTasks(stagedDesignId);
-            }}
-          />
-          <div className='flex gap-2'>
-            <div className='flex-grow'>
-              <CrossDesignFilter
-                setFilteredOnDesignId={setFilteredOnDesignId}
-                crossDesignIds={crossDesignIds}
-                designNames={designNames}
-              />
+          <div className='no-print'>
+            <TaskDeleteModal
+              tasks={tasks.filter(
+                (task) => task.crossDesignId === stagedDesignId
+              )}
+              crossDesignName={
+                stagedDesignId !== undefined
+                  ? designNames.get(stagedDesignId)
+                  : ''
+              }
+              stagedId={stagedDesignId}
+              clearStagedDesignId={() => {
+                setStagedDesignId(undefined);
+              }}
+              deleteTasks={() => {
+                handleDeleteTasks(stagedDesignId);
+              }}
+            />
+            <div className='flex gap-2'>
+              <div className='flex-grow'>
+                <CrossDesignFilter
+                  setFilteredOnDesignId={setFilteredOnDesignId}
+                  crossDesignIds={crossDesignIds}
+                  designNames={designNames}
+                />
+              </div>
+              <div className='flex gap-2 justify-self-end'>
+                <SyncNowButton
+                  onClick={() => {
+                    handleSyncNow().catch((e) =>
+                      toast.error('Unable to sync tasks: ' + getErrorMessage(e))
+                    );
+                  }}
+                />
+                <PrintScheduleButton
+                  onClick={() => {
+                    window.print();
+                  }}
+                />
+                <ExportScheduleTextButton
+                  onClick={() => {
+                    exportScheduleAsText(filteredTasks, designNames);
+                  }}
+                />
+                <ShowCompletedButton
+                  showCompleted={showCompleted}
+                  toggleShowCompleted={() => {
+                    setShowCompleted(!showCompleted);
+                  }}
+                />
+                <ShowGenesButton
+                  toggleShowGenes={() => {
+                    setShowGenes(!showGenes);
+                  }}
+                />
+                <TaskRemovalButton
+                  tasks={tasks}
+                  hasFilter={hasFilter}
+                  filteredOnDesignId={filteredOnDesignId}
+                  designNames={designNames}
+                  deleteTasks={handleDeleteTasks}
+                  clearStagedDesignId={() => {
+                    setStagedDesignId(undefined);
+                  }}
+                />
+              </div>
             </div>
-            <div className='flex gap-2 justify-self-end'>
-              <SyncNowButton
-                onClick={() => {
-                  handleSyncNow().catch((e) =>
-                    toast.error('Unable to sync tasks: ' + getErrorMessage(e))
-                  );
-                }}
-              />
-              <ShowCompletedButton
-                showCompleted={showCompleted}
-                toggleShowCompleted={() => {
-                  setShowCompleted(!showCompleted);
-                }}
-              />
-              <ShowGenesButton
-                toggleShowGenes={() => {
-                  setShowGenes(!showGenes);
-                }}
-              />
-              <TaskRemovalButton
-                tasks={tasks}
-                hasFilter={hasFilter}
-                filteredOnDesignId={filteredOnDesignId}
-                designNames={designNames}
-                deleteTasks={handleDeleteTasks}
-                clearStagedDesignId={() => {
-                  setStagedDesignId(undefined);
-                }}
-              />
-            </div>
+            <TaskList
+              refresh={refreshTasks}
+              tasks={filteredTasks}
+              updateTask={handleUpdateTask}
+              setStagedDesignId={setStagedDesignId}
+            />
           </div>
-          <TaskList
-            refresh={refreshTasks}
-            tasks={filteredTasks}
-            updateTask={handleUpdateTask}
-            setStagedDesignId={setStagedDesignId}
-          />
+          <PrintableSchedule tasks={filteredTasks} designNames={designNames} />
         </EditorContext.Provider>
       )}
     </div>
@@ -211,6 +233,36 @@ const SyncNowButton = (props: { onClick: () => void }): React.JSX.Element => {
     <div className='tooltip tooltip-bottom' data-tip={'Sync tasks'}>
       <button className='btn btn-outline' onClick={props.onClick}>
         <SyncIcon size='20' />
+      </button>
+    </div>
+  );
+};
+
+const PrintScheduleButton = (props: {
+  onClick: () => void;
+}): React.JSX.Element => {
+  return (
+    <div
+      className='tooltip tooltip-bottom'
+      data-tip={'Print / export schedule as PDF'}
+    >
+      <button className='btn btn-outline' onClick={props.onClick}>
+        <PrintIcon size='20' />
+      </button>
+    </div>
+  );
+};
+
+const ExportScheduleTextButton = (props: {
+  onClick: () => void;
+}): React.JSX.Element => {
+  return (
+    <div
+      className='tooltip tooltip-bottom'
+      data-tip={'Export schedule as text'}
+    >
+      <button className='btn btn-outline' onClick={props.onClick}>
+        <DownloadIcon size='20' />
       </button>
     </div>
   );

@@ -11,7 +11,7 @@ export function TopNav(props: TopNavInputProps): React.JSX.Element {
   const initialTabIdx = props.tabIndex === undefined ? 0 : props.tabIndex;
   const [tabIdx, setTabIdx] = React.useState(initialTabIdx);
   return (
-    <div className='justify-left flex flex-row items-center bg-base-200 py-4 shadow-md'>
+    <div className='justify-left no-print flex flex-row items-center bg-base-200 py-4 shadow-md'>
       <label htmlFor='nav-drawer' className='btn btn-ghost drawer-button ml-4'>
         <MenuIcon className='text-2xl' />
       </label>
