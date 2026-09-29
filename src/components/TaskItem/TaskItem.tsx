@@ -209,9 +209,15 @@ export const getTaskStatementText = (task: Task): string => {
   const { action, hermStrain, maleStrain, resultStrain } = task;
   switch (action) {
     case 'Cross':
-      return `Cross ${genotypeText(hermStrain)} with ${genotypeText(
+      // On screen, StrainCard shows which side is hermaphrodite vs. male via
+      // an icon - callers of this plain-string version (Google Tasks/Apple
+      // Reminders sync titles, schedule PDF/text export) have no icon, so
+      // spell it out instead of relying on argument order alone.
+      return `Cross ${genotypeText(
+        hermStrain
+      )} (hermaphrodite) with ${genotypeText(
         maleStrain
-      )} to yield ${genotypeText(resultStrain)}`;
+      )} (male) to yield ${genotypeText(resultStrain)}`;
     case 'SelfCross':
       return `Self-cross ${genotypeText(hermStrain)} to yield ${genotypeText(
         resultStrain

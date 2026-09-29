@@ -11,7 +11,7 @@ describe('getTaskStatementText()', () => {
     task.maleStrain = strains.wildManyPairs;
     task.resultStrain = strains.TN64;
     expect(getTaskStatementText(task)).toBe(
-      `Cross ${strains.TN64.genotype} with ${strains.wildManyPairs.genotype} to yield ${strains.TN64.genotype}`
+      `Cross ${strains.TN64.genotype} (hermaphrodite) with ${strains.wildManyPairs.genotype} (male) to yield ${strains.TN64.genotype}`
     );
   });
 

@@ -1,6 +1,7 @@
 import { expect, test, describe } from 'vitest';
 import { buildScheduleText } from 'components/ToDoView/PrintableSchedule';
 import { Task } from 'models/frontend/Task/Task';
+import { Strain } from 'models/frontend/Strain/Strain';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -55,5 +56,14 @@ describe('buildScheduleText()', () => {
     const task = makeTask({ notes: 'Watched the plates twice.' });
     const text = buildScheduleText([task], new Map());
     expect(text).toContain('Notes: Watched the plates twice.');
+  });
+
+  test('labels the hermaphrodite/male sides of a Cross task', () => {
+    const task = makeTask();
+    task.action = 'Cross';
+    task.maleStrain = new Strain();
+    const text = buildScheduleText([task], new Map());
+    expect(text).toContain('(hermaphrodite)');
+    expect(text).toContain('(male)');
   });
 });
