@@ -145,7 +145,7 @@ const SexButton = (): React.JSX.Element => {
 // Return the main content area of the strain node, which will show genotype information
 const MainContentArea = (props: { strain: Strain }): React.JSX.Element => {
   return props.strain.isEmptyWild() ? (
-    <div className='flex flex-col items-center justify-center'>(Wild)</div>
+    <div className='flex flex-col items-center justify-center'>Wild type</div>
   ) : (
     <>
       {Array.from(props.strain.getSortedChromPairs())

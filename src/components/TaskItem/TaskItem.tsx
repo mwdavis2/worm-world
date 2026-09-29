@@ -1,5 +1,6 @@
 import StrainCard from 'components/StrainCard/StrainCard';
 import { type Task } from 'models/frontend/Task/Task';
+import { type Strain } from 'models/frontend/Strain/Strain';
 import {
   TbSnowflake as FreezeIcon,
   TbMicroscope as PCRIcon,
@@ -164,21 +165,26 @@ const TaskItem = (props: TaskItemProps): React.JSX.Element => {
  * TaskStatement's JSX and the Google Tasks sync engine's title field (see
  * api/taskSync.ts) - one switch over `action`, not two.
  */
+const genotypeText = (strain?: Strain): string => {
+  if (strain === undefined) return '';
+  return strain.isEmptyWild() ? 'Wild type' : strain.genotype;
+};
+
 export const getTaskStatementText = (task: Task): string => {
   const { action, hermStrain, maleStrain, resultStrain } = task;
   switch (action) {
     case 'Cross':
-      return `Cross ${hermStrain.genotype} with ${
-        maleStrain?.genotype ?? ''
-      } to yield ${resultStrain?.genotype ?? ''}`;
+      return `Cross ${genotypeText(hermStrain)} with ${genotypeText(
+        maleStrain
+      )} to yield ${genotypeText(resultStrain)}`;
     case 'SelfCross':
-      return `Self-cross ${hermStrain.genotype} to yield ${
-        resultStrain?.genotype ?? ''
-      }`;
+      return `Self-cross ${genotypeText(hermStrain)} to yield ${genotypeText(
+        resultStrain
+      )}`;
     case 'Freeze':
-      return `Freeze ${hermStrain.genotype}`;
+      return `Freeze ${genotypeText(hermStrain)}`;
     case 'Pcr':
-      return `Do PCR test on ${hermStrain.genotype}`;
+      return `Do PCR test on ${genotypeText(hermStrain)}`;
   }
 };
 
@@ -189,34 +195,34 @@ export const TaskStatement = (props: { task: Task }): React.JSX.Element => {
       return (
         <div>
           <span className='font-extrabold'>Cross </span>
-          {hermStrain.genotype}
+          {genotypeText(hermStrain)}
           <span className='font-extrabold'> with </span>
-          {maleStrain?.genotype}
+          {genotypeText(maleStrain)}
           <span className='font-extrabold'> to yield </span>
-          {resultStrain?.genotype}
+          {genotypeText(resultStrain)}
         </div>
       );
     case 'SelfCross':
       return (
         <div>
           <span className='font-extrabold'>Self-cross </span>
-          {hermStrain.genotype}
+          {genotypeText(hermStrain)}
           <span className='font-extrabold'> to yield </span>
-          {resultStrain?.genotype}
+          {genotypeText(resultStrain)}
         </div>
       );
     case 'Freeze':
       return (
         <div>
           <span className='font-extrabold'>Freeze </span>
-          {hermStrain.genotype}
+          {genotypeText(hermStrain)}
         </div>
       );
     case 'Pcr':
       return (
         <div>
           <span className='font-extrabold'>Do PCR test on </span>
-          {hermStrain.genotype}
+          {genotypeText(hermStrain)}
         </div>
       );
   }

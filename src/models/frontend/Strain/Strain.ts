@@ -229,7 +229,7 @@ export class Strain {
       )
       .map((chromPair) => chromPair.toString(true))
       .join('; ');
-    return str === '' ? '(Wild)' : str + '.';
+    return str === '' ? 'Wild type' : str + '.';
   }
 
   static async createFromRecord(record: db_Strain): Promise<Strain> {
@@ -486,8 +486,7 @@ export class Strain {
             );
             chromPairs.push(exOption.pair);
             const strain = await Strain.buildFromChromPairs(chromPairs);
-            strain.probability =
-              gamete1.prob * gamete2.prob * exOption.prob;
+            strain.probability = gamete1.prob * gamete2.prob * exOption.prob;
             strain.isChild = true;
             return strain;
           })

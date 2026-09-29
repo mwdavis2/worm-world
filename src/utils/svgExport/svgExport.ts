@@ -237,7 +237,7 @@ const renderStrainCard = (
   if (strain.isEmptyWild()) {
     parts.push(
       tr.centeredGlyphMarkup(
-        '(Wild)',
+        'Wild type',
         centerX,
         contentTop + 56,
         ALLELE_TEXT_SIZE,
