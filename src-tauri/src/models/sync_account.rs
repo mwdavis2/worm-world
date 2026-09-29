@@ -9,9 +9,10 @@ pub struct SyncAccount {
     pub provider: String,
     #[serde(rename = "accountLabel")]
     pub account_label: String,
-    /// Google's plain list ID for a `provider: "google"` row, or the full
-    /// absolute CalDAV calendar-collection URL for a `provider: "apple"` row
-    /// - an opaque per-provider "where do this account's tasks live" string.
+    /// Google's plain list ID for a `provider: "google"` row - named
+    /// generically (not `google_task_list_id`) since it's an opaque
+    /// per-provider "where do this account's tasks live" string, in case a
+    /// future provider needs the same column.
     #[serde(rename = "remoteListId")]
     pub remote_list_id: String,
     #[serde(rename = "createdAt")]

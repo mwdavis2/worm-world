@@ -29,14 +29,15 @@ This application utilizes the Tauri framework to enable the project to build on 
 
 ### Testing task sync (optional)
 
-The scheduling view can sync tasks two-way with Google Tasks and/or Apple Reminders. Neither is required to build or run the app - without them, the "Sync now" button is just a no-op.
+The scheduling view can sync tasks two-way with Google Tasks. This isn't required to build or run the app - without it, the "Sync now" button is just a no-op.
 
-- **Google Tasks** needs your own OAuth client, since the project doesn't ship one: in the [Google Cloud Console](https://console.cloud.google.com/), create a project, enable the Tasks API, and create an OAuth 2.0 Client ID of type **Desktop app** (not "Web application" - the app listens on a random localhost port for the redirect, which only the Desktop app client type allows without pre-registering an exact URI). Add the resulting values to `src-tauri/.env`:
-  ```
-  GOOGLE_CLIENT_ID="<your client id>"
-  GOOGLE_CLIENT_SECRET="<your client secret>"
-  ```
-- **Apple Reminders** needs no setup or `.env` entry - connect it directly from the app's Settings page using an Apple ID and an [app-specific password](https://appleid.apple.com/account/manage).
+**Google Tasks** needs your own OAuth client, since the project doesn't ship one: in the [Google Cloud Console](https://console.cloud.google.com/), create a project, enable the Tasks API, and create an OAuth 2.0 Client ID of type **Desktop app** (not "Web application" - the app listens on a random localhost port for the redirect, which only the Desktop app client type allows without pre-registering an exact URI). Add the resulting values to `src-tauri/.env`:
+```
+GOOGLE_CLIENT_ID="<your client id>"
+GOOGLE_CLIENT_SECRET="<your client secret>"
+```
+
+Apple Reminders sync was attempted and dropped: since iOS 13/macOS Catalina, Apple's Reminders app no longer reads or writes CalDAV task lists at all (it moved to a private, proprietary sync store), so a CalDAV-based integration can never actually appear in the Reminders app, however correctly implemented. Real Reminders integration would need a macOS-only native `EventKit` helper - out of scope for this cross-platform app.
 
 ## Notable Scripts
 
@@ -79,13 +80,13 @@ If you're using worm-world as a starting point for a different domain (not _C. e
 
 **Fully generic, portable as-is:**
 
-- The task-scheduling two-way sync engine (`src-tauri/src/sync.rs`, `sync/google_tasks.rs`, `sync/apple_reminders.rs`, `sync/oauth.rs`) - the OAuth flow, per-account async lock, access-token cache, and both providers' push/pull transports only ever see a plain title string plus a due date/completed/notes/timestamp. None of it references genetics types.
+- The task-scheduling two-way sync engine (`src-tauri/src/sync.rs`, `sync/google_tasks.rs`, `sync/oauth.rs`) - the OAuth flow, per-account async lock, and access-token cache are all provider-agnostic; the push/pull transport only ever sees a plain title string plus a due date/completed/notes/timestamp. None of it references genetics types.
 - The react-flow canvas shell (`src/components/Editor/`, `CustomControls/`, `MiddleNode/`, `NoteNode/`, `src/hooks/useFitScale.ts`) and the SVG export layout-resolution engine (`src/utils/svgExport/`) - both are parameterized by node type/size, not hard-coded to strains.
 - The Settings page structure and `src/utils/preferences.ts`.
 
 **Mixed - generic shape, genetics baked in:**
 
-- The `Task`/`Action` model and its UI (`TaskItem.tsx`, `TaskList.tsx`, `ToDoView.tsx`). The scheduling _shape_ (due date, completed, notes, sync links) is generic, but the `Task` row hard-codes `herm_strain`/`male_strain`/`result_strain` fields and an `Action` enum (`Cross`/`SelfCross`/`Freeze`/`Pcr`) directly on the row, and the human-readable title sent to Google/Apple is generated from those fields (`TaskItem.tsx`'s `getTaskStatementText`). Swapping in a different domain's "work item" concept means replacing this schema/title logic, not the sync engine itself.
+- The `Task`/`Action` model and its UI (`TaskItem.tsx`, `TaskList.tsx`, `ToDoView.tsx`). The scheduling _shape_ (due date, completed, notes, sync links) is generic, but the `Task` row hard-codes `herm_strain`/`male_strain`/`result_strain` fields and an `Action` enum (`Cross`/`SelfCross`/`Freeze`/`Pcr`) directly on the row, and the human-readable title sent to Google Tasks is generated from those fields (`TaskItem.tsx`'s `getTaskStatementText`). Swapping in a different domain's "work item" concept means replacing this schema/title logic, not the sync engine itself.
 
 **Domain-specific, expected to be replaced:**
 

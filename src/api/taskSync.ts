@@ -16,20 +16,7 @@ export const disconnectGoogleTasks = async (
   await invoke('disconnect_google_tasks', { syncAccountId });
 };
 
-export const connectAppleReminders = async (
-  email: string,
-  appPassword: string
-): Promise<db_SyncAccount> => {
-  return await invoke('connect_apple_reminders', { email, appPassword });
-};
-
-export const disconnectAppleReminders = async (
-  syncAccountId: string
-): Promise<void> => {
-  await invoke('disconnect_apple_reminders', { syncAccountId });
-};
-
-/** Pushes to every connected sync account (Google, Apple, both, or neither). */
+/** Pushes to every connected sync account (currently just Google Tasks). */
 export const pushTask = async (task: db_Task, title: string): Promise<void> => {
   await invoke('push_task_to_sync_accounts', { task, title });
 };

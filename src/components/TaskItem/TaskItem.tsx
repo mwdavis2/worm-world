@@ -210,9 +210,9 @@ export const getTaskStatementText = (task: Task): string => {
   switch (action) {
     case 'Cross':
       // On screen, StrainCard shows which side is hermaphrodite vs. male via
-      // an icon - callers of this plain-string version (Google Tasks/Apple
-      // Reminders sync titles, schedule PDF/text export) have no icon, so
-      // spell it out instead of relying on argument order alone.
+      // an icon - callers of this plain-string version (Google Tasks sync
+      // titles, schedule PDF/text export) have no icon, so spell it out
+      // instead of relying on argument order alone.
       return `Cross ${genotypeText(
         hermStrain
       )} (hermaphrodite) with ${genotypeText(

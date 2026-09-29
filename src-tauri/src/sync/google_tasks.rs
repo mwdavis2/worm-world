@@ -86,9 +86,8 @@ fn to_google_due_date(due_date: &str) -> Option<String> {
 /// (RFC3339), but existing rows from before that fix - and any not yet
 /// re-saved - are still in JS's `Date.toString()` format, e.g. "Thu Oct 01
 /// 2026 08:30:20 GMT-0600 (Mountain Daylight Time)". Handle both rather than
-/// requiring a data migration. `pub(super)` since `apple_reminders.rs` reuses
-/// this too - the parsing problem is identical there.
-pub(super) fn parse_due_date(due_date: &str) -> Option<chrono::NaiveDate> {
+/// requiring a data migration.
+fn parse_due_date(due_date: &str) -> Option<chrono::NaiveDate> {
     if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(due_date) {
         return Some(dt.date_naive());
     }

@@ -137,8 +137,6 @@ async fn main() {
             get_sync_accounts,
             connect_google_tasks,
             disconnect_google_tasks,
-            connect_apple_reminders,
-            disconnect_apple_reminders,
             push_task_to_sync_accounts,
             sync_all_accounts_now,
             // cross_designs
@@ -701,25 +699,6 @@ async fn disconnect_google_tasks(
 ) -> Result<(), SyncError> {
     let state_guard = state.0.read().await;
     sync::google_tasks::disconnect(&state_guard, &sync_account_id).await
-}
-
-#[tauri::command]
-async fn connect_apple_reminders(
-    state: tauri::State<'_, DbState>,
-    email: String,
-    app_password: String,
-) -> Result<SyncAccount, SyncError> {
-    let state_guard = state.0.read().await;
-    sync::apple_reminders::connect(&state_guard, &email, &app_password).await
-}
-
-#[tauri::command]
-async fn disconnect_apple_reminders(
-    state: tauri::State<'_, DbState>,
-    sync_account_id: String,
-) -> Result<(), SyncError> {
-    let state_guard = state.0.read().await;
-    sync::apple_reminders::disconnect(&state_guard, &sync_account_id).await
 }
 
 #[tauri::command]

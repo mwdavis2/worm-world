@@ -200,10 +200,10 @@ fn dev_secret_path(sync_account_id: &str) -> Result<std::path::PathBuf, SyncErro
     Ok(dir.join(format!("{sync_account_id}.secret")))
 }
 
-/// Stores an opaque per-account secret - Google's OAuth refresh token, or
-/// Apple's app-specific password (both are just "the string that proves
-/// this account's identity to its remote server," this storage layer
-/// doesn't care which).
+/// Stores an opaque per-account secret (currently just Google's OAuth
+/// refresh token) - named generically, not `store_refresh_token`, since this
+/// storage layer doesn't care what kind of secret it holds, only that it's
+/// "the string that proves this account's identity to its remote server."
 pub fn store_secret(sync_account_id: &str, secret: &str) -> Result<(), SyncError> {
     #[cfg(debug_assertions)]
     {

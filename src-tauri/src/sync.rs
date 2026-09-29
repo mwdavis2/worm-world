@@ -1,4 +1,3 @@
-pub mod apple_reminders;
 pub mod google_tasks;
 pub mod oauth;
 
@@ -24,12 +23,12 @@ static SYNC_LOCKS: OnceLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> = OnceLock::
 /// double-invoked mount effect, or a manual "Sync now" click racing the
 /// periodic background poll) can both see "no existing link" for the same
 /// task before either has written one, and both create a duplicate remote
-/// task. Keyed per-account (not one global lock) so two *different*
-/// providers - e.g. Google and Apple - never wait on each other; they touch
-/// different remote servers and different `task_sync_links` rows, so there's
-/// nothing to race between them in the first place. Held for the whole
-/// duration of a push/pull, not just the check-then-act span, since that's
-/// the simplest way to guarantee no interleaving at all.
+/// task. Keyed per-account (not one global lock) so a future second provider
+/// would never have to wait on this one; they'd touch different remote
+/// servers and different `task_sync_links` rows, so there'd be nothing to
+/// race between them in the first place. Held for the whole duration of a
+/// push/pull, not just the check-then-act span, since that's the simplest
+/// way to guarantee no interleaving at all.
 pub(crate) async fn acquire_sync_lock(sync_account_id: &str) -> OwnedMutexGuard<()> {
     let per_account_lock = {
         let mut locks = SYNC_LOCKS
@@ -96,46 +95,25 @@ pub enum SyncError {
     Config(String),
 }
 
-/// Pushes a task to every connected sync account, dispatched sequentially in
-/// a fixed order (Google, then Apple) rather than concurrently - both
-/// providers write into the same local `tasks` row, so a fixed, documented
-/// order beats a timing-dependent race if they ever disagree (see
-/// `pull_updates` for the fuller explanation). Each provider's `push_task` is
-/// already a no-op when that provider isn't connected. Both are always
-/// attempted even if one fails, so one provider's outage never blocks the
-/// other; if either failed, that error is returned (Google's takes priority
-/// if both did).
+/// Pushes a task to every connected sync account. Currently only Google
+/// Tasks is supported; `push_task` is already a no-op when no Google account
+/// is connected. Kept as its own function (rather than inlining the call at
+/// every call site) so a future second provider can be dispatched here
+/// sequentially, per-account, without touching callers.
 pub async fn push_task(
     state: &crate::interface::InnerDbState,
     task: &crate::models::task::Task,
     title: &str,
 ) -> Result<(), SyncError> {
-    let google_result = google_tasks::push_task(state, task, title).await;
-    let apple_result = apple_reminders::push_task(state, task, title).await;
-    google_result.and(apple_result)
+    google_tasks::push_task(state, task, title).await
 }
 
-/// Pulls remote changes from every connected sync account, dispatched
-/// sequentially in the same fixed order as `push_task`.
-///
-/// **Known limitation**: both providers pull into the same local `tasks`
-/// row. If a task's completion genuinely disagrees between two connected
-/// providers within one sync window (checked off in one, not the other),
-/// whichever provider is processed *last* here wins - not a real conflict
-/// policy, just a documented, deterministic tie-break instead of a
-/// timing-dependent race. A true resolution policy isn't cheaply achievable
-/// anyway: Apple's CalDAV ETags aren't timestamps and can't be compared
-/// against Google's `updated` field to determine which side's change is
-/// actually newer. Acceptable for alpha scale; revisit if a third
-/// two-way-synced provider (or real user reports) makes this matter.
+/// Pulls remote changes from every connected sync account. Currently only
+/// Google Tasks is supported - see `push_task`'s doc comment.
 pub async fn pull_updates(
     state: &crate::interface::InnerDbState,
 ) -> Result<Vec<crate::models::task::Task>, SyncError> {
-    let google_result = google_tasks::pull_updates(state).await;
-    let apple_result = apple_reminders::pull_updates(state).await;
-    let mut changed = google_result?;
-    changed.extend(apple_result?);
-    Ok(changed)
+    google_tasks::pull_updates(state).await
 }
 
 impl From<crate::interface::DbError> for SyncError {
