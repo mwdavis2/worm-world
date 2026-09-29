@@ -186,38 +186,42 @@ fn keyring_entry(sync_account_id: &str) -> Result<Entry, SyncError> {
 /// change, and since each rebuild isn't stably code-signed, macOS treats it
 /// as a new app and re-prompts for Keychain access every time. Rather than
 /// eat that dialog on every hot-reload during development, debug builds
-/// store the refresh token in a plain local file instead - **plaintext on
-/// disk**, only ever on the developer's own machine, never in a release
-/// build (gated by `cfg(debug_assertions)`, which is false for `tauri
-/// build`). Release builds always use the OS keychain via `keyring_entry`.
+/// store the secret in a plain local file instead - **plaintext on disk**,
+/// only ever on the developer's own machine, never in a release build
+/// (gated by `cfg(debug_assertions)`, which is false for `tauri build`).
+/// Release builds always use the OS keychain via `keyring_entry`.
 #[cfg(debug_assertions)]
-fn dev_token_path(sync_account_id: &str) -> Result<std::path::PathBuf, SyncError> {
+fn dev_secret_path(sync_account_id: &str) -> Result<std::path::PathBuf, SyncError> {
     let proj_dirs = directories::ProjectDirs::from("edu", "UofUBiology", "WormWorld")
         .ok_or_else(|| SyncError::Config("no project data directory".to_string()))?;
-    let dir = proj_dirs.data_dir().join("dev-refresh-tokens");
+    let dir = proj_dirs.data_dir().join("dev-sync-secrets");
     std::fs::create_dir_all(&dir)
-        .map_err(|e| SyncError::Config(format!("failed to create dev token dir: {e}")))?;
-    Ok(dir.join(format!("{sync_account_id}.token")))
+        .map_err(|e| SyncError::Config(format!("failed to create dev secret dir: {e}")))?;
+    Ok(dir.join(format!("{sync_account_id}.secret")))
 }
 
-pub fn store_refresh_token(sync_account_id: &str, refresh_token: &str) -> Result<(), SyncError> {
+/// Stores an opaque per-account secret - Google's OAuth refresh token, or
+/// Apple's app-specific password (both are just "the string that proves
+/// this account's identity to its remote server," this storage layer
+/// doesn't care which).
+pub fn store_secret(sync_account_id: &str, secret: &str) -> Result<(), SyncError> {
     #[cfg(debug_assertions)]
     {
-        std::fs::write(dev_token_path(sync_account_id)?, refresh_token)
-            .map_err(|e| SyncError::Config(format!("failed to write dev token file: {e}")))
+        std::fs::write(dev_secret_path(sync_account_id)?, secret)
+            .map_err(|e| SyncError::Config(format!("failed to write dev secret file: {e}")))
     }
     #[cfg(not(debug_assertions))]
     {
-        keyring_entry(sync_account_id)?.set_password(refresh_token)?;
+        keyring_entry(sync_account_id)?.set_password(secret)?;
         Ok(())
     }
 }
 
-pub fn get_refresh_token(sync_account_id: &str) -> Result<String, SyncError> {
+pub fn get_secret(sync_account_id: &str) -> Result<String, SyncError> {
     #[cfg(debug_assertions)]
     {
-        std::fs::read_to_string(dev_token_path(sync_account_id)?)
-            .map_err(|e| SyncError::Config(format!("failed to read dev token file: {e}")))
+        std::fs::read_to_string(dev_secret_path(sync_account_id)?)
+            .map_err(|e| SyncError::Config(format!("failed to read dev secret file: {e}")))
     }
     #[cfg(not(debug_assertions))]
     {
@@ -225,14 +229,14 @@ pub fn get_refresh_token(sync_account_id: &str) -> Result<String, SyncError> {
     }
 }
 
-pub fn delete_refresh_token(sync_account_id: &str) -> Result<(), SyncError> {
+pub fn delete_secret(sync_account_id: &str) -> Result<(), SyncError> {
     #[cfg(debug_assertions)]
     {
-        match std::fs::remove_file(dev_token_path(sync_account_id)?) {
+        match std::fs::remove_file(dev_secret_path(sync_account_id)?) {
             Ok(()) => Ok(()),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
             Err(e) => Err(SyncError::Config(format!(
-                "failed to remove dev token file: {e}"
+                "failed to remove dev secret file: {e}"
             ))),
         }
     }

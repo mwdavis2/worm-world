@@ -1,6 +1,7 @@
 use super::oauth::{self, GoogleOAuthConfig};
 use super::SyncError;
 use crate::interface::InnerDbState;
+use crate::models::cross_design_sync_link::CrossDesignSyncLink;
 use crate::models::sync_account::SyncAccount;
 use crate::models::task::Task;
 use crate::models::task_sync_link::TaskSyncLink;
@@ -40,6 +41,11 @@ struct UserInfo {
 }
 
 #[derive(Serialize)]
+struct GoogleTaskCreate<'a> {
+    title: &'a str,
+}
+
+#[derive(Serialize)]
 struct GoogleTaskUpsert<'a> {
     title: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -69,20 +75,47 @@ struct GoogleTasksListResponse {
 /// RFC3339 midnight-UTC timestamp so the two representations agree on what
 /// "the due date" means, avoiding an off-by-one day from timezone drift.
 fn to_google_due_date(due_date: &str) -> Option<String> {
-    let date = chrono::DateTime::parse_from_rfc3339(due_date)
-        .map(|dt| dt.date_naive())
-        .or_else(|_| chrono::NaiveDate::parse_from_str(due_date, "%Y-%m-%d"))
-        .ok()?;
-    Some(chrono::DateTime::<Utc>::from_utc(date.and_hms_opt(0, 0, 0)?, Utc).to_rfc3339())
+    let date = parse_due_date(due_date)?;
+    Some(
+        chrono::DateTime::<Utc>::from_naive_utc_and_offset(date.and_hms_opt(0, 0, 0)?, Utc)
+            .to_rfc3339(),
+    )
+}
+
+/// worm-world's frontend now writes `due_date` as `Date.toISOString()`
+/// (RFC3339), but existing rows from before that fix - and any not yet
+/// re-saved - are still in JS's `Date.toString()` format, e.g. "Thu Oct 01
+/// 2026 08:30:20 GMT-0600 (Mountain Daylight Time)". Handle both rather than
+/// requiring a data migration. `pub(super)` since `apple_reminders.rs` reuses
+/// this too - the parsing problem is identical there.
+pub(super) fn parse_due_date(due_date: &str) -> Option<chrono::NaiveDate> {
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(due_date) {
+        return Some(dt.date_naive());
+    }
+    if let Ok(d) = chrono::NaiveDate::parse_from_str(due_date, "%Y-%m-%d") {
+        return Some(d);
+    }
+    let without_tz_name = due_date.split('(').next()?.trim();
+    if let Ok(dt) = chrono::DateTime::parse_from_str(without_tz_name, "%a %b %d %Y %H:%M:%S GMT%z")
+    {
+        return Some(dt.date_naive());
+    }
+    None
 }
 
 async fn get_access_token(
     config: &GoogleOAuthConfig,
     sync_account_id: &str,
 ) -> Result<String, SyncError> {
-    let refresh_token = oauth::get_refresh_token(sync_account_id)?;
+    if let Some(cached) = super::get_cached_access_token(sync_account_id).await {
+        return Ok(cached);
+    }
+
+    let refresh_token = oauth::get_secret(sync_account_id)?;
     let token = oauth::refresh_access_token(config, &refresh_token).await?;
-    Ok(token.access_token().secret().clone())
+    let access_token = token.access_token().secret().clone();
+    super::cache_access_token(sync_account_id, &access_token, token.expires_in()).await;
+    Ok(access_token)
 }
 
 /// Finds the "Worm World" list from a prior connection, or creates it if this
@@ -161,7 +194,7 @@ pub async fn connect(
     // Only one Google account is supported for phase 1 - replace any existing one.
     for existing in state.get_sync_accounts().await? {
         if existing.provider == "google" {
-            let _ = oauth::delete_refresh_token(&existing.id);
+            let _ = oauth::delete_secret(&existing.id);
             state.delete_sync_account(&existing.id).await?;
         }
     }
@@ -170,19 +203,135 @@ pub async fn connect(
         id: Uuid::new_v4().to_string(),
         provider: "google".to_string(),
         account_label: email,
-        google_task_list_id: list_id,
+        remote_list_id: list_id,
         created_at: Utc::now().to_rfc3339(),
         last_synced_at: None,
     };
     state.insert_sync_account(&account).await?;
-    oauth::store_refresh_token(&account.id, &refresh_token)?;
+    oauth::store_secret(&account.id, &refresh_token)?;
 
     Ok(account)
 }
 
 pub async fn disconnect(state: &InnerDbState, sync_account_id: &str) -> Result<(), SyncError> {
-    oauth::delete_refresh_token(sync_account_id)?;
+    oauth::delete_secret(sync_account_id)?;
     state.delete_sync_account(sync_account_id).await?;
+    Ok(())
+}
+
+/// Finds or creates the Google Tasks "parent" task used to group every task
+/// belonging to one cross design together in the Tasks UI - titled after the
+/// cross design's name, with no due date/notes of its own. Cached in
+/// `cross_design_sync_links` so repeated pushes reuse the same parent
+/// instead of creating a new one every time.
+async fn ensure_cross_design_parent(
+    state: &InnerDbState,
+    account: &SyncAccount,
+    http: &reqwest::Client,
+    access_token: &str,
+    cross_design_id: &str,
+) -> Result<String, SyncError> {
+    if let Some(link) = state
+        .get_cross_design_sync_link(cross_design_id, &account.id)
+        .await?
+    {
+        return Ok(link.remote_parent_task_id);
+    }
+
+    let cross_design = state
+        .get_cross_design(cross_design_id)
+        .await?
+        .ok_or_else(|| SyncError::Db(format!("cross design {cross_design_id} not found")))?;
+
+    let created = http
+        .post(format!(
+            "{TASKS_API_BASE}/lists/{}/tasks",
+            account.remote_list_id
+        ))
+        .bearer_auth(access_token)
+        .json(&GoogleTaskCreate {
+            title: &cross_design.name,
+        })
+        .send()
+        .await?
+        .error_for_status()?
+        .json::<GoogleTask>()
+        .await?;
+
+    state
+        .upsert_cross_design_sync_link(&CrossDesignSyncLink {
+            cross_design_id: cross_design_id.to_string(),
+            sync_account_id: account.id.clone(),
+            remote_parent_task_id: created.id.clone(),
+        })
+        .await?;
+
+    Ok(created.id)
+}
+
+/// Moves an existing remote task under the given parent task - Google Tasks
+/// requires this as a separate call (`parent` is output-only on the task
+/// resource itself, set only via the `move` endpoint). Idempotent: moving to
+/// the parent a task is already under just reasserts the same relationship.
+async fn move_task_to_parent(
+    http: &reqwest::Client,
+    access_token: &str,
+    list_id: &str,
+    task_id: &str,
+    parent_id: &str,
+) -> Result<reqwest::Response, SyncError> {
+    Ok(http
+        .post(format!(
+            "{TASKS_API_BASE}/lists/{list_id}/tasks/{task_id}/move"
+        ))
+        .bearer_auth(access_token)
+        .query(&[("parent", parent_id)])
+        .send()
+        .await?)
+}
+
+/// Ensures `remote_task_id` is grouped under its cross design's parent task,
+/// recreating that parent and retrying once if the move 404s (the cached
+/// parent was deleted directly in Google Tasks) - the same resilience
+/// `push_task` already applies to a stale task `remote_id`.
+async fn attach_task_to_cross_design_parent(
+    state: &InnerDbState,
+    account: &SyncAccount,
+    http: &reqwest::Client,
+    access_token: &str,
+    cross_design_id: &str,
+    remote_task_id: &str,
+) -> Result<(), SyncError> {
+    let parent_id =
+        ensure_cross_design_parent(state, account, http, access_token, cross_design_id).await?;
+    let response = move_task_to_parent(
+        http,
+        access_token,
+        &account.remote_list_id,
+        remote_task_id,
+        &parent_id,
+    )
+    .await?;
+
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        state
+            .delete_cross_design_sync_link(cross_design_id, &account.id)
+            .await?;
+        let parent_id =
+            ensure_cross_design_parent(state, account, http, access_token, cross_design_id).await?;
+        move_task_to_parent(
+            http,
+            access_token,
+            &account.remote_list_id,
+            remote_task_id,
+            &parent_id,
+        )
+        .await?
+        .error_for_status()?;
+    } else {
+        response.error_for_status()?;
+    }
+
     Ok(())
 }
 
@@ -195,10 +344,10 @@ pub async fn disconnect(state: &InnerDbState, sync_account_id: &str) -> Result<(
 /// connected; sync failures are the caller's responsibility to treat as
 /// best-effort (the local save must never be blocked on this).
 pub async fn push_task(state: &InnerDbState, task: &Task, title: &str) -> Result<(), SyncError> {
-    let _guard = super::acquire_sync_lock().await;
     let Some(account) = get_google_account(state).await? else {
         return Ok(());
     };
+    let _guard = super::acquire_sync_lock(&account.id).await;
     let config = GoogleOAuthConfig::from_env()?;
     let access_token = get_access_token(&config, &account.id).await?;
     let http = reqwest::Client::new();
@@ -219,7 +368,7 @@ pub async fn push_task(state: &InnerDbState, task: &Task, title: &str) -> Result
         Some(link) => Some(
             http.patch(format!(
                 "{TASKS_API_BASE}/lists/{}/tasks/{}",
-                account.google_task_list_id, link.remote_id
+                account.remote_list_id, link.remote_id
             ))
             .bearer_auth(&access_token)
             .json(&body)
@@ -241,7 +390,7 @@ pub async fn push_task(state: &InnerDbState, task: &Task, title: &str) -> Result
     let response = if needs_create {
         http.post(format!(
             "{TASKS_API_BASE}/lists/{}/tasks",
-            account.google_task_list_id
+            account.remote_list_id
         ))
         .bearer_auth(&access_token)
         .json(&body)
@@ -257,6 +406,16 @@ pub async fn push_task(state: &InnerDbState, task: &Task, title: &str) -> Result
             .json::<GoogleTask>()
             .await?
     };
+
+    attach_task_to_cross_design_parent(
+        state,
+        &account,
+        &http,
+        &access_token,
+        &task.cross_design_id,
+        &response.id,
+    )
+    .await?;
 
     state
         .upsert_task_sync_link(&TaskSyncLink {
@@ -277,10 +436,10 @@ pub async fn push_task(state: &InnerDbState, task: &Task, title: &str) -> Result
 /// Returns the local tasks that were changed, so the caller can refresh the
 /// frontend's view of them. A no-op if no Google account is connected.
 pub async fn pull_updates(state: &InnerDbState) -> Result<Vec<Task>, SyncError> {
-    let _guard = super::acquire_sync_lock().await;
     let Some(account) = get_google_account(state).await? else {
         return Ok(vec![]);
     };
+    let _guard = super::acquire_sync_lock(&account.id).await;
     let config = GoogleOAuthConfig::from_env()?;
     let access_token = get_access_token(&config, &account.id).await?;
     let http = reqwest::Client::new();
@@ -288,7 +447,7 @@ pub async fn pull_updates(state: &InnerDbState) -> Result<Vec<Task>, SyncError> 
     let mut request = http
         .get(format!(
             "{TASKS_API_BASE}/lists/{}/tasks",
-            account.google_task_list_id
+            account.remote_list_id
         ))
         .bearer_auth(&access_token)
         .query(&[("showCompleted", "true"), ("showHidden", "true")]);
@@ -386,6 +545,16 @@ mod test {
         assert_eq!(
             to_google_due_date("2026-09-28T15:30:00-07:00"),
             Some("2026-09-28T00:00:00+00:00".to_string())
+        );
+    }
+
+    #[test]
+    fn converts_a_js_date_tostring_timestamp() {
+        // JS Date.prototype.toString() format - what worm-world's frontend
+        // stored due_date as before switching to toISOString().
+        assert_eq!(
+            to_google_due_date("Thu Oct 01 2026 08:30:20 GMT-0600 (Mountain Daylight Time)"),
+            Some("2026-10-01T00:00:00+00:00".to_string())
         );
     }
 

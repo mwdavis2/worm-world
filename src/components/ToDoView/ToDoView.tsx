@@ -1,5 +1,5 @@
 import { deleteAllTasks, deleteTasks, getTasks, updateTask } from 'api/task';
-import { pushTaskToGoogle, syncGoogleTasksNow } from 'api/taskSync';
+import { pushTask, syncTasksNow } from 'api/taskSync';
 import TaskList from 'components/TaskList/TaskList';
 import { getTaskStatementText } from 'components/TaskItem/TaskItem';
 import { Task } from 'models/frontend/Task/Task';
@@ -61,8 +61,8 @@ export const ToDoView = (): React.JSX.Element => {
       .catch((e) =>
         toast.error('Unable to update task: ' + getErrorMessage(e))
       );
-    pushTaskToGoogle(record, getTaskStatementText(task)).catch((e) =>
-      toast.error('Unable to sync task to Google Tasks: ' + getErrorMessage(e))
+    pushTask(record, getTaskStatementText(task)).catch((e) =>
+      toast.error('Unable to sync task: ' + getErrorMessage(e))
     );
   };
 
@@ -71,7 +71,7 @@ export const ToDoView = (): React.JSX.Element => {
     // state (e.g. still "incomplete" because it was only checked off on the
     // Google side) would immediately overwrite the very change we're about
     // to pull, undoing it before it's even applied locally.
-    await syncGoogleTasksNow();
+    await syncTasksNow();
 
     // Push every currently-known task (now reflecting anything just pulled)
     // - covers tasks created before a Google account was connected, which
@@ -82,10 +82,7 @@ export const ToDoView = (): React.JSX.Element => {
     const currentTasks = (await getTasks()).map((record) => new Task(record));
     await Promise.all(
       currentTasks.map(async (task) => {
-        await pushTaskToGoogle(
-          task.generateRecord(),
-          getTaskStatementText(task)
-        );
+        await pushTask(task.generateRecord(), getTaskStatementText(task));
       })
     );
     await refreshTasks();
@@ -158,9 +155,7 @@ export const ToDoView = (): React.JSX.Element => {
               <SyncNowButton
                 onClick={() => {
                   handleSyncNow().catch((e) =>
-                    toast.error(
-                      'Unable to sync with Google Tasks: ' + getErrorMessage(e)
-                    )
+                    toast.error('Unable to sync tasks: ' + getErrorMessage(e))
                   );
                 }}
               />
@@ -213,7 +208,7 @@ const NoTaskPlaceholder = (): React.JSX.Element => {
 
 const SyncNowButton = (props: { onClick: () => void }): React.JSX.Element => {
   return (
-    <div className='tooltip tooltip-bottom' data-tip={'Sync with Google Tasks'}>
+    <div className='tooltip tooltip-bottom' data-tip={'Sync tasks'}>
       <button className='btn btn-outline' onClick={props.onClick}>
         <SyncIcon size='20' />
       </button>

@@ -4,7 +4,7 @@ export interface db_SyncAccount {
   id: string;
   provider: string;
   accountLabel: string;
-  googleTaskListId: string;
+  remoteListId: string;
   createdAt: string;
   lastSyncedAt: string | null;
 }

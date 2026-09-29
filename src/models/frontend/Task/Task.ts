@@ -95,7 +95,12 @@ export class Task {
 
     return {
       id: this.id,
-      dueDate: this.dueDate?.toString() ?? null,
+      // toISOString() (RFC3339), not toString() - the Google Tasks sync
+      // engine (google_tasks.rs's to_google_due_date) parses this on the
+      // Rust side, and toString()'s verbose locale-dependent format
+      // ("Thu Oct 01 2026 08:30:20 GMT-0600 (Mountain Daylight Time)")
+      // isn't reliably parseable there.
+      dueDate: this.dueDate?.toISOString() ?? null,
       action: this.action,
       hermStrain: this.hermStrain.toJSON(),
       maleStrain: this.maleStrain?.toJSON() ?? null,
@@ -140,5 +145,10 @@ export class Task {
       } else descendents.push(next);
     }
     return descendents;
+  }
+
+  /** @returns the task that consumes this task's result strain, if any. */
+  public getChildTask(tasks: Task[]): Task | undefined {
+    return tasks.find((task) => task.id === this.childTaskId);
   }
 }

@@ -16,14 +16,25 @@ export const disconnectGoogleTasks = async (
   await invoke('disconnect_google_tasks', { syncAccountId });
 };
 
-export const pushTaskToGoogle = async (
-  task: db_Task,
-  title: string
-): Promise<void> => {
-  await invoke('push_task_to_google', { task, title });
+export const connectAppleReminders = async (
+  email: string,
+  appPassword: string
+): Promise<db_SyncAccount> => {
+  return await invoke('connect_apple_reminders', { email, appPassword });
 };
 
-/** Returns the local tasks that were changed by remote (Google) updates. */
-export const syncGoogleTasksNow = async (): Promise<db_Task[]> => {
-  return await invoke('sync_google_tasks_now');
+export const disconnectAppleReminders = async (
+  syncAccountId: string
+): Promise<void> => {
+  await invoke('disconnect_apple_reminders', { syncAccountId });
+};
+
+/** Pushes to every connected sync account (Google, Apple, both, or neither). */
+export const pushTask = async (task: db_Task, title: string): Promise<void> => {
+  await invoke('push_task_to_sync_accounts', { task, title });
+};
+
+/** Returns the local tasks that were changed by any connected account's remote updates. */
+export const syncTasksNow = async (): Promise<db_Task[]> => {
+  return await invoke('sync_all_accounts_now');
 };

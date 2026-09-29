@@ -25,6 +25,23 @@ impl InnerDbState {
         }
     }
 
+    pub async fn get_cross_design(&self, id: &str) -> Result<Option<CrossDesign>, DbError> {
+        match sqlx::query_as!(
+            CrossDesignDb,
+            "SELECT id, name, last_edited, data, editable FROM cross_designs WHERE id = ?",
+            id,
+        )
+        .fetch_optional(&self.conn_pool)
+        .await
+        {
+            Ok(cross_design) => Ok(cross_design.map(|c| c.into())),
+            Err(e) => {
+                eprint!("Get cross_design error: {e}");
+                Err(DbError::Query(e.to_string()))
+            }
+        }
+    }
+
     pub async fn get_filtered_cross_designs(
         &self,
         filter: &FilterGroup<CrossDesignFieldName>,

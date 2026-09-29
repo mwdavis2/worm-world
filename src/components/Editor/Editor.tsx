@@ -1,7 +1,7 @@
 import { insertCrossDesign, updateCrossDesign } from 'api/crossDesign';
 import { getPreferences } from 'utils/preferences';
 import { insertTasks } from 'api/task';
-import { pushTaskToGoogle } from 'api/taskSync';
+import { pushTask } from 'api/taskSync';
 import { getTaskStatementText } from 'components/TaskItem/TaskItem';
 import {
   ContextMenu,
@@ -770,9 +770,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       })
       .then(() => {
         scheduledTasks.forEach((task, idx) => {
-          pushTaskToGoogle(tasks[idx], getTaskStatementText(task)).catch(
-            () => {}
-          );
+          pushTask(tasks[idx], getTaskStatementText(task)).catch(() => {});
         });
         navigate('/schedules/todo');
       })

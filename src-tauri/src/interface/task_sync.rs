@@ -1,11 +1,14 @@
 use super::{DbError, InnerDbState};
-use crate::models::{sync_account::SyncAccount, task_sync_link::TaskSyncLink};
+use crate::models::{
+    cross_design_sync_link::CrossDesignSyncLink, sync_account::SyncAccount,
+    task_sync_link::TaskSyncLink,
+};
 
 impl InnerDbState {
     pub async fn get_sync_accounts(&self) -> Result<Vec<SyncAccount>, DbError> {
         match sqlx::query_as!(
             SyncAccount,
-            "SELECT id, provider, account_label, google_task_list_id, created_at, last_synced_at FROM sync_accounts ORDER BY id"
+            "SELECT id, provider, account_label, remote_list_id, created_at, last_synced_at FROM sync_accounts ORDER BY id"
         )
         .fetch_all(&self.conn_pool)
         .await
@@ -20,12 +23,12 @@ impl InnerDbState {
 
     pub async fn insert_sync_account(&self, account: &SyncAccount) -> Result<(), DbError> {
         match sqlx::query!(
-            "INSERT INTO sync_accounts (id, provider, account_label, google_task_list_id, created_at, last_synced_at)
+            "INSERT INTO sync_accounts (id, provider, account_label, remote_list_id, created_at, last_synced_at)
             VALUES (?, ?, ?, ?, ?, ?)",
             account.id,
             account.provider,
             account.account_label,
-            account.google_task_list_id,
+            account.remote_list_id,
             account.created_at,
             account.last_synced_at,
         )
@@ -165,10 +168,79 @@ impl InnerDbState {
             }
         }
     }
+
+    pub async fn get_cross_design_sync_link(
+        &self,
+        cross_design_id: &str,
+        sync_account_id: &str,
+    ) -> Result<Option<CrossDesignSyncLink>, DbError> {
+        match sqlx::query_as!(
+            CrossDesignSyncLink,
+            "SELECT cross_design_id, sync_account_id, remote_parent_task_id
+            FROM cross_design_sync_links WHERE cross_design_id = ? AND sync_account_id = ?",
+            cross_design_id,
+            sync_account_id,
+        )
+        .fetch_optional(&self.conn_pool)
+        .await
+        {
+            Ok(link) => Ok(link),
+            Err(e) => {
+                eprint!("Get cross design sync link error: {e}");
+                Err(DbError::Query(e.to_string()))
+            }
+        }
+    }
+
+    pub async fn upsert_cross_design_sync_link(
+        &self,
+        link: &CrossDesignSyncLink,
+    ) -> Result<(), DbError> {
+        match sqlx::query!(
+            "INSERT INTO cross_design_sync_links (cross_design_id, sync_account_id, remote_parent_task_id)
+            VALUES (?, ?, ?)
+            ON CONFLICT(cross_design_id, sync_account_id) DO UPDATE SET
+                remote_parent_task_id = excluded.remote_parent_task_id",
+            link.cross_design_id,
+            link.sync_account_id,
+            link.remote_parent_task_id,
+        )
+        .execute(&self.conn_pool)
+        .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprint!("Upsert cross design sync link error: {e}");
+                Err(DbError::Insert(e.to_string()))
+            }
+        }
+    }
+
+    pub async fn delete_cross_design_sync_link(
+        &self,
+        cross_design_id: &str,
+        sync_account_id: &str,
+    ) -> Result<(), DbError> {
+        match sqlx::query!(
+            "DELETE FROM cross_design_sync_links WHERE cross_design_id = ? AND sync_account_id = ?",
+            cross_design_id,
+            sync_account_id,
+        )
+        .execute(&self.conn_pool)
+        .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprint!("Delete cross design sync link error: {e}");
+                Err(DbError::Delete(e.to_string()))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
+    use crate::models::cross_design_sync_link::CrossDesignSyncLink;
     use crate::models::sync_account::SyncAccount;
     use crate::models::task_sync_link::TaskSyncLink;
     use crate::InnerDbState;
@@ -181,7 +253,7 @@ mod test {
             id: "acct1".to_string(),
             provider: "google".to_string(),
             account_label: "person@example.com".to_string(),
-            google_task_list_id: "list1".to_string(),
+            remote_list_id: "list1".to_string(),
             created_at: "2026-09-28T00:00:00Z".to_string(),
             last_synced_at: None,
         }
@@ -261,6 +333,42 @@ mod test {
         state.upsert_task_sync_link(&updated_link).await?;
         let links = state.get_task_sync_links_for_account("acct1").await?;
         assert_eq!(links, vec![updated_link]);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("full_db"))]
+    async fn test_cross_design_sync_link(pool: Pool<Sqlite>) -> Result<()> {
+        let state = InnerDbState { conn_pool: pool };
+        let account = test_account();
+        state.insert_sync_account(&account).await?;
+
+        assert_eq!(state.get_cross_design_sync_link("1", "acct1").await?, None);
+
+        let link = CrossDesignSyncLink {
+            cross_design_id: "1".to_string(),
+            sync_account_id: "acct1".to_string(),
+            remote_parent_task_id: "parent1".to_string(),
+        };
+        state.upsert_cross_design_sync_link(&link).await?;
+        assert_eq!(
+            state.get_cross_design_sync_link("1", "acct1").await?,
+            Some(link.clone())
+        );
+
+        // Upsert again with a different parent id - should update in place.
+        let updated_link = CrossDesignSyncLink {
+            remote_parent_task_id: "parent2".to_string(),
+            ..link
+        };
+        state.upsert_cross_design_sync_link(&updated_link).await?;
+        assert_eq!(
+            state.get_cross_design_sync_link("1", "acct1").await?,
+            Some(updated_link)
+        );
+
+        state.delete_cross_design_sync_link("1", "acct1").await?;
+        assert_eq!(state.get_cross_design_sync_link("1", "acct1").await?, None);
 
         Ok(())
     }

@@ -2,7 +2,9 @@ import { TopNav } from 'components/TopNav/TopNav';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
+  connectAppleReminders,
   connectGoogleTasks,
+  disconnectAppleReminders,
   disconnectGoogleTasks,
   getSyncAccounts,
 } from 'api/taskSync';
@@ -18,7 +20,10 @@ import {
 const Settings = (): React.JSX.Element => {
   const [preferences, setLocalPreferences] = useState(getPreferences());
   const [syncAccounts, setSyncAccounts] = useState<db_SyncAccount[]>([]);
-  const [connecting, setConnecting] = useState(false);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const [connectingApple, setConnectingApple] = useState(false);
+  const [appleEmail, setAppleEmail] = useState('');
+  const [applePassword, setApplePassword] = useState('');
 
   useEffect(() => {
     refreshSyncAccounts().catch((e) =>
@@ -31,24 +36,47 @@ const Settings = (): React.JSX.Element => {
   };
 
   const handleConnectGoogle = (): void => {
-    setConnecting(true);
+    setConnectingGoogle(true);
     connectGoogleTasks()
       .then(refreshSyncAccounts)
       .catch((e) =>
         toast.error('Unable to connect Google Tasks: ' + getErrorMessage(e))
       )
       .finally(() => {
-        setConnecting(false);
+        setConnectingGoogle(false);
       });
   };
 
-  const handleDisconnect = (accountId: string): void => {
-    disconnectGoogleTasks(accountId)
+  const handleConnectApple = (): void => {
+    setConnectingApple(true);
+    connectAppleReminders(appleEmail, applePassword)
+      .then(async () => {
+        await refreshSyncAccounts();
+        setAppleEmail('');
+        setApplePassword('');
+      })
+      .catch((e) =>
+        toast.error('Unable to connect Apple Reminders: ' + getErrorMessage(e))
+      )
+      .finally(() => {
+        setConnectingApple(false);
+      });
+  };
+
+  const handleDisconnect = (account: db_SyncAccount): void => {
+    const disconnect =
+      account.provider === 'apple'
+        ? disconnectAppleReminders
+        : disconnectGoogleTasks;
+    disconnect(account.id)
       .then(refreshSyncAccounts)
       .catch((e) =>
         toast.error('Unable to disconnect account: ' + getErrorMessage(e))
       );
   };
+
+  const googleAccount = syncAccounts.find((a) => a.provider === 'google');
+  const appleAccount = syncAccounts.find((a) => a.provider === 'apple');
 
   const updateMinZoom = (value: number): void => {
     setLocalPreferences(setPreferences({ minZoom: value }));
@@ -179,39 +207,100 @@ const Settings = (): React.JSX.Element => {
 
         <div className='form-control'>
           <label className='label'>
-            <span className='label-text'>Connected accounts</span>
+            <span className='label-text'>Google Tasks</span>
           </label>
-          {syncAccounts.length === 0 ? (
+          {googleAccount === undefined ? (
             <button
               className='btn btn-outline'
-              disabled={connecting}
+              disabled={connectingGoogle}
               onClick={handleConnectGoogle}
             >
-              {connecting ? 'Connecting...' : 'Connect Google Tasks'}
+              {connectingGoogle ? 'Connecting...' : 'Connect Google Tasks'}
             </button>
           ) : (
-            syncAccounts.map((account) => (
-              <div
-                key={account.id}
-                className='flex items-center justify-between gap-4'
+            <div className='flex items-center justify-between gap-4'>
+              <span>Connected as {googleAccount.accountLabel}</span>
+              <button
+                className='btn btn-error btn-outline'
+                onClick={() => {
+                  handleDisconnect(googleAccount);
+                }}
               >
-                <span>Connected as {account.accountLabel}</span>
-                <button
-                  className='btn btn-error btn-outline'
-                  onClick={() => {
-                    handleDisconnect(account.id);
-                  }}
-                >
-                  Disconnect
-                </button>
-              </div>
-            ))
+                Disconnect
+              </button>
+            </div>
           )}
           <label className='label'>
             <span className='label-text-alt'>
               Two-way syncs worm-world tasks with Google Tasks - checking a task
               off or rescheduling it in either app updates the other. Only tasks
               that started in worm-world are synced.
+            </span>
+          </label>
+        </div>
+
+        <div className='form-control'>
+          <label className='label'>
+            <span className='label-text'>Apple Reminders</span>
+          </label>
+          {appleAccount === undefined ? (
+            <div className='flex flex-col gap-2'>
+              <input
+                type='email'
+                placeholder='Apple ID email'
+                className='input input-bordered'
+                value={appleEmail}
+                onChange={(e) => {
+                  setAppleEmail(e.target.value);
+                }}
+              />
+              <input
+                type='password'
+                placeholder='App-specific password'
+                className='input input-bordered'
+                value={applePassword}
+                onChange={(e) => {
+                  setApplePassword(e.target.value);
+                }}
+              />
+              <button
+                className='btn btn-outline'
+                disabled={
+                  connectingApple || appleEmail === '' || applePassword === ''
+                }
+                onClick={handleConnectApple}
+              >
+                {connectingApple ? 'Connecting...' : 'Connect Apple Reminders'}
+              </button>
+            </div>
+          ) : (
+            <div className='flex items-center justify-between gap-4'>
+              <span>Connected as {appleAccount.accountLabel}</span>
+              <button
+                className='btn btn-error btn-outline'
+                onClick={() => {
+                  handleDisconnect(appleAccount);
+                }}
+              >
+                Disconnect
+              </button>
+            </div>
+          )}
+          <label className='label'>
+            <span className='label-text-alt'>
+              Two-way syncs worm-world tasks with a shared &quot;Worm
+              World&quot; list in Reminders, tagged by cross design. Apple
+              doesn&apos;t support signing in directly - generate an
+              app-specific password at{' '}
+              <a
+                href='https://appleid.apple.com/account/manage'
+                target='_blank'
+                rel='noreferrer'
+                className='link'
+              >
+                appleid.apple.com/account/manage
+              </a>{' '}
+              and use it here instead of your real password.
             </span>
           </label>
         </div>

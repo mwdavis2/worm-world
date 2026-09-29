@@ -7,6 +7,7 @@ pub mod allele_expr;
 pub mod chromosome_name;
 pub mod condition;
 pub mod cross_design;
+pub mod cross_design_sync_link;
 pub mod expr_relation;
 pub mod filter;
 pub mod gene;

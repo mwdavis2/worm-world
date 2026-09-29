@@ -37,9 +37,10 @@ mod sync;
 use sync::SyncError;
 
 /// How often the app polls Google Tasks for remote changes while running -
-/// Google Tasks has no push/webhook support, so periodic polling (plus a
-/// pull on launch and a manual "Sync now") is the only way to pick up
-/// changes made on the Google side (e.g. checking a task off on a phone).
+/// Neither Google Tasks nor CalDAV support push/webhook notifications, so
+/// periodic polling (plus a pull on launch and a manual "Sync now") is the
+/// only way to pick up changes made on the remote side (e.g. checking a task
+/// off on a phone).
 const SYNC_POLL_INTERVAL: Duration = Duration::from_secs(300);
 
 #[tokio::main]
@@ -63,8 +64,8 @@ async fn main() {
                     interval.tick().await;
                     let state = handle.state::<DbState>();
                     let state_guard = state.0.read().await;
-                    if let Err(e) = sync::google_tasks::pull_updates(&state_guard).await {
-                        eprintln!("Background Google Tasks sync failed: {e}");
+                    if let Err(e) = sync::pull_updates(&state_guard).await {
+                        eprintln!("Background task sync failed: {e}");
                     }
                 }
             });
@@ -136,8 +137,10 @@ async fn main() {
             get_sync_accounts,
             connect_google_tasks,
             disconnect_google_tasks,
-            push_task_to_google,
-            sync_google_tasks_now,
+            connect_apple_reminders,
+            disconnect_apple_reminders,
+            push_task_to_sync_accounts,
+            sync_all_accounts_now,
             // cross_designs
             get_cross_designs,
             get_filtered_cross_designs,
@@ -701,19 +704,38 @@ async fn disconnect_google_tasks(
 }
 
 #[tauri::command]
-async fn push_task_to_google(
+async fn connect_apple_reminders(
+    state: tauri::State<'_, DbState>,
+    email: String,
+    app_password: String,
+) -> Result<SyncAccount, SyncError> {
+    let state_guard = state.0.read().await;
+    sync::apple_reminders::connect(&state_guard, &email, &app_password).await
+}
+
+#[tauri::command]
+async fn disconnect_apple_reminders(
+    state: tauri::State<'_, DbState>,
+    sync_account_id: String,
+) -> Result<(), SyncError> {
+    let state_guard = state.0.read().await;
+    sync::apple_reminders::disconnect(&state_guard, &sync_account_id).await
+}
+
+#[tauri::command]
+async fn push_task_to_sync_accounts(
     state: tauri::State<'_, DbState>,
     task: Task,
     title: String,
 ) -> Result<(), SyncError> {
     let state_guard = state.0.read().await;
-    sync::google_tasks::push_task(&state_guard, &task, &title).await
+    sync::push_task(&state_guard, &task, &title).await
 }
 
 #[tauri::command]
-async fn sync_google_tasks_now(state: tauri::State<'_, DbState>) -> Result<Vec<Task>, SyncError> {
+async fn sync_all_accounts_now(state: tauri::State<'_, DbState>) -> Result<Vec<Task>, SyncError> {
     let state_guard = state.0.read().await;
-    sync::google_tasks::pull_updates(&state_guard).await
+    sync::pull_updates(&state_guard).await
 }
 
 #[tauri::command]
