@@ -28,6 +28,19 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    // Vite never serves or transforms anything under src-tauri (Rust source
+    // isn't part of the frontend bundle at all) - Tauri's own separate CLI
+    // watcher already handles rebuilding the backend on source changes, so
+    // Vite watching this tree too is pure redundant overhead. Worse,
+    // src-tauri/target is a constantly-churning incremental build directory
+    // (hundreds of thousands of files during a Rust compile) that isn't
+    // gitignored out of Vite's default watch scope - every backend rebuild
+    // was flooding Vite's own file watcher with a storm of change events,
+    // which is almost certainly what's been causing the dev server's
+    // repeated CPU-thrashing/restart-loop behavior today.
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
   },
   // to make use of `TAURI_DEBUG` and other env variables
   // https://tauri.studio/v1/api/config#buildconfig.beforedevcommand
