@@ -19,7 +19,7 @@ import { Allele } from 'models/frontend/Allele/Allele';
 import { type AlleleExpression } from 'models/frontend/AlleleExpression/AlleleExpression';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { type Condition } from 'models/frontend/Condition/Condition';
-import { type Phenotype } from 'models/frontend/Phenotype/Phenotype';
+import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
 import { getStrain, insertStrain, updateStrain } from 'api/strain';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import {
@@ -147,7 +147,7 @@ export class Strain {
       filter.exprPhenotypes.size === 0 ||
       [...filter.exprPhenotypes].every((exprPhenName) =>
         this.getExprPhenotypes(parentAlleles, filter.activeConditions)
-          .map((exprPhen) => exprPhen.name)
+          .map((exprPhen) => exprPhen.getUniqueName())
           .includes(exprPhenName)
       );
 
@@ -668,36 +668,35 @@ export class Strain {
         trackedAlleles.set(allele.name, allele);
       }
     });
-    const candidateExprs = [...trackedAlleles.values()]
-      .flatMap((allele) => allele.alleleExpressions)
-      .filter((expr) => {
-        let zygosityMatches: boolean;
-        if (expr.dominance === '5') {
-          zygosityMatches = this.isGeneLofSatisfied(expr);
-        } else {
-          const actualZygosity = this.getZygosity(expr.alleleName);
-          zygosityMatches =
-            expr.dominance === '1or2'
-              ? actualZygosity === '1' || actualZygosity === '2'
-              : expr.dominance === actualZygosity;
-        }
-        if (!zygosityMatches) return false;
-        if (
-          expr.suppressingConditions.some((cond) =>
-            activeConditions.has(cond.name)
-          )
-        ) {
-          return false;
-        }
-        if (
-          expr.requiredConditions.some(
-            (cond) => !activeConditions.has(cond.name)
-          )
-        ) {
-          return false;
-        }
-        return true;
-      });
+    const allTrackedExprs = [...trackedAlleles.values()].flatMap(
+      (allele) => allele.alleleExpressions
+    );
+    const candidateExprs = allTrackedExprs.filter((expr) => {
+      let zygosityMatches: boolean;
+      if (expr.dominance === '5') {
+        zygosityMatches = this.isGeneLofSatisfied(expr);
+      } else {
+        const actualZygosity = this.getZygosity(expr.alleleName);
+        zygosityMatches =
+          expr.dominance === '1or2'
+            ? actualZygosity === '1' || actualZygosity === '2'
+            : expr.dominance === actualZygosity;
+      }
+      if (!zygosityMatches) return false;
+      if (
+        expr.suppressingConditions.some((cond) =>
+          activeConditions.has(cond.name)
+        )
+      ) {
+        return false;
+      }
+      if (
+        expr.requiredConditions.some((cond) => !activeConditions.has(cond.name))
+      ) {
+        return false;
+      }
+      return true;
+    });
 
     const exprsByKey = new Map<string, AlleleExpression[]>();
     const keyToPhenotype = new Map<string, Phenotype>();
@@ -774,6 +773,34 @@ export class Strain {
       if (status.get(key) === 'true') expressed.push(phen);
       else if (status.get(key) === 'unknown') unresolved.push(phen);
     });
+
+    // Wild-type-background default: an allele's expression data models the
+    // mutant side of a phenotype (and conditions/relations that alter it),
+    // not a companion "0 copies" wild-type row for every case - there's no
+    // Basic-tab control that even produces one. So for every phenotype name
+    // this genotype's tracked alleles have an opinion about, if there's no
+    // row anywhere declaring that name's wild-type phenotype at all, and the
+    // mutant side didn't cleanly resolve true, the wild-type phenotype is
+    // the implicit default. This only fills a genuine data gap - it never
+    // overrides a wild-type row that already exists and simply resolved
+    // false on its own merits (e.g. blocked by an inactive condition), and
+    // it never overrides a still-genuinely-unknown (circular) case, which
+    // stays surfaced via `unresolved` instead of being silently guessed.
+    const namesWithWildRow = new Set(
+      allTrackedExprs
+        .filter((expr) => expr.expressingPhenotype.wild)
+        .map((expr) => expr.expressingPhenotype.name)
+    );
+    const phenotypeNames = new Set(
+      allTrackedExprs.map((expr) => expr.expressingPhenotype.name)
+    );
+    phenotypeNames.forEach((name) => {
+      if (namesWithWildRow.has(name)) return;
+      const mutantStatus = status.get(name) ?? 'false';
+      if (mutantStatus === 'true' || mutantStatus === 'unknown') return;
+      expressed.push(new Phenotype({ name, shortName: name, wild: true }));
+    });
+
     return { expressed, unresolved };
   }
 

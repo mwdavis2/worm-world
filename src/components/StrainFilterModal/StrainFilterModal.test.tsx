@@ -184,9 +184,13 @@ describe('StrainFilter', () => {
       new Set(['lin-15B(n765)', 'lin-15B(+)', 'unc-119(ed3)'])
     );
     // n765's own AlleleExpression requires the "25C" condition, which isn't
-    // active here (no activeConditions passed) - only "unc-119" (ed3,
-    // homozygous, no condition requirement) actually expresses.
-    expect(options.exprPhenotypes).toEqual(new Set(['unc-119']));
+    // active here (no activeConditions passed), so lin-15B's mutant row is
+    // blocked - since there's no wild-type row for lin-15B at all, the
+    // wild-type-background default fills the gap. unc-119 (ed3, homozygous,
+    // no condition requirement) expresses normally, as the mutant.
+    expect(options.exprPhenotypes).toEqual(
+      new Set(['unc-119', 'lin-15B (wild)'])
+    );
     expect(options.reqConditions).toEqual(new Set(['25C']));
     expect(options.supConditions).toEqual(new Set<string>());
   });

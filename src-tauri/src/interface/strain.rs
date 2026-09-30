@@ -1,7 +1,8 @@
 use super::{bulk::Bulk, DbError, InnerDbState, SQLITE_BIND_LIMIT};
 use crate::models::{
-    filter::{Count, FilterGroup, FilterQueryBuilder},
+    filter::{Count, Filter, FilterGroup, FilterQueryBuilder},
     strain::{Strain, StrainFieldName},
+    strain_allele::StrainAlleleFieldName,
 };
 
 use anyhow::Result;
@@ -153,6 +154,31 @@ impl InnerDbState {
         &self,
         filter: &FilterGroup<StrainFieldName>,
     ) -> Result<(), DbError> {
+        // strain_alleles has no ON DELETE CASCADE from strains, so a strain
+        // with any alleles attached would otherwise always fail this delete
+        // on the foreign key. Clear just its strain_alleles rows first - the
+        // alleles themselves are untouched and stay reusable by other
+        // strains.
+        let matching_strains = self.get_filtered_strains(filter).await?;
+        if !matching_strains.is_empty() {
+            let strain_alleles_filter = FilterGroup::<StrainAlleleFieldName> {
+                filters: vec![matching_strains
+                    .iter()
+                    .map(|strain| {
+                        (
+                            StrainAlleleFieldName::StrainName,
+                            Filter::Equal(strain.name.clone()),
+                        )
+                    })
+                    .collect()],
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            self.delete_filtered_strain_alleles(&strain_alleles_filter)
+                .await?;
+        }
+
         let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new("DELETE FROM strains");
         filter.add_filtered_query(&mut qb, true, false);
 
@@ -461,6 +487,63 @@ mod test {
         strains = state.get_strains().await?;
 
         assert_eq!(strains.len(), 0);
+
+        Ok(())
+    }
+
+    // Regression test: deleting a strain that still has strain_alleles rows
+    // used to always fail on the strain_alleles.strain_name foreign key,
+    // since nothing cleared those rows first and the schema has no
+    // ON DELETE CASCADE for it. The fix clears just the deleted strain's own
+    // strain_alleles rows - the alleles themselves (and any other strain's
+    // use of them) must be untouched.
+    #[sqlx::test(fixtures("full_db"))]
+    async fn test_delete_filtered_strains_with_alleles_attached(
+        pool: Pool<Sqlite>,
+    ) -> Result<()> {
+        let state = InnerDbState { conn_pool: pool };
+
+        let alleles_before = state.get_alleles().await?;
+        let strain_alleles_before = state.get_strain_alleles().await?;
+        let other_strains_ed3_count = strain_alleles_before
+            .iter()
+            .filter(|sa| sa.allele_name == "ed3" && sa.strain_name != "EG6207")
+            .count();
+        assert!(other_strains_ed3_count > 0);
+
+        let filter = &FilterGroup::<StrainFieldName> {
+            filters: vec![vec![(
+                StrainFieldName::Name,
+                Filter::Equal("EG6207".to_owned()),
+            )]],
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        };
+
+        state.delete_filtered_strains(filter).await?;
+
+        let strains_after = state.get_strains().await?;
+        assert!(!strains_after.iter().any(|s| s.name == "EG6207"));
+
+        let strain_alleles_after = state.get_strain_alleles().await?;
+        assert!(!strain_alleles_after
+            .iter()
+            .any(|sa| sa.strain_name == "EG6207"));
+        // ed3 is still attached to other strains - untouched.
+        assert_eq!(
+            strain_alleles_after
+                .iter()
+                .filter(|sa| sa.allele_name == "ed3" && sa.strain_name != "EG6207")
+                .count(),
+            other_strains_ed3_count
+        );
+
+        // The ed3 allele itself must still exist - this is only a cleanup
+        // of the join-table rows, never a cascade into alleles.
+        let alleles_after = state.get_alleles().await?;
+        assert_eq!(alleles_after.len(), alleles_before.len());
+        assert!(alleles_after.iter().any(|a| a.name == "ed3"));
 
         Ok(())
     }

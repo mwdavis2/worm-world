@@ -20,6 +20,7 @@ import {
 } from 'models/frontend/AlleleExpression/AlleleExpression';
 import { Sex } from 'models/enums';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
+import { StrainFilter } from 'models/frontend/StrainFilter/StrainFilter';
 
 const PRECISION = 6;
 
@@ -674,8 +675,12 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
     ]);
     const het = new Strain({ allelePairs: [mut.toTopHet()] });
     const homo = new Strain({ allelePairs: [mut.toHomo()] });
-    expect(het.getExprPhenotypes().map((x) => x.name)).not.toContain('dumpy');
-    expect(homo.getExprPhenotypes().map((x) => x.name)).toContain('dumpy');
+    expect(het.getExprPhenotypes().map((x) => x.getUniqueName())).not.toContain(
+      'dumpy'
+    );
+    expect(homo.getExprPhenotypes().map((x) => x.getUniqueName())).toContain(
+      'dumpy'
+    );
   });
 
   test('zygosity "1or2" matches either heterozygous or homozygous', () => {
@@ -685,8 +690,12 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
     ]);
     const het = new Strain({ allelePairs: [mut.toTopHet()] });
     const homo = new Strain({ allelePairs: [mut.toHomo()] });
-    expect(het.getExprPhenotypes().map((x) => x.name)).toContain('roller');
-    expect(homo.getExprPhenotypes().map((x) => x.name)).toContain('roller');
+    expect(het.getExprPhenotypes().map((x) => x.getUniqueName())).toContain(
+      'roller'
+    );
+    expect(homo.getExprPhenotypes().map((x) => x.getUniqueName())).toContain(
+      'roller'
+    );
   });
 
   test('a "0" row expresses for a wild-type-homozygous locus tracked via a parent', () => {
@@ -695,9 +704,9 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
       { dominance: '0', expressingPhenotype: p },
     ]);
     const wildStrain = new Strain({ allelePairs: [mut.toWild().toHomo()] });
-    expect(wildStrain.getExprPhenotypes([mut]).map((x) => x.name)).toContain(
-      'non-dumpy'
-    );
+    expect(
+      wildStrain.getExprPhenotypes([mut]).map((x) => x.getUniqueName())
+    ).toContain('non-dumpy (wild)');
   });
 
   test('a "0" row is reachable via a direct parent allele the genotype itself does not carry', () => {
@@ -707,13 +716,13 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
     ]);
     // This genotype has no pair at all for mut4's locus - only a parent does.
     const child = new Strain({ allelePairs: [] });
-    expect(child.getExprPhenotypes([mut]).map((x) => x.name)).toContain(
-      'non-dumpy'
-    );
+    expect(
+      child.getExprPhenotypes([mut]).map((x) => x.getUniqueName())
+    ).toContain('non-dumpy (wild)');
     // Without the parent allele passed in, it's not evaluated at all.
-    expect(child.getExprPhenotypes([]).map((x) => x.name)).not.toContain(
-      'non-dumpy'
-    );
+    expect(
+      child.getExprPhenotypes([]).map((x) => x.getUniqueName())
+    ).not.toContain('non-dumpy (wild)');
   });
 
   test('male hemizygous X-linked copy counts as "2", not "1"', () => {
@@ -727,7 +736,9 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
       sex: Sex.Male,
       allelePairs: [mut.toTopHet()],
     });
-    expect(maleHemi.getExprPhenotypes().map((x) => x.name)).toContain('unc');
+    expect(
+      maleHemi.getExprPhenotypes().map((x) => x.getUniqueName())
+    ).toContain('unc');
   });
 
   test('condition requirement: blocked until the condition is active', () => {
@@ -742,10 +753,12 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
     ]);
     const strain = new Strain({ allelePairs: [mut.toHomo()] });
     expect(
-      strain.getExprPhenotypes([], new Set()).map((x) => x.name)
+      strain.getExprPhenotypes([], new Set()).map((x) => x.getUniqueName())
     ).not.toContain('resistant');
     expect(
-      strain.getExprPhenotypes([], new Set(['tetracycline'])).map((x) => x.name)
+      strain
+        .getExprPhenotypes([], new Set(['tetracycline']))
+        .map((x) => x.getUniqueName())
     ).toContain('resistant');
   });
 
@@ -761,11 +774,13 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
     ]);
     const strain = new Strain({ allelePairs: [mut.toHomo()] });
     expect(
-      strain.getExprPhenotypes([], new Set()).map((x) => x.name)
-    ).toContain('sensitive');
+      strain.getExprPhenotypes([], new Set()).map((x) => x.getUniqueName())
+    ).toContain('sensitive (wild)');
     expect(
-      strain.getExprPhenotypes([], new Set(['37C'])).map((x) => x.name)
-    ).not.toContain('sensitive');
+      strain
+        .getExprPhenotypes([], new Set(['37C']))
+        .map((x) => x.getUniqueName())
+    ).not.toContain('sensitive (wild)');
   });
 
   test('phenotype requirement: B only expresses once A does', () => {
@@ -785,10 +800,12 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
       allelePairs: [alleleA.toHomo(), alleleB.toHomo()],
     });
     const onlyB = new Strain({ allelePairs: [alleleB.toHomo()] });
-    expect(bothExpressed.getExprPhenotypes().map((x) => x.name)).toEqual(
-      expect.arrayContaining(['phenA', 'phenB'])
-    );
-    expect(onlyB.getExprPhenotypes().map((x) => x.name)).not.toContain('phenB');
+    expect(
+      bothExpressed.getExprPhenotypes().map((x) => x.getUniqueName())
+    ).toEqual(expect.arrayContaining(['phenA', 'phenB']));
+    expect(
+      onlyB.getExprPhenotypes().map((x) => x.getUniqueName())
+    ).not.toContain('phenB');
   });
 
   test('phenotype suppression: B is blocked once A expresses', () => {
@@ -808,10 +825,12 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
       allelePairs: [alleleA.toHomo(), alleleB.toHomo()],
     });
     const onlyB = new Strain({ allelePairs: [alleleB.toHomo()] });
-    expect(bothPresent.getExprPhenotypes().map((x) => x.name)).not.toContain(
+    expect(
+      bothPresent.getExprPhenotypes().map((x) => x.getUniqueName())
+    ).not.toContain('phenB2');
+    expect(onlyB.getExprPhenotypes().map((x) => x.getUniqueName())).toContain(
       'phenB2'
     );
-    expect(onlyB.getExprPhenotypes().map((x) => x.name)).toContain('phenB2');
   });
 
   test('multi-level dependency chain resolves in dependency order (C requires B requires A)', () => {
@@ -838,7 +857,7 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
     const allThree = new Strain({
       allelePairs: [alleleA.toHomo(), alleleB.toHomo(), alleleC.toHomo()],
     });
-    const namesAll = allThree.getExprPhenotypes().map((x) => x.name);
+    const namesAll = allThree.getExprPhenotypes().map((x) => x.getUniqueName());
     expect(namesAll).toEqual(
       expect.arrayContaining(['phenA3', 'phenB3', 'phenC3'])
     );
@@ -847,7 +866,9 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
     const missingA = new Strain({
       allelePairs: [alleleB.toHomo(), alleleC.toHomo()],
     });
-    const namesMissingA = missingA.getExprPhenotypes().map((x) => x.name);
+    const namesMissingA = missingA
+      .getExprPhenotypes()
+      .map((x) => x.getUniqueName());
     expect(namesMissingA).not.toContain('phenB3');
     expect(namesMissingA).not.toContain('phenC3');
   });
@@ -872,12 +893,12 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
     const strain = new Strain({
       allelePairs: [alleleA.toHomo(), alleleB.toHomo()],
     });
-    const names = strain.getExprPhenotypes().map((x) => x.name);
+    const names = strain.getExprPhenotypes().map((x) => x.getUniqueName());
     expect(names).not.toContain('cycleA');
     expect(names).not.toContain('cycleB');
-    expect(strain.getUnresolvedExprPhenotypes().map((x) => x.name)).toEqual(
-      expect.arrayContaining(['cycleA', 'cycleB'])
-    );
+    expect(
+      strain.getUnresolvedExprPhenotypes().map((x) => x.getUniqueName())
+    ).toEqual(expect.arrayContaining(['cycleA', 'cycleB']));
   });
 
   test('a require/suppress cycle (A requires B, B suppressed by A) resolves as unknown, not order-dependent', () => {
@@ -909,12 +930,14 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
       allelePairs: [alleleB.toHomo(), alleleA.toHomo()],
     });
     [strainAB, strainBA].forEach((strain) => {
-      const expressedNames = strain.getExprPhenotypes().map((x) => x.name);
+      const expressedNames = strain
+        .getExprPhenotypes()
+        .map((x) => x.getUniqueName());
       expect(expressedNames).not.toContain('cycleA2');
       expect(expressedNames).not.toContain('cycleB2');
       const unresolvedNames = strain
         .getUnresolvedExprPhenotypes()
-        .map((x) => x.name);
+        .map((x) => x.getUniqueName());
       expect(unresolvedNames).toEqual(
         expect.arrayContaining(['cycleA2', 'cycleB2'])
       );
@@ -932,11 +955,11 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
       },
     ]);
     const strain = new Strain({ allelePairs: [allele.toHomo()] });
-    expect(strain.getExprPhenotypes().map((x) => x.name)).not.toContain(
-      'realPhen'
-    );
     expect(
-      strain.getUnresolvedExprPhenotypes().map((x) => x.name)
+      strain.getExprPhenotypes().map((x) => x.getUniqueName())
+    ).not.toContain('realPhen');
+    expect(
+      strain.getUnresolvedExprPhenotypes().map((x) => x.getUniqueName())
     ).not.toContain('realPhen');
   });
 
@@ -960,7 +983,7 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
       allelePairs: [alleleB.toHomo(), alleleA.toHomo()],
     });
     [strainAB, strainBA].forEach((strain) => {
-      const names = strain.getExprPhenotypes().map((x) => x.name);
+      const names = strain.getExprPhenotypes().map((x) => x.getUniqueName());
       expect(names).toContain('orderA');
       expect(names).not.toContain('orderB');
       expect(strain.getUnresolvedExprPhenotypes()).toHaveLength(0);
@@ -1018,7 +1041,7 @@ describe('getExprPhenotypes() - gene-level "2 copies (lof)" (Zygosity \'5\')', (
     const strain = new Strain({
       allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
     });
-    const names = strain.getExprPhenotypes().map((x) => x.name);
+    const names = strain.getExprPhenotypes().map((x) => x.getUniqueName());
     expect(names).toContain('phenX1');
     expect(names).toContain('phenY1');
   });
@@ -1035,7 +1058,7 @@ describe('getExprPhenotypes() - gene-level "2 copies (lof)" (Zygosity \'5\')', (
     const strain = new Strain({
       allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
     });
-    const names = strain.getExprPhenotypes().map((x) => x.name);
+    const names = strain.getExprPhenotypes().map((x) => x.getUniqueName());
     expect(names).not.toContain('phenX');
     expect(names).not.toContain('phenY');
   });
@@ -1051,7 +1074,9 @@ describe('getExprPhenotypes() - gene-level "2 copies (lof)" (Zygosity \'5\')', (
     const strain = new Strain({
       allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
     });
-    expect(strain.getExprPhenotypes().map((x) => x.name)).toContain('Unc');
+    expect(strain.getExprPhenotypes().map((x) => x.getUniqueName())).toContain(
+      'Unc'
+    );
   });
 
   test('a "5" row still resolves for a literal homozygote of the same allele', () => {
@@ -1060,7 +1085,9 @@ describe('getExprPhenotypes() - gene-level "2 copies (lof)" (Zygosity \'5\')', (
       { dominance: '5', expressingPhenotype: p },
     ]);
     const strain = new Strain({ allelePairs: [allele.toHomo()] });
-    expect(strain.getExprPhenotypes().map((x) => x.name)).toContain('Unc2');
+    expect(strain.getExprPhenotypes().map((x) => x.getUniqueName())).toContain(
+      'Unc2'
+    );
   });
 
   test('a "5" row does not resolve if the trans partner has no "5" row at all', () => {
@@ -1074,7 +1101,9 @@ describe('getExprPhenotypes() - gene-level "2 copies (lof)" (Zygosity \'5\')', (
     const strain = new Strain({
       allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
     });
-    expect(strain.getExprPhenotypes().map((x) => x.name)).not.toContain('Unc3');
+    expect(
+      strain.getExprPhenotypes().map((x) => x.getUniqueName())
+    ).not.toContain('Unc3');
   });
 
   test('a "5" row does not resolve if the trans partner\'s "5" row is for a different phenotype', () => {
@@ -1089,7 +1118,7 @@ describe('getExprPhenotypes() - gene-level "2 copies (lof)" (Zygosity \'5\')', (
     const strain = new Strain({
       allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
     });
-    const names = strain.getExprPhenotypes().map((x) => x.name);
+    const names = strain.getExprPhenotypes().map((x) => x.getUniqueName());
     expect(names).not.toContain('UncP');
     expect(names).not.toContain('UncQ');
   });
@@ -1100,6 +1129,136 @@ describe('getExprPhenotypes() - gene-level "2 copies (lof)" (Zygosity \'5\')', (
       { dominance: '5', expressingPhenotype: p },
     ]);
     const strain = new Strain({ allelePairs: [allele.toTopHet()] });
-    expect(strain.getExprPhenotypes().map((x) => x.name)).not.toContain('Unc4');
+    expect(
+      strain.getExprPhenotypes().map((x) => x.getUniqueName())
+    ).not.toContain('Unc4');
+  });
+});
+
+describe('getExprPhenotypes() - wild-type-background default for a recessive with no "0 copies" row', () => {
+  const phen = (name: string, wild: boolean): Phenotype =>
+    new Phenotype({ name, shortName: name, wild });
+
+  const alleleWithExpr = (
+    name: string,
+    exprs: Array<Partial<AlleleExpressionState> & { dominance: Zygosity }>
+  ): Allele => {
+    const allele = new Allele({ name, variation: new Variation({ name }) });
+    allele.alleleExpressions = exprs.map(
+      (e) =>
+        new AlleleExpression({
+          alleleName: name,
+          expressingPhenotype: phen('unnamed', false),
+          requiredPhenotypes: [],
+          suppressingPhenotypes: [],
+          requiredConditions: [],
+          suppressingConditions: [],
+          ...e,
+        })
+    );
+    return allele;
+  };
+
+  test('heterozygous and wild-homozygous default to the wild phenotype when only a "2 copies" mutant row exists', () => {
+    const p = phen('unc-119', false);
+    const mut = alleleWithExpr('ed3-like', [
+      { dominance: '2', expressingPhenotype: p },
+    ]);
+    const het = new Strain({ allelePairs: [mut.toTopHet()] });
+    const homo = new Strain({ allelePairs: [mut.toHomo()] });
+
+    const hetNames = het.getExprPhenotypes().map((x) => x.getUniqueName());
+    expect(hetNames).toContain('unc-119 (wild)');
+    expect(hetNames).not.toContain('unc-119');
+
+    const homoNames = homo.getExprPhenotypes().map((x) => x.getUniqueName());
+    expect(homoNames).toContain('unc-119');
+    expect(homoNames).not.toContain('unc-119 (wild)');
+  });
+
+  test('does not override an explicit wild-type row that resolved false on its own (e.g. blocked by an inactive condition)', () => {
+    const wildPhen = phen('sensitive', true);
+    const tet = new Condition({ name: 'tetracycline' });
+    const mut = alleleWithExpr('drugMarker', [
+      {
+        dominance: '2',
+        expressingPhenotype: wildPhen,
+        requiredConditions: [tet],
+      },
+    ]);
+    const strain = new Strain({ allelePairs: [mut.toHomo()] });
+    const names = strain
+      .getExprPhenotypes([], new Set())
+      .map((x) => x.getUniqueName());
+    // The explicit wild row exists but is blocked (condition inactive) -
+    // the default must not paper over that with a duplicate synthesized
+    // "sensitive (wild)" entry.
+    expect(names).not.toContain('sensitive (wild)');
+  });
+
+  test('does not default a phenotype whose mutant row is still genuinely unresolved (circular)', () => {
+    const phenA = phen('cycleDefaultA', false);
+    const phenB = phen('cycleDefaultB', false);
+    const alleleA = alleleWithExpr('cycleDefaultAlleleA', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenA,
+        requiredPhenotypes: [phenB],
+      },
+    ]);
+    const alleleB = alleleWithExpr('cycleDefaultAlleleB', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenB,
+        requiredPhenotypes: [phenA],
+      },
+    ]);
+    const strain = new Strain({
+      allelePairs: [alleleA.toHomo(), alleleB.toHomo()],
+    });
+    const names = strain.getExprPhenotypes().map((x) => x.getUniqueName());
+    expect(names).not.toContain('cycleDefaultA (wild)');
+    expect(names).not.toContain('cycleDefaultB (wild)');
+    const unresolvedNames = strain
+      .getUnresolvedExprPhenotypes()
+      .map((x) => x.getUniqueName());
+    expect(unresolvedNames).toEqual(
+      expect.arrayContaining(['cycleDefaultA', 'cycleDefaultB'])
+    );
+  });
+});
+
+describe('passesFilter() - exprPhenotypes', () => {
+  const phen = (name: string, wild: boolean): Phenotype =>
+    new Phenotype({ name, shortName: name, wild });
+
+  test('distinguishes a mutant phenotype filter from its wild-type counterpart, not just by shared name', () => {
+    const wildPhen = phen('unc-119', true);
+    const allele = new Allele({
+      name: 'rescueArray',
+      variation: new Variation({ name: 'rescueArray' }),
+    });
+    allele.alleleExpressions = [
+      new AlleleExpression({
+        alleleName: 'rescueArray',
+        expressingPhenotype: wildPhen,
+        requiredPhenotypes: [],
+        suppressingPhenotypes: [],
+        requiredConditions: [],
+        suppressingConditions: [],
+        dominance: '2',
+      }),
+    ];
+    // Expresses only "unc-119 (wild)" - never the plain mutant "unc-119".
+    const strain = new Strain({ allelePairs: [allele.toHomo()] });
+
+    const filterForWild = new StrainFilter({
+      exprPhenotypes: new Set(['unc-119 (wild)']),
+    });
+    const filterForMutant = new StrainFilter({
+      exprPhenotypes: new Set(['unc-119']),
+    });
+    expect(strain.passesFilter(filterForWild)).toBe(true);
+    expect(strain.passesFilter(filterForMutant)).toBe(false);
   });
 });

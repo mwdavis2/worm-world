@@ -107,34 +107,36 @@ const PhenotypeRow = (props: PhenotypeRowProps): React.JSX.Element => {
           }}
         />
       </label>
-      <select
-        className='select select-bordered select-sm'
-        value={row.relationship ?? ''}
-        onChange={(e) => {
-          const value = e.target.value;
-          props.onChange({
-            ...row,
-            relationship:
-              value === '' ? undefined : (value as PhenotypeRelationship),
-          });
-        }}
-      >
-        <option value=''>—</option>
-        {RELATIONSHIP_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <input
-        type='text'
-        placeholder='Other condition or phenotype'
-        className='input input-bordered input-sm w-40'
-        value={row.relationshipText}
-        onChange={(e) => {
-          props.onChange({ ...row, relationshipText: e.target.value });
-        }}
-      />
+      <div className='flex items-center gap-2'>
+        <select
+          className='select select-bordered select-sm'
+          value={row.relationship ?? ''}
+          onChange={(e) => {
+            const value = e.target.value;
+            props.onChange({
+              ...row,
+              relationship:
+                value === '' ? undefined : (value as PhenotypeRelationship),
+            });
+          }}
+        >
+          <option value=''>—</option>
+          {RELATIONSHIP_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <input
+          type='text'
+          placeholder='Other condition or phenotype'
+          className='input input-bordered input-sm w-40'
+          value={row.relationshipText}
+          onChange={(e) => {
+            props.onChange({ ...row, relationshipText: e.target.value });
+          }}
+        />
+      </div>
       <button
         type='button'
         aria-label='Delete phenotype row'
