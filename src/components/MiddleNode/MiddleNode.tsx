@@ -17,29 +17,54 @@ export interface MiddleNodeProps {
 
 const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
   return (
-    <div className='middle-node group'>
-      {props.type === NodeType.Self ? (
-        <Handle key='top' id='top' type='target' position={Position.Top} />
-      ) : (
-        <>
-          <Handle key='left' id='left' type='target' position={Position.Left} />
-          <Handle
-            key='right'
-            id='right'
-            type='target'
-            position={Position.Right}
-          />
-        </>
-      )}
-      <Handle
-        key='bottom'
-        id='bottom'
-        type='source'
-        position={Position.Bottom}
-      />
+    // Sized to span both the circle and the icons above/right of it, so the
+    // hoverable area that keeps the icons visible has no gap between them -
+    // previously this wrapper's own box was only as big as the circle (the
+    // icons are absolutely positioned outside it), so moving the mouse from
+    // the circle toward an icon crossed space outside the hover target and
+    // hid it again before it could be reached. The circle itself stays
+    // pinned at its original visual position (bottom-left of this box).
+    <div className='group relative h-20 w-36'>
+      <div className='middle-node absolute bottom-0 left-0'>
+        {props.type === NodeType.Self ? (
+          <Handle key='top' id='top' type='target' position={Position.Top} />
+        ) : (
+          <>
+            <Handle
+              key='left'
+              id='left'
+              type='target'
+              position={Position.Left}
+            />
+            <Handle
+              key='right'
+              id='right'
+              type='target'
+              position={Position.Right}
+            />
+          </>
+        )}
+        <Handle
+          key='bottom'
+          id='bottom'
+          type='source'
+          position={Position.Bottom}
+        />
+        <div
+          className={`h-16 w-16 rounded-full p-4 transition hover:cursor-grab ${
+            props.type === NodeType.Self ? 'bg-secondary' : 'bg-primary'
+          }`}
+        >
+          {props.type === NodeType.Self ? (
+            <SelfIcon className='h-8 w-8 text-3xl text-primary-content' />
+          ) : (
+            <CloseIcon className='h-8 w-8 text-3xl text-primary-content' />
+          )}
+        </div>
+      </div>
       <label
         htmlFor={`filtered-out-modal-${props.id}`}
-        className={`export-hide-icon absolute -top-4 left-24 hover:cursor-pointer ${
+        className={`export-hide-icon absolute top-0 left-24 hover:cursor-pointer ${
           props.data.isEmpty() ? 'invisible' : ''
         }`}
       >
@@ -47,7 +72,7 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
       </label>
       <label
         htmlFor={`strain-filter-modal-${props.id}`}
-        className={`export-hide-icon absolute -top-4 left-16 hover:cursor-pointer ${
+        className={`export-hide-icon absolute top-0 left-16 hover:cursor-pointer ${
           props.data.isEmpty() ? 'invisible group-hover:visible' : ''
         }`}
       >
@@ -57,18 +82,6 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
           <FilterIcon size='30' />
         )}
       </label>
-
-      <div
-        className={`h-16 w-16 rounded-full p-4 transition hover:cursor-grab ${
-          props.type === NodeType.Self ? 'bg-secondary' : 'bg-primary'
-        }`}
-      >
-        {props.type === NodeType.Self ? (
-          <SelfIcon className='h-8 w-8 text-3xl text-primary-content' />
-        ) : (
-          <CloseIcon className='h-8 w-8 text-3xl text-primary-content' />
-        )}
-      </div>
     </div>
   );
 };
