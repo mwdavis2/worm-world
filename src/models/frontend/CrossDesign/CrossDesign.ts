@@ -304,11 +304,17 @@ export default class CrossDesign {
       (parent: AncestorTree) => this.getTaskTree(parent, task.id) ?? []
     );
 
+    const directParentAlleles = ancestorTree.parents.flatMap((parent) =>
+      parent.strain.getNonWildAlleles()
+    );
     task.dueDate =
       parents[0] === undefined
         ? new Date()
         : moment(parents[0]?.task.dueDate)
-            .add(ancestorTree.strain.getMaturationDays(), 'days')
+            .add(
+              ancestorTree.strain.getMaturationDays(directParentAlleles),
+              'days'
+            )
             .toDate();
 
     return {

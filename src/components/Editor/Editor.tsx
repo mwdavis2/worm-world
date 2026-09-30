@@ -502,10 +502,18 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     const childNodes = nodes.filter(
       (node) => node.parentNode === update.filterId
     );
+    const middleNodeForParents = reactFlowInstance.getNode(update.filterId);
+    const parentAlleles =
+      middleNodeForParents === undefined
+        ? []
+        : getIncomers(middleNodeForParents, nodes, edges).flatMap(
+            (parent: Node<Strain>) => parent.data.getNonWildAlleles()
+          );
 
     childNodes.forEach((node: Node<Strain>) => {
       node.hidden =
-        !node.data.passesFilter(filter) || filter.hiddenNodes.has(node.id);
+        !node.data.passesFilter(filter, parentAlleles) ||
+        filter.hiddenNodes.has(node.id);
       hideConnectedEdges(node, node.hidden);
     });
     CrossDesign.applyFilteredProbabilities(childNodes);
@@ -831,6 +839,9 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                 filterId={middleNode.id}
                 childNodes={nodes.filter(
                   (node) => node.parentNode === middleNode.id
+                )}
+                parentAlleles={getIncomers(middleNode, nodes, edges).flatMap(
+                  (parent: Node<Strain>) => parent.data.getNonWildAlleles()
                 )}
                 filter={middleNode.data}
                 updateFilter={updateFilter}

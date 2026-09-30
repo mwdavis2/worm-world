@@ -99,7 +99,10 @@ describe('StrainFilter', () => {
     expect(options.alleleNames).toEqual(
       new Set(['lin-15B(n765)', 'lin-15B(+)', 'unc-119(ed3)'])
     );
-    expect(options.exprPhenotypes).toEqual(new Set(['unc-119', 'lin-15B']));
+    // n765's own AlleleExpression requires the "25C" condition, which isn't
+    // active here (no activeConditions passed) - only "unc-119" (ed3,
+    // homozygous, no condition requirement) actually expresses.
+    expect(options.exprPhenotypes).toEqual(new Set(['unc-119']));
     expect(options.reqConditions).toEqual(new Set(['25C']));
     expect(options.supConditions).toEqual(new Set<string>());
   });
@@ -124,7 +127,7 @@ describe('StrainFilter', () => {
     expect(options.alleleNames).toEqual(
       new Set(['lin-15B(n765)', 'lin-15B(+)', 'unc-119(ed3)'])
     );
-    expect(options.exprPhenotypes).toEqual(new Set(['unc-119', 'lin-15B']));
+    expect(options.exprPhenotypes).toEqual(new Set(['unc-119']));
     expect(options.reqConditions).toEqual(new Set(['25C']));
     expect(options.supConditions).toEqual(new Set<string>());
   });

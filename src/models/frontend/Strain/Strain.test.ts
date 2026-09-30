@@ -1,5 +1,6 @@
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import * as alleles from 'models/frontend/Allele/Allele.mock';
+import { Allele } from 'models/frontend/Allele/Allele';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { Strain, type Gamete } from 'models/frontend/Strain/Strain';
 import * as strains from 'models/frontend/Strain/Strain.mock';
@@ -8,6 +9,16 @@ import {
   ChromosomePair,
   chromsEqual,
 } from 'models/frontend/ChromosomePair/ChromosomePair';
+import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
+import { Condition } from 'models/frontend/Condition/Condition';
+import { Variation } from 'models/frontend/Variation/Variation';
+import {
+  AlleleExpression,
+  type AlleleExpressionState,
+  type Zygosity,
+} from 'models/frontend/AlleleExpression/AlleleExpression';
+import { Sex } from 'models/enums';
+import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 
 const PRECISION = 6;
 
@@ -623,5 +634,335 @@ describe('Cross algorithm', () => {
 
     testStrains(selfCrossStrains, strains.wildToWildCross);
     testStrains(wildToWildCrossStrains, strains.wildToWildCross);
+  });
+});
+
+describe('getExprPhenotypes() - backlog #11 second half', () => {
+  const phen = (name: string, wild: boolean): Phenotype =>
+    new Phenotype({ name, shortName: name, wild });
+  const cond = (name: string): Condition => new Condition({ name });
+
+  const alleleWithExpr = (
+    name: string,
+    exprs: Array<Partial<AlleleExpressionState> & { dominance: Zygosity }>,
+    variation: Partial<{ chromosome: ChromosomeName }> = {}
+  ): Allele => {
+    const allele = new Allele({
+      name,
+      variation: new Variation({ name, ...variation }),
+    });
+    allele.alleleExpressions = exprs.map(
+      (e) =>
+        new AlleleExpression({
+          alleleName: name,
+          expressingPhenotype: phen('unnamed', false),
+          requiredPhenotypes: [],
+          suppressingPhenotypes: [],
+          requiredConditions: [],
+          suppressingConditions: [],
+          ...e,
+        })
+    );
+    return allele;
+  };
+
+  test('zygosity exact match: a "2" row only expresses homozygous', () => {
+    const p = phen('dumpy', false);
+    const mut = alleleWithExpr('mut1', [
+      { dominance: '2', expressingPhenotype: p },
+    ]);
+    const het = new Strain({ allelePairs: [mut.toTopHet()] });
+    const homo = new Strain({ allelePairs: [mut.toHomo()] });
+    expect(het.getExprPhenotypes().map((x) => x.name)).not.toContain('dumpy');
+    expect(homo.getExprPhenotypes().map((x) => x.name)).toContain('dumpy');
+  });
+
+  test('zygosity "1or2" matches either heterozygous or homozygous', () => {
+    const p = phen('roller', false);
+    const mut = alleleWithExpr('mut2', [
+      { dominance: '1or2', expressingPhenotype: p },
+    ]);
+    const het = new Strain({ allelePairs: [mut.toTopHet()] });
+    const homo = new Strain({ allelePairs: [mut.toHomo()] });
+    expect(het.getExprPhenotypes().map((x) => x.name)).toContain('roller');
+    expect(homo.getExprPhenotypes().map((x) => x.name)).toContain('roller');
+  });
+
+  test('a "0" row expresses for a wild-type-homozygous locus tracked via a parent', () => {
+    const p = phen('non-dumpy', true);
+    const mut = alleleWithExpr('mut3', [
+      { dominance: '0', expressingPhenotype: p },
+    ]);
+    const wildStrain = new Strain({ allelePairs: [mut.toWild().toHomo()] });
+    expect(wildStrain.getExprPhenotypes([mut]).map((x) => x.name)).toContain(
+      'non-dumpy'
+    );
+  });
+
+  test('a "0" row is reachable via a direct parent allele the genotype itself does not carry', () => {
+    const p = phen('non-dumpy', true);
+    const mut = alleleWithExpr('mut4', [
+      { dominance: '0', expressingPhenotype: p },
+    ]);
+    // This genotype has no pair at all for mut4's locus - only a parent does.
+    const child = new Strain({ allelePairs: [] });
+    expect(child.getExprPhenotypes([mut]).map((x) => x.name)).toContain(
+      'non-dumpy'
+    );
+    // Without the parent allele passed in, it's not evaluated at all.
+    expect(child.getExprPhenotypes([]).map((x) => x.name)).not.toContain(
+      'non-dumpy'
+    );
+  });
+
+  test('male hemizygous X-linked copy counts as "2", not "1"', () => {
+    const p = phen('unc', false);
+    const mut = alleleWithExpr(
+      'mut5',
+      [{ dominance: '2', expressingPhenotype: p }],
+      { chromosome: 'X' }
+    );
+    const maleHemi = new Strain({
+      sex: Sex.Male,
+      allelePairs: [mut.toTopHet()],
+    });
+    expect(maleHemi.getExprPhenotypes().map((x) => x.name)).toContain('unc');
+  });
+
+  test('condition requirement: blocked until the condition is active', () => {
+    const p = phen('resistant', false);
+    const tet = cond('tetracycline');
+    const mut = alleleWithExpr('mut6', [
+      {
+        dominance: '2',
+        expressingPhenotype: p,
+        requiredConditions: [tet],
+      },
+    ]);
+    const strain = new Strain({ allelePairs: [mut.toHomo()] });
+    expect(
+      strain.getExprPhenotypes([], new Set()).map((x) => x.name)
+    ).not.toContain('resistant');
+    expect(
+      strain.getExprPhenotypes([], new Set(['tetracycline'])).map((x) => x.name)
+    ).toContain('resistant');
+  });
+
+  test('condition suppression: blocked once the condition is active', () => {
+    const p = phen('sensitive', true);
+    const heat = cond('37C');
+    const mut = alleleWithExpr('mut7', [
+      {
+        dominance: '2',
+        expressingPhenotype: p,
+        suppressingConditions: [heat],
+      },
+    ]);
+    const strain = new Strain({ allelePairs: [mut.toHomo()] });
+    expect(
+      strain.getExprPhenotypes([], new Set()).map((x) => x.name)
+    ).toContain('sensitive');
+    expect(
+      strain.getExprPhenotypes([], new Set(['37C'])).map((x) => x.name)
+    ).not.toContain('sensitive');
+  });
+
+  test('phenotype requirement: B only expresses once A does', () => {
+    const phenA = phen('phenA', false);
+    const phenB = phen('phenB', false);
+    const alleleA = alleleWithExpr('alleleA', [
+      { dominance: '2', expressingPhenotype: phenA },
+    ]);
+    const alleleB = alleleWithExpr('alleleB', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenB,
+        requiredPhenotypes: [phenA],
+      },
+    ]);
+    const bothExpressed = new Strain({
+      allelePairs: [alleleA.toHomo(), alleleB.toHomo()],
+    });
+    const onlyB = new Strain({ allelePairs: [alleleB.toHomo()] });
+    expect(bothExpressed.getExprPhenotypes().map((x) => x.name)).toEqual(
+      expect.arrayContaining(['phenA', 'phenB'])
+    );
+    expect(onlyB.getExprPhenotypes().map((x) => x.name)).not.toContain('phenB');
+  });
+
+  test('phenotype suppression: B is blocked once A expresses', () => {
+    const phenA = phen('phenA2', false);
+    const phenB = phen('phenB2', false);
+    const alleleA = alleleWithExpr('alleleA2', [
+      { dominance: '2', expressingPhenotype: phenA },
+    ]);
+    const alleleB = alleleWithExpr('alleleB2', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenB,
+        suppressingPhenotypes: [phenA],
+      },
+    ]);
+    const bothPresent = new Strain({
+      allelePairs: [alleleA.toHomo(), alleleB.toHomo()],
+    });
+    const onlyB = new Strain({ allelePairs: [alleleB.toHomo()] });
+    expect(bothPresent.getExprPhenotypes().map((x) => x.name)).not.toContain(
+      'phenB2'
+    );
+    expect(onlyB.getExprPhenotypes().map((x) => x.name)).toContain('phenB2');
+  });
+
+  test('multi-level dependency chain resolves in dependency order (C requires B requires A)', () => {
+    const phenA = phen('phenA3', false);
+    const phenB = phen('phenB3', false);
+    const phenC = phen('phenC3', false);
+    const alleleA = alleleWithExpr('alleleA3', [
+      { dominance: '2', expressingPhenotype: phenA },
+    ]);
+    const alleleB = alleleWithExpr('alleleB3', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenB,
+        requiredPhenotypes: [phenA],
+      },
+    ]);
+    const alleleC = alleleWithExpr('alleleC3', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenC,
+        requiredPhenotypes: [phenB],
+      },
+    ]);
+    const allThree = new Strain({
+      allelePairs: [alleleA.toHomo(), alleleB.toHomo(), alleleC.toHomo()],
+    });
+    const namesAll = allThree.getExprPhenotypes().map((x) => x.name);
+    expect(namesAll).toEqual(
+      expect.arrayContaining(['phenA3', 'phenB3', 'phenC3'])
+    );
+
+    // Without A, neither B nor C can ever resolve true.
+    const missingA = new Strain({
+      allelePairs: [alleleB.toHomo(), alleleC.toHomo()],
+    });
+    const namesMissingA = missingA.getExprPhenotypes().map((x) => x.name);
+    expect(namesMissingA).not.toContain('phenB3');
+    expect(namesMissingA).not.toContain('phenC3');
+  });
+
+  test('a circular phenotype dependency resolves to neither expressed, without hanging', () => {
+    const phenA = phen('cycleA', false);
+    const phenB = phen('cycleB', false);
+    const alleleA = alleleWithExpr('cycleAlleleA', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenA,
+        requiredPhenotypes: [phenB],
+      },
+    ]);
+    const alleleB = alleleWithExpr('cycleAlleleB', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenB,
+        requiredPhenotypes: [phenA],
+      },
+    ]);
+    const strain = new Strain({
+      allelePairs: [alleleA.toHomo(), alleleB.toHomo()],
+    });
+    const names = strain.getExprPhenotypes().map((x) => x.name);
+    expect(names).not.toContain('cycleA');
+    expect(names).not.toContain('cycleB');
+    expect(strain.getUnresolvedExprPhenotypes().map((x) => x.name)).toEqual(
+      expect.arrayContaining(['cycleA', 'cycleB'])
+    );
+  });
+
+  test('a require/suppress cycle (A requires B, B suppressed by A) resolves as unknown, not order-dependent', () => {
+    const phenA = phen('cycleA2', false);
+    const phenB = phen('cycleB2', false);
+    const alleleA = alleleWithExpr('cycleAlleleA2', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenA,
+        requiredPhenotypes: [phenB],
+      },
+    ]);
+    const alleleB = alleleWithExpr('cycleAlleleB2', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenB,
+        suppressingPhenotypes: [phenA],
+      },
+    ]);
+    // Build the strain with alleles in both orders - since alleleExpressions
+    // are iterated via a Map of tracked alleles, insertion order could
+    // previously flip which phenotype "won" a race to be marked expressed
+    // first. Both orders must agree: neither phenotype is established true
+    // or false - both stay genuinely unknown.
+    const strainAB = new Strain({
+      allelePairs: [alleleA.toHomo(), alleleB.toHomo()],
+    });
+    const strainBA = new Strain({
+      allelePairs: [alleleB.toHomo(), alleleA.toHomo()],
+    });
+    [strainAB, strainBA].forEach((strain) => {
+      const expressedNames = strain.getExprPhenotypes().map((x) => x.name);
+      expect(expressedNames).not.toContain('cycleA2');
+      expect(expressedNames).not.toContain('cycleB2');
+      const unresolvedNames = strain
+        .getUnresolvedExprPhenotypes()
+        .map((x) => x.name);
+      expect(unresolvedNames).toEqual(
+        expect.arrayContaining(['cycleA2', 'cycleB2'])
+      );
+    });
+  });
+
+  test('a phenotype referenced only as a conditional, with no expressing row, resolves false (not unknown)', () => {
+    const phantom = phen('phantom', false);
+    const real = phen('realPhen', false);
+    const allele = alleleWithExpr('alleleReq', [
+      {
+        dominance: '2',
+        expressingPhenotype: real,
+        requiredPhenotypes: [phantom],
+      },
+    ]);
+    const strain = new Strain({ allelePairs: [allele.toHomo()] });
+    expect(strain.getExprPhenotypes().map((x) => x.name)).not.toContain(
+      'realPhen'
+    );
+    expect(
+      strain.getUnresolvedExprPhenotypes().map((x) => x.name)
+    ).not.toContain('realPhen');
+  });
+
+  test('non-circular dependency chains resolve correctly regardless of allele order (order independence)', () => {
+    const phenA = phen('orderA', false);
+    const phenB = phen('orderB', false);
+    const alleleA = alleleWithExpr('orderAlleleA', [
+      { dominance: '2', expressingPhenotype: phenA },
+    ]);
+    const alleleB = alleleWithExpr('orderAlleleB', [
+      {
+        dominance: '2',
+        expressingPhenotype: phenB,
+        suppressingPhenotypes: [phenA],
+      },
+    ]);
+    const strainAB = new Strain({
+      allelePairs: [alleleA.toHomo(), alleleB.toHomo()],
+    });
+    const strainBA = new Strain({
+      allelePairs: [alleleB.toHomo(), alleleA.toHomo()],
+    });
+    [strainAB, strainBA].forEach((strain) => {
+      const names = strain.getExprPhenotypes().map((x) => x.name);
+      expect(names).toContain('orderA');
+      expect(names).not.toContain('orderB');
+      expect(strain.getUnresolvedExprPhenotypes()).toHaveLength(0);
+    });
   });
 });

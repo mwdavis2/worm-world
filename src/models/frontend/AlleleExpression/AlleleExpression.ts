@@ -7,9 +7,46 @@ import {
   plainToInstance,
 } from 'class-transformer';
 import { type db_AlleleExpression } from 'models/db/db_AlleleExpression';
-import { type Dominance } from 'models/enums';
 import { Condition } from 'models/frontend/Condition/Condition';
 import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
+
+/**
+ * Zygosity a genotype needs at this allele's locus for this row's phenotype
+ * to be expressed - copies of the *non-wild* allele, e.g. for `ed3`:
+ * '0' = +/+ (wild-type homozygous, allele absent), '1' = ed3/+ (het),
+ * '2' = ed3/ed3 (homozygous mutant), '1or2' = either (old "Dominant").
+ * Stored on disk as `allele_exprs.dominance`, a plain 0-3 integer (the
+ * column name/type predate this repurposing - `AlleleExpression.dominance`
+ * is the correctly-typed read/write boundary for it, see
+ * `dominanceToZygosity`/`zygosityToDominance` below).
+ */
+export type Zygosity = '0' | '1' | '2' | '1or2';
+
+export const zygosityToDominance = (zygosity: Zygosity): number => {
+  switch (zygosity) {
+    case '2':
+      return 0;
+    case '1':
+      return 1;
+    case '1or2':
+      return 2;
+    case '0':
+      return 3;
+  }
+};
+
+export const dominanceToZygosity = (dominance: number): Zygosity => {
+  switch (dominance) {
+    case 0:
+      return '2';
+    case 1:
+      return '1';
+    case 2:
+      return '1or2';
+    default:
+      return '0';
+  }
+};
 
 export interface AlleleExpressionState {
   alleleName: string;
@@ -18,7 +55,7 @@ export interface AlleleExpressionState {
   suppressingPhenotypes: Phenotype[];
   requiredConditions: Condition[];
   suppressingConditions: Condition[];
-  dominance: Dominance;
+  dominance: Zygosity;
 }
 
 export class AlleleExpression {
@@ -43,8 +80,8 @@ export class AlleleExpression {
   @Type(() => Condition)
   suppressingConditions: Condition[] = [];
 
-  /** Recessive, SemiDominant, or Dominant */
-  dominance: Dominance;
+  /** Zygosity required for this row's phenotype to be expressed - see `Zygosity`. */
+  dominance: Zygosity;
 
   constructor(fields: AlleleExpressionState) {
     this.expressingPhenotype =
@@ -105,7 +142,7 @@ export class AlleleExpression {
           false
         )
       ).map((sup) => Condition.createFromRecord(sup)),
-      dominance: record.dominance,
+      dominance: dominanceToZygosity(record.dominance),
     });
   }
 
@@ -115,7 +152,7 @@ export class AlleleExpression {
       alleleName: this.alleleName,
       expressingPhenotypeName: this.expressingPhenotype.name,
       expressingPhenotypeWild: this.expressingPhenotype.wild,
-      dominance: this.dominance,
+      dominance: zygosityToDominance(this.dominance),
     };
   }
 

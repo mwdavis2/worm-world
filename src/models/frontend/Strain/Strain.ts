@@ -118,7 +118,10 @@ export class Strain {
     });
   }
 
-  public passesFilter(filter: StrainFilter): boolean {
+  public passesFilter(
+    filter: StrainFilter,
+    parentAlleles: Allele[] = []
+  ): boolean {
     const passesAlleleNames =
       filter.alleleNames.size === 0 ||
       [...filter.alleleNames].every((alleleName) =>
@@ -143,7 +146,7 @@ export class Strain {
     const passesExprPhens =
       filter.exprPhenotypes.size === 0 ||
       [...filter.exprPhenotypes].every((exprPhenName) =>
-        this.getExprPhenotypes()
+        this.getExprPhenotypes(parentAlleles, filter.activeConditions)
           .map((exprPhen) => exprPhen.name)
           .includes(exprPhenName)
       );
@@ -552,12 +555,191 @@ export class Strain {
       .flat();
   }
 
-  public getExprPhenotypes(): Phenotype[] {
-    return [
-      ...new Set(
-        this.getAlleleExpressions().map((expr) => expr.expressingPhenotype)
-      ),
-    ];
+  /**
+   * Copies of `alleleName` this genotype carries - '0' (absent, wild-type
+   * homozygous), '1' (heterozygous), or '2' (homozygous mutant). A male's
+   * single hemizygous X-linked copy counts as '2', not '1' - there's no
+   * wild-type copy to mask it, so it behaves like a fully-expressed
+   * homozygote, not a heterozygote.
+   */
+  public getZygosity(alleleName: string): '0' | '1' | '2' {
+    const pair = this.getAllelePairs().find(
+      (p) => p.top.name === alleleName || p.bot.name === alleleName
+    );
+    if (pair === undefined) return '0';
+    if (pair.isHomo()) return pair.isWild() ? '0' : '2';
+    if (pair.isWildHet()) {
+      const mutantAllele = pair.top.isWild() ? pair.bot : pair.top;
+      if (this.sex === Sex.Male && mutantAllele.isX()) return '2';
+      return '1';
+    }
+    return '0';
+  }
+
+  /**
+   * Resolves which phenotypes this genotype actually expresses - backlog
+   * #11's second half. For every `AlleleExpression` row on every allele
+   * this genotype or its direct parent(s) carry (`parentAlleles` - not a
+   * full ancestor walk, just the one/two immediate inputs to the cross that
+   * produced this genotype, which is what makes a `'0'`-copy/wild-type-
+   * background row reachable at all for an allele this genotype itself
+   * doesn't carry), a row's phenotype is expressed when:
+   * 1. This genotype's zygosity at that allele matches the row's declared
+   *    zygosity (`'1or2'` matches either heterozygous or homozygous).
+   * 2. It isn't suppressed by a currently-active condition, and doesn't
+   *    require one that's inactive.
+   * 3. It isn't suppressed by another expressed phenotype, and doesn't
+   *    require one that isn't expressed.
+   *
+   * Rule 3 can chain to arbitrary depth, and a phenotype's status must be
+   * three-valued while resolving - true, established-false, or still
+   * unknown - because "not yet known to be expressed" is not the same as
+   * "established not expressed": a row may only rely on a suppressing
+   * phenotype being *established* false, never on it merely being
+   * undecided so far, or the result becomes dependent on resolution order.
+   * Each round computes every still-unknown phenotype's next status purely
+   * from a snapshot of the previous round (never from values just decided
+   * earlier in the same round), so the outcome never depends on allele or
+   * row iteration order. Phenotypes that stay unknown once a full round
+   * produces no change are a genuine circular/unsatisfiable dependency
+   * (e.g. A requires B, B is suppressed by A) - see
+   * `getUnresolvedExprPhenotypes()`.
+   */
+  public getExprPhenotypes(
+    parentAlleles: Allele[] = [],
+    activeConditions = new Set<string>()
+  ): Phenotype[] {
+    return this.resolveExprPhenotypes(parentAlleles, activeConditions)
+      .expressed;
+  }
+
+  /**
+   * Phenotypes whose expression could not be established either way -
+   * see `getExprPhenotypes()`. Always empty unless the underlying
+   * phenotype-conditional data has a genuine circular dependency.
+   */
+  public getUnresolvedExprPhenotypes(
+    parentAlleles: Allele[] = [],
+    activeConditions = new Set<string>()
+  ): Phenotype[] {
+    return this.resolveExprPhenotypes(parentAlleles, activeConditions)
+      .unresolved;
+  }
+
+  private resolveExprPhenotypes(
+    parentAlleles: Allele[],
+    activeConditions: Set<string>
+  ): { expressed: Phenotype[]; unresolved: Phenotype[] } {
+    type Status = 'true' | 'false' | 'unknown';
+
+    const trackedAlleles = new Map<string, Allele>();
+    [...this.getNonWildAlleles(), ...parentAlleles].forEach((allele) => {
+      if (!trackedAlleles.has(allele.name)) {
+        trackedAlleles.set(allele.name, allele);
+      }
+    });
+    const candidateExprs = [...trackedAlleles.values()]
+      .flatMap((allele) => allele.alleleExpressions)
+      .filter((expr) => {
+        const actualZygosity = this.getZygosity(expr.alleleName);
+        const zygosityMatches =
+          expr.dominance === '1or2'
+            ? actualZygosity === '1' || actualZygosity === '2'
+            : expr.dominance === actualZygosity;
+        if (!zygosityMatches) return false;
+        if (
+          expr.suppressingConditions.some((cond) =>
+            activeConditions.has(cond.name)
+          )
+        ) {
+          return false;
+        }
+        if (
+          expr.requiredConditions.some(
+            (cond) => !activeConditions.has(cond.name)
+          )
+        ) {
+          return false;
+        }
+        return true;
+      });
+
+    const exprsByKey = new Map<string, AlleleExpression[]>();
+    const keyToPhenotype = new Map<string, Phenotype>();
+    candidateExprs.forEach((expr) => {
+      const key = expr.expressingPhenotype.getUniqueName();
+      keyToPhenotype.set(key, expr.expressingPhenotype);
+      const rows = exprsByKey.get(key) ?? [];
+      rows.push(expr);
+      exprsByKey.set(key, rows);
+    });
+
+    // A phenotype referenced as a conditional but with no candidate row of
+    // its own can never become expressed here, so it starts (and stays)
+    // established false - not unknown.
+    const status = new Map<string, Status>();
+    candidateExprs.forEach((expr) => {
+      [...expr.requiredPhenotypes, ...expr.suppressingPhenotypes].forEach(
+        (phen) => {
+          const key = phen.getUniqueName();
+          if (!status.has(key)) {
+            status.set(key, exprsByKey.has(key) ? 'unknown' : 'false');
+          }
+        }
+      );
+    });
+    exprsByKey.forEach((_rows, key) => {
+      if (!status.has(key)) status.set(key, 'unknown');
+    });
+
+    const computeRowStatus = (
+      expr: AlleleExpression,
+      snapshot: Map<string, Status>
+    ): Status => {
+      const reqStatuses = expr.requiredPhenotypes.map(
+        (phen) => snapshot.get(phen.getUniqueName()) ?? 'false'
+      );
+      const supStatuses = expr.suppressingPhenotypes.map(
+        (phen) => snapshot.get(phen.getUniqueName()) ?? 'false'
+      );
+      if (reqStatuses.some((s) => s === 'false')) return 'false';
+      if (supStatuses.some((s) => s === 'true')) return 'false';
+      if (
+        reqStatuses.every((s) => s === 'true') &&
+        supStatuses.every((s) => s === 'false')
+      ) {
+        return 'true';
+      }
+      return 'unknown';
+    };
+
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const snapshot = new Map(status);
+      status.forEach((currStatus, key) => {
+        if (currStatus !== 'unknown') return;
+        const rows = exprsByKey.get(key) ?? [];
+        const rowStatuses = rows.map((row) => computeRowStatus(row, snapshot));
+        let nextStatus: Status = 'unknown';
+        if (rowStatuses.some((s) => s === 'true')) nextStatus = 'true';
+        else if (rowStatuses.every((s) => s === 'false')) nextStatus = 'false';
+        if (nextStatus !== 'unknown') {
+          status.set(key, nextStatus);
+          changed = true;
+        }
+      });
+    }
+
+    const expressed: Phenotype[] = [];
+    const unresolved: Phenotype[] = [];
+    exprsByKey.forEach((_rows, key) => {
+      const phen = keyToPhenotype.get(key);
+      if (phen === undefined) return;
+      if (status.get(key) === 'true') expressed.push(phen);
+      else if (status.get(key) === 'unknown') unresolved.push(phen);
+    });
+    return { expressed, unresolved };
   }
 
   public getReqConditions(): Condition[] {
@@ -580,10 +762,13 @@ export class Strain {
     }, []);
   }
 
-  public getMaturationDays(): number {
-    const maturationDays = [...this.getExprPhenotypes()].flatMap(
-      (phen) => phen.maturationDays ?? []
-    );
+  public getMaturationDays(
+    parentAlleles: Allele[] = [],
+    activeConditions = new Set<string>()
+  ): number {
+    const maturationDays = [
+      ...this.getExprPhenotypes(parentAlleles, activeConditions),
+    ].flatMap((phen) => phen.maturationDays ?? []);
     if (maturationDays.length === 0) maturationDays.push(3); // default
 
     return Math.max(...maturationDays);

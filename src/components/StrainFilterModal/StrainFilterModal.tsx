@@ -6,19 +6,51 @@ import {
   type StrainFilterUpdate,
 } from 'models/frontend/StrainFilter/StrainFilter';
 import { useEffect, useState } from 'react';
+import { type Allele } from 'models/frontend/Allele/Allele';
 import { type Strain } from 'models/frontend/Strain/Strain';
 
 export interface StrainFilterModalProps {
   filterId: string;
   childNodes: Array<Node<Strain>>;
+  // The direct parent(s)' alleles feeding this Cross/SelfCross - not a full
+  // ancestor walk, just the one/two immediate inputs. Needed so a genotype
+  // that doesn't carry an allele can still be evaluated against that
+  // allele's wild-type-background phenotype row (see Strain.getExprPhenotypes).
+  parentAlleles: Allele[];
   filter: StrainFilter;
   updateFilter: (update: StrainFilterUpdate) => void;
 }
 
+// Names of phenotypes that couldn't be established as expressed or not
+// across any of the given strains - a genuine circular/unsatisfiable
+// phenotype-conditional dependency (see Strain.getUnresolvedExprPhenotypes).
+const getUnresolvedPhenotypeNames = (
+  childNodes: Array<Node<Strain>>,
+  parentAlleles: Allele[],
+  activeConditions: Set<string>
+): Set<string> => {
+  const names = new Set<string>();
+  childNodes.forEach((node) => {
+    node.data
+      .getUnresolvedExprPhenotypes(parentAlleles, activeConditions)
+      .forEach((phen) => names.add(phen.name));
+  });
+  return names;
+};
+
 export const StrainFilterModal = (
   props: StrainFilterModalProps
 ): React.JSX.Element => {
-  const options = StrainFilter.getFilterOptions(props.childNodes);
+  const options = StrainFilter.getFilterOptions(
+    props.childNodes,
+    props.parentAlleles,
+    props.filter.activeConditions
+  );
+  const unresolvedPhenotypeNames = getUnresolvedPhenotypeNames(
+    props.childNodes,
+    props.parentAlleles,
+    props.filter.activeConditions
+  );
   return (
     <>
       <input
@@ -31,6 +63,20 @@ export const StrainFilterModal = (
         className='modal cursor-pointer'
       >
         <label className='modal-box' htmlFor=''>
+          {unresolvedPhenotypeNames.size > 0 && (
+            <div
+              className='badge badge-warning mb-4 gap-2 whitespace-normal p-3 text-left'
+              title={
+                'These phenotypes have a circular conditional dependency ' +
+                '(e.g. each requires or is suppressed by the other) and ' +
+                "could not be resolved as expressed or not - they're " +
+                'treated as unresolved rather than absent.'
+              }
+            >
+              ⚠ Unresolved phenotypes:{' '}
+              {[...unresolvedPhenotypeNames].join(', ')}
+            </div>
+          )}
           <FilterList
             title='Filter by alleles'
             filterId={props.filterId}
@@ -60,6 +106,12 @@ export const StrainFilterModal = (
             filterId={props.filterId}
             options={options.supConditions}
             field='supConditions'
+            filter={props.filter}
+            updateFilter={props.updateFilter}
+          />
+          <ActiveConditionsList
+            options={options.activeConditions}
+            filterId={props.filterId}
             filter={props.filter}
             updateFilter={props.updateFilter}
           />
@@ -140,14 +192,86 @@ const FilterList = (props: {
   );
 };
 
+// Radio buttons (Present/Absent) declaring which environmental conditions
+// are currently in effect for this cross - distinct from FilterList's
+// checkboxes above, which filter card *visibility* by declared conditions,
+// not toggle whether a condition is actually true right now. Unset (neither
+// radio selected) defaults to Absent - a condition doesn't apply unless the
+// user says it does. Feeds Strain.getExprPhenotypes's condition check.
+const ActiveConditionsList = (props: {
+  options: Set<string>;
+  filterId: string;
+  filter: StrainFilter;
+  updateFilter: (update: StrainFilterUpdate) => void;
+}): React.JSX.Element => {
+  if (props.options.size === 0) return <></>;
+
+  return (
+    <div className='collapse collapse-arrow rounded-box mb-2 border border-base-300 bg-base-200 shadow-md'>
+      <input type='checkbox' />
+      <div className='collapse-title text-xl font-medium'>
+        Environmental conditions present
+      </div>
+      <div className='collapse-content'>
+        <ul className='form-control ml-8'>
+          {[...props.options].map((name, idx) => {
+            const isPresent = props.filter.activeConditions.has(name);
+            const radioName = `active-condition-${props.filterId}-${idx}`;
+            return (
+              <li key={idx} className='mb-4 flex items-center gap-4'>
+                <span className='min-w-[10rem]'>{name}</span>
+                <label className='flex items-center gap-1'>
+                  <input
+                    type='radio'
+                    name={radioName}
+                    className='radio'
+                    checked={isPresent}
+                    onChange={() => {
+                      props.updateFilter({
+                        field: 'activeConditions',
+                        action: 'add',
+                        name,
+                        filterId: props.filterId,
+                      });
+                    }}
+                  />
+                  Present
+                </label>
+                <label className='flex items-center gap-1'>
+                  <input
+                    type='radio'
+                    name={radioName}
+                    className='radio'
+                    checked={!isPresent}
+                    onChange={() => {
+                      props.updateFilter({
+                        field: 'activeConditions',
+                        action: 'remove',
+                        name,
+                        filterId: props.filterId,
+                      });
+                    }}
+                  />
+                  Absent
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
 const StrainList = (props: {
   filterId: string;
   updateFilter: (update: StrainFilterUpdate) => void;
   childNodes: Array<Node<Strain>>;
+  parentAlleles: Allele[];
   filter: StrainFilter;
 }): React.JSX.Element => {
   const filteredList = props.childNodes.filter((node) =>
-    node.data.passesFilter(props.filter)
+    node.data.passesFilter(props.filter, props.parentAlleles)
   );
   const [allSelected, setAllSelected] = useState(true);
 

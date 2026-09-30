@@ -1,4 +1,3 @@
-import { Dominance } from 'models/enums';
 import { AlleleExpression } from 'models/frontend/AlleleExpression/AlleleExpression';
 import { cond25C } from 'models/frontend/Condition/Condition.mock';
 import {
@@ -15,7 +14,7 @@ describe('AlleleExpression', () => {
       suppressingPhenotypes: [],
       requiredConditions: [cond25C],
       suppressingConditions: [],
-      dominance: Dominance.SemiDominant,
+      dominance: '1',
     });
     const str = alleleExpr.toJSON();
     const alleleExprBack = AlleleExpression.fromJSON(str);

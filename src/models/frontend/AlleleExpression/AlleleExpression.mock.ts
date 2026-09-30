@@ -1,5 +1,7 @@
-import { Dominance } from 'models/enums';
-import { AlleleExpression } from 'models/frontend/AlleleExpression/AlleleExpression';
+import {
+  AlleleExpression,
+  type Zygosity,
+} from 'models/frontend/AlleleExpression/AlleleExpression';
 import { type Condition } from 'models/frontend/Condition/Condition';
 import { cond25C } from 'models/frontend/Condition/Condition.mock';
 import { type Phenotype } from 'models/frontend/Phenotype/Phenotype';
@@ -24,7 +26,7 @@ const createExpr = ({
   suppressingPhenotypes?: Phenotype[];
   requiredConditions?: Condition[];
   suppressingConditions?: Condition[];
-  dominance: Dominance;
+  dominance: Zygosity;
 }): AlleleExpression => {
   return new AlleleExpression({
     alleleName,
@@ -37,15 +39,16 @@ const createExpr = ({
   });
 };
 
+// Recessive loss-of-function: phenotype only shows homozygous (2 copies).
 export const ed3PhenUnc119 = createExpr({
   alleleName: 'ed3',
   expressingPhenotype: phenUnc119,
-  dominance: Dominance.Recessive,
+  dominance: '2',
 });
 
 export const n765PhenLin15B = createExpr({
   alleleName: 'n765',
   expressingPhenotype: phenLin15B,
   requiredConditions: [cond25C],
-  dominance: Dominance.Recessive,
+  dominance: '2',
 });

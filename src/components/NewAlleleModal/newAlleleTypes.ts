@@ -1,10 +1,12 @@
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import { Dominance } from 'models/enums';
+import { type Zygosity } from 'models/frontend/AlleleExpression/AlleleExpression';
 import { type Gene } from 'models/frontend/Gene/Gene';
 
 export type AlleleTab = 'gene' | 'tiSiIs' | 'ex';
 
-export type CopyNumber = '0' | '1' | '2' | '1or2';
+/** Alias for the dialog's own UI-facing naming - see `Zygosity`'s doc comment. */
+export type CopyNumber = Zygosity;
 
 export type PhenotypeRelationship =
   | 'suppressedByPhenotype'

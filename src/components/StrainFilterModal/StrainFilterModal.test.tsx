@@ -4,6 +4,10 @@ import { StrainFilterModal } from 'components/StrainFilterModal/StrainFilterModa
 import * as alleles from 'models/frontend/Allele/Allele.mock';
 import * as crossDesigns from 'models/frontend/CrossDesign/CrossDesign.mock';
 import { Strain } from 'models/frontend/Strain/Strain';
+import { Allele } from 'models/frontend/Allele/Allele';
+import { Variation } from 'models/frontend/Variation/Variation';
+import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
+import { AlleleExpression } from 'models/frontend/AlleleExpression/AlleleExpression';
 import { type Node } from 'reactflow';
 import { vi, expect, test, describe } from 'vitest';
 
@@ -15,6 +19,7 @@ const renderModal = ({
   render(
     <StrainFilterModal
       childNodes={childNodes}
+      parentAlleles={[]}
       filter={filter}
       updateFilter={updateFilter}
       filterId={''}
@@ -55,6 +60,66 @@ describe('StrainFilterModal', () => {
         }
       });
     });
+  });
+
+  test('does not show the unresolved-phenotype badge when nothing is circular', () => {
+    renderModal({
+      childNodes: [crossDesigns.ed3HeteroHerm, crossDesigns.ed3HeteroMale],
+    });
+    expect(screen.queryByText(/Unresolved phenotypes/i)).toBeNull();
+  });
+
+  test('shows a badge warning about unresolved circular phenotype dependencies', () => {
+    const phenA = new Phenotype({
+      name: 'cycleA',
+      shortName: 'cycleA',
+      wild: false,
+    });
+    const phenB = new Phenotype({
+      name: 'cycleB',
+      shortName: 'cycleB',
+      wild: false,
+    });
+    const alleleA = new Allele({
+      name: 'cycleAlleleA',
+      variation: new Variation({ name: 'cycleAlleleA' }),
+      alleleExpressions: [
+        new AlleleExpression({
+          alleleName: 'cycleAlleleA',
+          expressingPhenotype: phenA,
+          requiredPhenotypes: [phenB],
+          suppressingPhenotypes: [],
+          requiredConditions: [],
+          suppressingConditions: [],
+          dominance: '2',
+        }),
+      ],
+    });
+    const alleleB = new Allele({
+      name: 'cycleAlleleB',
+      variation: new Variation({ name: 'cycleAlleleB' }),
+      alleleExpressions: [
+        new AlleleExpression({
+          alleleName: 'cycleAlleleB',
+          expressingPhenotype: phenB,
+          requiredPhenotypes: [phenA],
+          suppressingPhenotypes: [],
+          requiredConditions: [],
+          suppressingConditions: [],
+          dominance: '2',
+        }),
+      ],
+    });
+    const strain = new Strain({
+      allelePairs: [alleleA.toHomo(), alleleB.toHomo()],
+    });
+    const node = { data: strain, id: '', position: { x: 0, y: 0 } };
+    renderModal({ childNodes: [node] });
+
+    const badge = screen.getByText(/Unresolved phenotypes/i);
+    expect(badge).toBeDefined();
+    expect(badge.textContent).toContain('cycleA');
+    expect(badge.textContent).toContain('cycleB');
   });
 });
 
@@ -118,7 +183,10 @@ describe('StrainFilter', () => {
     expect(options.alleleNames).toEqual(
       new Set(['lin-15B(n765)', 'lin-15B(+)', 'unc-119(ed3)'])
     );
-    expect(options.exprPhenotypes).toEqual(new Set(['unc-119', 'lin-15B']));
+    // n765's own AlleleExpression requires the "25C" condition, which isn't
+    // active here (no activeConditions passed) - only "unc-119" (ed3,
+    // homozygous, no condition requirement) actually expresses.
+    expect(options.exprPhenotypes).toEqual(new Set(['unc-119']));
     expect(options.reqConditions).toEqual(new Set(['25C']));
     expect(options.supConditions).toEqual(new Set<string>());
   });

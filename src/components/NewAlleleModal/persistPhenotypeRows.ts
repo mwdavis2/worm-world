@@ -2,27 +2,11 @@ import { getPhenotype, insertDbPhenotype } from 'api/phenotype';
 import { getCondition, insertDbCondition } from 'api/condition';
 import { insertDbAlleleExpression } from 'api/alleleExpression';
 import { insertDbExpressionRelation } from 'api/expressionRelation';
+import { zygosityToDominance } from 'models/frontend/AlleleExpression/AlleleExpression';
 import {
-  type CopyNumber,
   type PhenotypeRelationship,
   type PhenotypeRowState,
 } from 'components/NewAlleleModal/newAlleleTypes';
-
-// allele_exprs.dominance is repurposed as a zygosity encoding of copyNumber,
-// not the Recessive/SemiDominant/Dominant meaning the column name suggests -
-// '0' (3) is unused today, reserved for the known "0 copies" gap.
-const copyNumberToDominance = (copyNumber: CopyNumber): number => {
-  switch (copyNumber) {
-    case '2':
-      return 0;
-    case '1':
-      return 1;
-    case '1or2':
-      return 2;
-    case '0':
-      return 3;
-  }
-};
 
 const isSuppressingRelationship = (
   relationship: PhenotypeRelationship
@@ -113,7 +97,7 @@ export const persistPhenotypeRows = async (
       alleleName,
       expressingPhenotypeName: row.name,
       expressingPhenotypeWild: row.isWildType,
-      dominance: copyNumberToDominance(row.copyNumber),
+      dominance: zygosityToDominance(row.copyNumber),
     });
   }
 

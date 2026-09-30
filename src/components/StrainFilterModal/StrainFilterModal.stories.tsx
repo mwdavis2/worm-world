@@ -29,6 +29,7 @@ const Template: StoryFn<typeof StrainFilterModal> = ({
       </label>
       <StrainFilterModal
         childNodes={childNodes}
+        parentAlleles={[]}
         filter={filter ?? new StrainFilter()}
         updateFilter={updateFilter}
         filterId={''}
