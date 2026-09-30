@@ -45,6 +45,7 @@ interface IStrain {
   isParent?: boolean;
   isChild?: boolean;
   probability?: number;
+  filteredProbability?: number;
 }
 
 /**
@@ -59,6 +60,11 @@ export class Strain {
 
   public description?: string;
   public probability: number = 1;
+  // Set only when some sibling of this genotype (same Cross/SelfCross) is
+  // currently filtered out - the renormalized share of just the visible
+  // siblings. Undefined (not shown) whenever nothing in the group is hidden,
+  // since it would then equal `probability` and be pure clutter to repeat.
+  public filteredProbability?: number;
 
   // Make sure that chromosome pairs in map are correctly deserialized
   @Transform(
@@ -88,6 +94,7 @@ export class Strain {
 
     this.description = params.description;
     this.probability = params.probability ?? 1;
+    this.filteredProbability = params.filteredProbability;
 
     if (params.allelePairs !== undefined && params.chromPairMap === undefined)
       this.addPairsToStrain(params.allelePairs);

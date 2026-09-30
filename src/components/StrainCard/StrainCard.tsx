@@ -30,6 +30,12 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
     props.strain.probability === undefined
       ? 'No Prob'
       : `${(props.strain.probability * 100).toFixed(2)}%`;
+  // Only set when a sibling from the same cross is currently filtered out -
+  // otherwise it'd just duplicate `probability` above.
+  const filteredProbability =
+    props.strain.filteredProbability === undefined
+      ? undefined
+      : `${(props.strain.filteredProbability * 100).toFixed(2)}% shown`;
 
   const context = useContext(EditorContext);
   const menuItems = context.getMenuItems?.(props.id) ?? [];
@@ -84,6 +90,11 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
               >
                 <BreedCountProbability probability={props.strain.probability} />
               </div>
+            </div>
+          )}
+          {filteredProbability !== undefined && (
+            <div className='self-center text-xs text-base-content/60'>
+              {filteredProbability}
             </div>
           )}
           <div className={`${menuItems.length === 0 ? 'invisible' : ''}`}>

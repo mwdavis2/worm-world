@@ -508,6 +508,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
         !node.data.passesFilter(filter) || filter.hiddenNodes.has(node.id);
       hideConnectedEdges(node, node.hidden);
     });
+    CrossDesign.applyFilteredProbabilities(childNodes);
     const middleNode = reactFlowInstance.getNode(update.filterId);
     if (middleNode === undefined) {
       console.error('Middle node undefined');
@@ -540,6 +541,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     if (hiddenIds.size === 0) return;
 
     middleNode.data = new StrainFilter({ hiddenNodes: hiddenIds });
+    CrossDesign.applyFilteredProbabilities(childNodes);
     repositionVisibleChildren(middleNode, childNodes);
   };
 

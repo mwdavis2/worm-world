@@ -176,6 +176,39 @@ export default class CrossDesign {
     return positions;
   }
 
+  /**
+   * backlog #14: sets each visible sibling's share of just the currently
+   * visible set (renormalized so the visible set's shares sum to 100%),
+   * instead of its share of the whole unfiltered cross. Mutates
+   * `node.data.filteredProbability` in place on every node in `childNodes` -
+   * left `undefined` whenever nothing in the group is hidden, since it would
+   * otherwise just duplicate `probability` on every card.
+   */
+  public static applyFilteredProbabilities(
+    childNodes: Array<Node<Strain>>
+  ): void {
+    const visibleNodes = childNodes.filter((node) => !(node.hidden ?? false));
+    const anyHidden = visibleNodes.length < childNodes.length;
+    if (!anyHidden) {
+      childNodes.forEach((node) => {
+        node.data.filteredProbability = undefined;
+      });
+      return;
+    }
+    const visibleTotal = visibleNodes.reduce(
+      (sum, node) => sum + (node.data.probability ?? 0),
+      0
+    );
+    childNodes.forEach((node) => {
+      node.data.filteredProbability =
+        node.hidden ?? false
+          ? undefined
+          : visibleTotal > 0
+          ? (node.data.probability ?? 0) / visibleTotal
+          : undefined;
+    });
+  }
+
   static fromJSON(json: string): CrossDesign {
     return plainToInstance(
       CrossDesign,

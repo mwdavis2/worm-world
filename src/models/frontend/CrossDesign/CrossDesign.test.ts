@@ -473,3 +473,49 @@ describe('addToArray', () => {
     expect(result).toHaveLength(2);
   });
 });
+
+describe('applyFilteredProbabilities', () => {
+  const makeChild = (id: string, probability: number, hidden = false): Node => {
+    const strain = new Strain({ probability, isChild: true });
+    return {
+      id,
+      type: NodeType.Strain,
+      position: { x: 0, y: 0 },
+      data: strain,
+      hidden,
+    };
+  };
+
+  test('leaves filteredProbability undefined when nothing is hidden', () => {
+    const children = [makeChild('a', 0.5), makeChild('b', 0.5)];
+    CrossDesign.applyFilteredProbabilities(children);
+    children.forEach((node) => {
+      expect((node.data as Strain).filteredProbability).toBeUndefined();
+    });
+  });
+
+  test('renormalizes visible siblings to sum to 1 when one is hidden', () => {
+    const children = [
+      makeChild('a', 0.5),
+      makeChild('b', 0.3),
+      makeChild('c', 0.2, true),
+    ];
+    CrossDesign.applyFilteredProbabilities(children);
+    const [a, b, c] = children.map((node) => node.data as Strain);
+    expect(a.filteredProbability).toBeCloseTo(0.5 / 0.8);
+    expect(b.filteredProbability).toBeCloseTo(0.3 / 0.8);
+    expect(c.filteredProbability).toBeUndefined();
+  });
+
+  test('clears a previously-set filteredProbability once nothing is hidden anymore', () => {
+    const children = [makeChild('a', 0.5), makeChild('b', 0.5, true)];
+    CrossDesign.applyFilteredProbabilities(children);
+    expect((children[0].data as Strain).filteredProbability).toBeCloseTo(1);
+
+    children[1].hidden = false;
+    CrossDesign.applyFilteredProbabilities(children);
+    children.forEach((node) => {
+      expect((node.data as Strain).filteredProbability).toBeUndefined();
+    });
+  });
+});
