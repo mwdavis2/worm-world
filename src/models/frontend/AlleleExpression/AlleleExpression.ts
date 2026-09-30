@@ -15,12 +15,22 @@ import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
  * to be expressed - copies of the *non-wild* allele, e.g. for `ed3`:
  * '0' = +/+ (wild-type homozygous, allele absent), '1' = ed3/+ (het),
  * '2' = ed3/ed3 (homozygous mutant), '1or2' = either (old "Dominant").
- * Stored on disk as `allele_exprs.dominance`, a plain 0-3 integer (the
- * column name/type predate this repurposing - `AlleleExpression.dominance`
- * is the correctly-typed read/write boundary for it, see
+ * '5' = "2 copies (lof)" - gene-based alleles only (never valid on a
+ * `Variation`-based allele): satisfied by 2 copies of *any* combination of
+ * alleles of the same gene that are each independently marked '5' for this
+ * exact phenotype, not just 2 copies of this specific allele - models two
+ * different loss-of-function alleles of one gene, in trans, still failing
+ * to complement each other (e.g. `ed3/n765`, both loss-of-function alleles
+ * of `unc-119`, both behave as `unc-119/unc-119` would). See
+ * `Strain.getZygosity`/`Strain.resolveExprPhenotypes` for the matching
+ * logic - unlike the other values, it isn't resolvable per-allele in
+ * isolation.
+ * Stored on disk as `allele_exprs.dominance`, a plain integer (the column
+ * name/type predate this repurposing - `AlleleExpression.dominance` is the
+ * correctly-typed read/write boundary for it, see
  * `dominanceToZygosity`/`zygosityToDominance` below).
  */
-export type Zygosity = '0' | '1' | '2' | '1or2';
+export type Zygosity = '0' | '1' | '2' | '1or2' | '5';
 
 export const zygosityToDominance = (zygosity: Zygosity): number => {
   switch (zygosity) {
@@ -32,6 +42,8 @@ export const zygosityToDominance = (zygosity: Zygosity): number => {
       return 2;
     case '0':
       return 3;
+    case '5':
+      return 4;
   }
 };
 
@@ -43,6 +55,8 @@ export const dominanceToZygosity = (dominance: number): Zygosity => {
       return '1';
     case 2:
       return '1or2';
+    case 4:
+      return '5';
     default:
       return '0';
   }

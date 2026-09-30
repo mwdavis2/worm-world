@@ -94,9 +94,17 @@ export const defaultZygosityBoxState = (): ZygosityBoxState => ({
 export interface DominanceState {
   enabled: boolean;
   mode: Dominance;
-  // Recessive: only `homozygous` is shown (as the "-/-", 2-copies box).
+  // Recessive: only `homozygous` is shown (as the "-/-", 2-copies box) -
+  // written as Zygosity '5' ("2 copies (lof)"), not '2', since a simple
+  // loss-of-function phenotype should still resolve for a trans compound
+  // het with another '5'-marked LOF allele of the same gene, not just
+  // literal homozygosity of this exact allele. Only valid because this is
+  // gene-tab-only - '5' can never apply to a Variation-based allele.
   // Dominant: only `homozygous` is shown (as the combined "1 or 2 copies" box).
-  // SemiDominant: both boxes are shown ("-/-" 2 copies, "+/-" 1 copy).
+  // SemiDominant: both boxes are shown ("-/-" 2 copies, "+/-" 1 copy) - these
+  // stay at plain '2'/'1', not '5': semi-dominant severity tiers are a
+  // property of this specific allele, not a gene-wide LOF complementation
+  // group.
   // Known, explicitly out-of-scope gap: no box exists for the "0 copies" state.
   homozygous: ZygosityBoxState;
   heterozygous: ZygosityBoxState;
@@ -289,7 +297,7 @@ export const computeDominanceRows = (
 
   const rows: PhenotypeRowState[] = [];
   if (state.mode === Dominance.Recessive) {
-    const row = boxRow('2', state.homozygous, 'homo');
+    const row = boxRow('5', state.homozygous, 'homo');
     if (row !== undefined) rows.push(row);
   } else if (state.mode === Dominance.Dominant) {
     const row = boxRow('1or2', state.homozygous, 'homo');

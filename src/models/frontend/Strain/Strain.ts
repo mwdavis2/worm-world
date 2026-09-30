@@ -560,7 +560,12 @@ export class Strain {
    * homozygous), '1' (heterozygous), or '2' (homozygous mutant). A male's
    * single hemizygous X-linked copy counts as '2', not '1' - there's no
    * wild-type copy to mask it, so it behaves like a fully-expressed
-   * homozygote, not a heterozygote.
+   * homozygote, not a heterozygote. A trans-heterozygous pair of two
+   * *different* non-wild alleles (e.g. a compound-het `ed3/n765`) counts as
+   * '1' copy of each - this only evaluates a single named allele in
+   * isolation, so it can't see that the pair might jointly satisfy a
+   * gene-level "2 copies (lof)" row (`Zygosity` `'5'`); that's handled
+   * separately by `isGeneLofSatisfied`.
    */
   public getZygosity(alleleName: string): '0' | '1' | '2' {
     const pair = this.getAllelePairs().find(
@@ -573,7 +578,32 @@ export class Strain {
       if (this.sex === Sex.Male && mutantAllele.isX()) return '2';
       return '1';
     }
-    return '0';
+    return '1';
+  }
+
+  /**
+   * Whether `expr` (a `Zygosity` `'5'`, "2 copies (lof)" row) is satisfied:
+   * this genotype has 2 mutant copies of `expr`'s gene, whether that's the
+   * same allele twice or 2 different alleles of the gene in trans - as
+   * long as the trans partner independently carries its own `'5'` row for
+   * this exact phenotype (same-phenotype complementation-group match,
+   * confirmed as a requirement - a gene can have unrelated phenotypes that
+   * don't necessarily fail to complement with each other).
+   */
+  private isGeneLofSatisfied(expr: AlleleExpression): boolean {
+    const pair = this.getAllelePairs().find(
+      (p) => p.top.name === expr.alleleName || p.bot.name === expr.alleleName
+    );
+    if (pair === undefined) return false;
+    if (pair.isHomo()) return !pair.isWild();
+    const otherSide = pair.top.name === expr.alleleName ? pair.bot : pair.top;
+    if (otherSide.isWild()) return false;
+    const key = expr.expressingPhenotype.getUniqueName();
+    return otherSide.alleleExpressions.some(
+      (otherExpr) =>
+        otherExpr.dominance === '5' &&
+        otherExpr.expressingPhenotype.getUniqueName() === key
+    );
   }
 
   /**
@@ -641,11 +671,16 @@ export class Strain {
     const candidateExprs = [...trackedAlleles.values()]
       .flatMap((allele) => allele.alleleExpressions)
       .filter((expr) => {
-        const actualZygosity = this.getZygosity(expr.alleleName);
-        const zygosityMatches =
-          expr.dominance === '1or2'
-            ? actualZygosity === '1' || actualZygosity === '2'
-            : expr.dominance === actualZygosity;
+        let zygosityMatches: boolean;
+        if (expr.dominance === '5') {
+          zygosityMatches = this.isGeneLofSatisfied(expr);
+        } else {
+          const actualZygosity = this.getZygosity(expr.alleleName);
+          zygosityMatches =
+            expr.dominance === '1or2'
+              ? actualZygosity === '1' || actualZygosity === '2'
+              : expr.dominance === actualZygosity;
+        }
         if (!zygosityMatches) return false;
         if (
           expr.suppressingConditions.some((cond) =>

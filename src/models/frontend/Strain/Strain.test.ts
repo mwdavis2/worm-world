@@ -1,7 +1,7 @@
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import * as alleles from 'models/frontend/Allele/Allele.mock';
 import { Allele } from 'models/frontend/Allele/Allele';
-import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
+import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { Strain, type Gamete } from 'models/frontend/Strain/Strain';
 import * as strains from 'models/frontend/Strain/Strain.mock';
 import { expect, test, describe } from 'vitest';
@@ -12,6 +12,7 @@ import {
 import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
 import { Condition } from 'models/frontend/Condition/Condition';
 import { Variation } from 'models/frontend/Variation/Variation';
+import { Gene } from 'models/frontend/Gene/Gene';
 import {
   AlleleExpression,
   type AlleleExpressionState,
@@ -964,5 +965,141 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
       expect(names).not.toContain('orderB');
       expect(strain.getUnresolvedExprPhenotypes()).toHaveLength(0);
     });
+  });
+});
+
+describe('getExprPhenotypes() - gene-level "2 copies (lof)" (Zygosity \'5\')', () => {
+  const phen = (name: string, wild: boolean): Phenotype =>
+    new Phenotype({ name, shortName: name, wild });
+
+  const geneAlleleWithExpr = (
+    alleleName: string,
+    geneSysName: string,
+    exprs: Array<Partial<AlleleExpressionState> & { dominance: Zygosity }>
+  ): Allele => {
+    const allele = new Allele({
+      name: alleleName,
+      gene: new Gene({ sysName: geneSysName }),
+    });
+    allele.alleleExpressions = exprs.map(
+      (e) =>
+        new AlleleExpression({
+          alleleName,
+          expressingPhenotype: phen('unnamed', false),
+          requiredPhenotypes: [],
+          suppressingPhenotypes: [],
+          requiredConditions: [],
+          suppressingConditions: [],
+          ...e,
+        })
+    );
+    return allele;
+  };
+
+  test('getZygosity treats each side of a trans pair of 2 different non-wild alleles as 1 copy, not 0', () => {
+    const alleleA = geneAlleleWithExpr('transAlleleA', 'unc-119', []);
+    const alleleB = geneAlleleWithExpr('transAlleleB', 'unc-119', []);
+    const strain = new Strain({
+      allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
+    });
+    expect(strain.getZygosity('transAlleleA')).toBe('1');
+    expect(strain.getZygosity('transAlleleB')).toBe('1');
+  });
+
+  test('a plain "1" row correctly resolves for each side of a trans pair (the pre-existing bug this fixes)', () => {
+    const phenX = phen('phenX1', false);
+    const phenY = phen('phenY1', false);
+    const alleleA = geneAlleleWithExpr('transAlleleA1', 'unc-119', [
+      { dominance: '1', expressingPhenotype: phenX },
+    ]);
+    const alleleB = geneAlleleWithExpr('transAlleleB1', 'unc-119', [
+      { dominance: '1', expressingPhenotype: phenY },
+    ]);
+    const strain = new Strain({
+      allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
+    });
+    const names = strain.getExprPhenotypes().map((x) => x.name);
+    expect(names).toContain('phenX1');
+    expect(names).toContain('phenY1');
+  });
+
+  test('a plain "2" row does not resolve for a trans compound het of 2 different alleles (each only 1 copy)', () => {
+    const phenX = phen('phenX', false);
+    const phenY = phen('phenY', false);
+    const alleleA = geneAlleleWithExpr('lofAlleleA', 'unc-119', [
+      { dominance: '2', expressingPhenotype: phenX },
+    ]);
+    const alleleB = geneAlleleWithExpr('lofAlleleB', 'unc-119', [
+      { dominance: '2', expressingPhenotype: phenY },
+    ]);
+    const strain = new Strain({
+      allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
+    });
+    const names = strain.getExprPhenotypes().map((x) => x.name);
+    expect(names).not.toContain('phenX');
+    expect(names).not.toContain('phenY');
+  });
+
+  test('a "5" row resolves for a trans compound het of 2 different LOF alleles of the same gene, same phenotype', () => {
+    const p = phen('Unc', false);
+    const alleleA = geneAlleleWithExpr('lofAlleleA2', 'unc-119', [
+      { dominance: '5', expressingPhenotype: p },
+    ]);
+    const alleleB = geneAlleleWithExpr('lofAlleleB2', 'unc-119', [
+      { dominance: '5', expressingPhenotype: p },
+    ]);
+    const strain = new Strain({
+      allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
+    });
+    expect(strain.getExprPhenotypes().map((x) => x.name)).toContain('Unc');
+  });
+
+  test('a "5" row still resolves for a literal homozygote of the same allele', () => {
+    const p = phen('Unc2', false);
+    const allele = geneAlleleWithExpr('lofAlleleHomo', 'unc-119', [
+      { dominance: '5', expressingPhenotype: p },
+    ]);
+    const strain = new Strain({ allelePairs: [allele.toHomo()] });
+    expect(strain.getExprPhenotypes().map((x) => x.name)).toContain('Unc2');
+  });
+
+  test('a "5" row does not resolve if the trans partner has no "5" row at all', () => {
+    const p = phen('Unc3', false);
+    const alleleA = geneAlleleWithExpr('lofAlleleA3', 'unc-119', [
+      { dominance: '5', expressingPhenotype: p },
+    ]);
+    const alleleB = geneAlleleWithExpr('lofAlleleB3', 'unc-119', [
+      { dominance: '2', expressingPhenotype: p },
+    ]);
+    const strain = new Strain({
+      allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
+    });
+    expect(strain.getExprPhenotypes().map((x) => x.name)).not.toContain('Unc3');
+  });
+
+  test('a "5" row does not resolve if the trans partner\'s "5" row is for a different phenotype', () => {
+    const phenP = phen('UncP', false);
+    const phenQ = phen('UncQ', false);
+    const alleleA = geneAlleleWithExpr('lofAlleleA4', 'unc-119', [
+      { dominance: '5', expressingPhenotype: phenP },
+    ]);
+    const alleleB = geneAlleleWithExpr('lofAlleleB4', 'unc-119', [
+      { dominance: '5', expressingPhenotype: phenQ },
+    ]);
+    const strain = new Strain({
+      allelePairs: [new AllelePair({ top: alleleA, bot: alleleB })],
+    });
+    const names = strain.getExprPhenotypes().map((x) => x.name);
+    expect(names).not.toContain('UncP');
+    expect(names).not.toContain('UncQ');
+  });
+
+  test('a "5" row does not resolve against a single wild-type-paired copy', () => {
+    const p = phen('Unc4', false);
+    const allele = geneAlleleWithExpr('lofAlleleHet', 'unc-119', [
+      { dominance: '5', expressingPhenotype: p },
+    ]);
+    const strain = new Strain({ allelePairs: [allele.toTopHet()] });
+    expect(strain.getExprPhenotypes().map((x) => x.name)).not.toContain('Unc4');
   });
 });

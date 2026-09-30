@@ -8,6 +8,10 @@ export interface PhenotypeRowProps {
   row: PhenotypeRowState;
   onChange: (row: PhenotypeRowState) => void;
   onDelete: () => void;
+  // '5' ("2 copies (lof)") only makes sense for a gene-based allele - a
+  // Variation-based allele (Ti/Si/Is/Ex tabs) has no complementation group
+  // to share a gene-level LOF match with.
+  isGeneAllele: boolean;
 }
 
 const COPY_NUMBER_OPTIONS: Array<{ value: CopyNumber; label: string }> = [
@@ -16,6 +20,11 @@ const COPY_NUMBER_OPTIONS: Array<{ value: CopyNumber; label: string }> = [
   { value: '2', label: '2 copies' },
   { value: '1or2', label: '1 or 2 copies' },
 ];
+
+const GENE_LOF_COPY_NUMBER_OPTION: { value: CopyNumber; label: string } = {
+  value: '5',
+  label: '2 copies (lof)',
+};
 
 const RELATIONSHIP_OPTIONS: Array<{
   value: PhenotypeRelationship;
@@ -41,6 +50,9 @@ const RELATIONSHIP_OPTIONS: Array<{
 const PhenotypeRow = (props: PhenotypeRowProps): React.JSX.Element => {
   const { row } = props;
   const isInert = row.name === '';
+  const copyNumberOptions = props.isGeneAllele
+    ? [...COPY_NUMBER_OPTIONS, GENE_LOF_COPY_NUMBER_OPTION]
+    : COPY_NUMBER_OPTIONS;
 
   return (
     <div
@@ -58,7 +70,7 @@ const PhenotypeRow = (props: PhenotypeRowProps): React.JSX.Element => {
           });
         }}
       >
-        {COPY_NUMBER_OPTIONS.map((opt) => (
+        {copyNumberOptions.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>

@@ -151,7 +151,7 @@ describe('computeDominanceRows', () => {
     );
   });
 
-  test('Recessive: one row at 2 copies, rescued-by-wild-type-phenotype when rescued by WT', () => {
+  test('Recessive: one row at 2 copies (lof), rescued-by-wild-type-phenotype when rescued by WT', () => {
     const state = {
       enabled: true,
       mode: Dominance.Recessive,
@@ -161,7 +161,7 @@ describe('computeDominanceRows', () => {
     expect(computeDominanceRows(state, 'unc-119')).toEqual([
       {
         id: 'dominance-homo',
-        copyNumber: '2',
+        copyNumber: '5',
         name: 'Unc',
         isWildType: false,
         isLethal: false,

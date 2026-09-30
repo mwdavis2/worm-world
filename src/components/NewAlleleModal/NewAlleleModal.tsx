@@ -1039,6 +1039,7 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                 <PhenotypeRow
                   key={row.id}
                   row={row}
+                  isGeneAllele={activeTab === 'gene'}
                   onChange={(updated) => {
                     // Deliberately bypasses updateGene/setActiveVariationTab
                     // (and therefore resyncGeneTab/resyncVariationTab) - this
