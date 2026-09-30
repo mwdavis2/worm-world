@@ -58,26 +58,19 @@ export default class CrossDesign {
   @Type(() => Date)
   public lastSaved: Date;
 
-  @Type(() => StrainFilter)
-  @Transform(
-    (data: { obj: any }) => {
-      const d = data?.obj?.strainFilters ?? {};
-      const filters = new Map(
-        Object.keys(d).map((key) => {
-          const filter = StrainFilter.fromJSON(JSON.stringify(d[key]));
-          return [key, filter];
-        }) ?? null
-      );
-      return filters;
-    },
-    { toClassOnly: true }
-  )
   @Transform(
     (data: { obj: any }) => {
       const nodes: Node[] = data?.obj?.nodes ?? [];
       return nodes.map((node) => {
-        if (node.type === NodeType.Strain)
+        if (node.type === NodeType.Strain) {
           node.data = new Strain((node as Node<Strain>).data);
+        } else if (node.type === NodeType.Self || node.type === NodeType.X) {
+          // Middle (Self/X) nodes carry a StrainFilter in `.data` - without
+          // this, a loaded-from-disk node.data is a plain JSON object with
+          // no Set methods (.has, .update, etc.), which crashes the first
+          // time the filter modal touches it.
+          node.data = StrainFilter.fromJSON(JSON.stringify(node.data));
+        }
         return node;
       });
     },

@@ -93,22 +93,6 @@ export const StrainFilterModal = (
             filter={props.filter}
             updateFilter={props.updateFilter}
           />
-          <FilterList
-            title='Filter by required conditions'
-            filterId={props.filterId}
-            options={options.reqConditions}
-            field='reqConditions'
-            filter={props.filter}
-            updateFilter={props.updateFilter}
-          />
-          <FilterList
-            title='Filter by suppressing conditions'
-            filterId={props.filterId}
-            options={options.supConditions}
-            field='supConditions'
-            filter={props.filter}
-            updateFilter={props.updateFilter}
-          />
           <ActiveConditionsList
             options={options.activeConditions}
             filterId={props.filterId}

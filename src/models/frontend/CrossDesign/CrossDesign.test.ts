@@ -33,7 +33,10 @@ describe('cross crossDesign', () => {
     id = 0,
     type = NodeType.Strain,
     position = { x: 0, y: 0 },
-    strain = new Strain(),
+    // Middle (Self/X) nodes carry a StrainFilter in real app usage, never a
+    // Strain - matching that here is what lets deserialize round-trip tests
+    // actually exercise CrossDesign's middle-node rehydration path.
+    strain = type === NodeType.Strain ? new Strain() : new StrainFilter(),
     parentNode = undefined,
   }: {
     id?: number;
@@ -388,13 +391,26 @@ describe('cross crossDesign', () => {
       allelePairs: [new AllelePair({ top: n765, bot: n765 })],
       sex: Sex.Hermaphrodite,
     });
-    const selfNode = generateNode({ id: id++, type: NodeType.Self });
+    const selfNodeFilter = new StrainFilter({
+      alleleNames: new Set(['n766']),
+      exprPhenotypes: new Set(),
+      supConditions: new Set(),
+      reqConditions: new Set(),
+      hiddenNodes: new Set(),
+      activeConditions: new Set(['25C']),
+    });
+    const selfNode = generateNode({
+      id: id++,
+      type: NodeType.Self,
+      strain: selfNodeFilter,
+    });
     const nodes = [
       generateNode({ id: id++, strain: hermStrain }),
       generateNode({ id: id++, strain: maleStrain }),
       generateNode({ id: id++, type: NodeType.X }),
       generateNode({ id: id++ }),
       generateNode({ id: id++, strain: strain3, parentNode: selfNode.id }),
+      selfNode,
     ];
     const edges = [
       generateEdge({
@@ -415,18 +431,6 @@ describe('cross crossDesign', () => {
       generateEdge({ id: id++, source: '4', target: '5' }),
     ];
 
-    const strainFilters = new Map<string, StrainFilter>();
-    strainFilters.set(
-      nodes[4].id,
-      new StrainFilter({
-        alleleNames: new Set(['n766']),
-        exprPhenotypes: new Set(),
-        supConditions: new Set(),
-        reqConditions: new Set(),
-        hiddenNodes: new Set(),
-      })
-    );
-
     const crossDesign = generateTree({ nodes, edges });
     const crossDesignBack = CrossDesign.fromJSON(crossDesign.toJSON());
 
@@ -440,6 +444,52 @@ describe('cross crossDesign', () => {
         .filter((node) => node.type === NodeType.Strain)
         .every((node) => (node.data as Strain).getAllelePairs !== undefined)
     );
+  });
+
+  // Regression test: middle (Self/X) nodes carry a StrainFilter in `.data`,
+  // but round-tripping through JSON previously left it as a plain object
+  // with no Set methods - `.has()`/`.update()` etc. would throw the first
+  // time the filter modal touched a loaded-from-disk cross design.
+  test('rehydrates middle-node (Self/X) data into a real StrainFilter instance on deserialize', () => {
+    let id = 0;
+    const selfNodeFilter = new StrainFilter({
+      alleleNames: new Set(['n766']),
+      exprPhenotypes: new Set(),
+      supConditions: new Set(),
+      reqConditions: new Set(),
+      hiddenNodes: new Set(),
+      activeConditions: new Set(['25C']),
+    });
+    const selfNode = generateNode({
+      id: id++,
+      type: NodeType.Self,
+      strain: selfNodeFilter,
+    });
+    const xNode = generateNode({ id: id++, type: NodeType.X });
+
+    const crossDesign = generateTree({ nodes: [selfNode, xNode], edges: [] });
+    const crossDesignBack = CrossDesign.fromJSON(crossDesign.toJSON());
+
+    const selfNodeBack = crossDesignBack.nodes.find(
+      (node) => node.id === selfNode.id
+    );
+    const xNodeBack = crossDesignBack.nodes.find(
+      (node) => node.id === xNode.id
+    );
+    expect(selfNodeBack?.data).toBeInstanceOf(StrainFilter);
+    expect(xNodeBack?.data).toBeInstanceOf(StrainFilter);
+
+    const filterBack = selfNodeBack?.data as StrainFilter;
+    expect(filterBack.alleleNames.has('n766')).toBe(true);
+    expect(filterBack.activeConditions.has('25C')).toBe(true);
+    expect(() => {
+      filterBack.update({
+        field: 'alleleNames',
+        action: 'add',
+        name: 'n765',
+        filterId: selfNode.id,
+      });
+    }).not.toThrow();
   });
 });
 

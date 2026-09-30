@@ -129,7 +129,7 @@ export class AlleleExpression {
           record.alleleName,
           record.expressingPhenotypeName,
           record.expressingPhenotypeWild,
-          true
+          false
         )
       ).map((req) => Phenotype.createFromRecord(req)),
       suppressingPhenotypes: (
@@ -137,7 +137,7 @@ export class AlleleExpression {
           record.alleleName,
           record.expressingPhenotypeName,
           record.expressingPhenotypeWild,
-          false
+          true
         )
       ).map((sup) => Phenotype.createFromRecord(sup)),
       requiredConditions: (
@@ -145,7 +145,7 @@ export class AlleleExpression {
           record.alleleName,
           record.expressingPhenotypeName,
           record.expressingPhenotypeWild,
-          true
+          false
         )
       ).map((req) => Condition.createFromRecord(req)),
       suppressingConditions: (
@@ -153,7 +153,7 @@ export class AlleleExpression {
           record.alleleName,
           record.expressingPhenotypeName,
           record.expressingPhenotypeWild,
-          false
+          true
         )
       ).map((sup) => Condition.createFromRecord(sup)),
       dominance: dominanceToZygosity(record.dominance),
