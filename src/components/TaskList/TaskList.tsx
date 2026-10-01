@@ -87,7 +87,7 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
       <TaskConditionModal task={task} />
       <div className='flex flex-col gap-2'>
         {overdueTasks.length > 0 && (
-          <div className='collapse-arrow collapse overflow-visible'>
+          <div className='collapse collapse-arrow overflow-visible'>
             <input type='checkbox' defaultChecked />
             <div className='collapse-title border-b-2 border-error text-xl text-error'>
               Overdue
@@ -117,7 +117,7 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
           </div>
         )}
         {sections.map(([date, section]) => (
-          <div key={date} className='collapse-arrow collapse overflow-visible'>
+          <div key={date} className='collapse collapse-arrow overflow-visible'>
             <input type='checkbox' defaultChecked />
             <div className='collapse-title border-b-2 text-xl'>
               {date}

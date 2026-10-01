@@ -328,7 +328,9 @@ export class ChromosomePair {
     }
 
     return options.map((option) => ({
-      pair: new ChromosomePair(option.alleles.map((allele) => allele.toTopHet())),
+      pair: new ChromosomePair(
+        option.alleles.map((allele) => allele.toTopHet())
+      ),
       prob: option.prob,
     }));
   }

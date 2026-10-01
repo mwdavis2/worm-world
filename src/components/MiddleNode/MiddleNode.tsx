@@ -72,7 +72,7 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
       </div>
       <label
         htmlFor={`filtered-out-modal-${props.id}`}
-        className={`export-hide-icon absolute top-0 left-24 hover:cursor-pointer ${
+        className={`export-hide-icon absolute left-24 top-0 hover:cursor-pointer ${
           hasHiddenChild ? '' : 'invisible'
         }`}
       >
@@ -80,7 +80,7 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
       </label>
       <label
         htmlFor={`strain-filter-modal-${props.id}`}
-        className={`export-hide-icon absolute top-0 left-16 hover:cursor-pointer ${
+        className={`export-hide-icon absolute left-16 top-0 hover:cursor-pointer ${
           props.data.isEmpty() ? 'invisible group-hover:visible' : ''
         }`}
       >

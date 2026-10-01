@@ -498,9 +498,7 @@ mod test {
     // strain_alleles rows - the alleles themselves (and any other strain's
     // use of them) must be untouched.
     #[sqlx::test(fixtures("full_db"))]
-    async fn test_delete_filtered_strains_with_alleles_attached(
-        pool: Pool<Sqlite>,
-    ) -> Result<()> {
+    async fn test_delete_filtered_strains_with_alleles_attached(pool: Pool<Sqlite>) -> Result<()> {
         let state = InnerDbState { conn_pool: pool };
 
         let alleles_before = state.get_alleles().await?;
