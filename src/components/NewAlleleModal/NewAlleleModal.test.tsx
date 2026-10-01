@@ -237,8 +237,11 @@ describe('NewAlleleModal', () => {
 
     await user.click(screen.getByRole('button', { name: 'Advanced' }));
 
+    // Resistant-to-Drug now synthesizes two "0 copies" rows sharing the
+    // same (name, wild) identity (one suppressed-by-phenotype, one
+    // requires-condition) - either works for this test, take the first.
     const zeroCopiesRow = screen
-      .getByDisplayValue('0 copies')
+      .getAllByDisplayValue('0 copies')[0]
       .closest('div') as HTMLElement;
     const wildTypeCheckbox =
       within(zeroCopiesRow).getByLabelText<HTMLInputElement>('Wild-type');

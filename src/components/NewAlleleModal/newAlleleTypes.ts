@@ -191,6 +191,10 @@ export const computeResistantToDrugRows = (
     {
       // 0 copies of the resistance transgene is the wild-type genetic
       // background (sensitive, dies from the drug) - isWildType: true.
+      // Also requires the drug condition: without the drug actually
+      // applied, this background is never lethal regardless of genotype -
+      // the condition and the suppressing-phenotype relation below combine
+      // onto the same (name, wild) identity (see persistPhenotypeRows.ts).
       id: 'resistantToDrug-0',
       copyNumber: '0',
       name: `${drug}R`,
@@ -198,6 +202,16 @@ export const computeResistantToDrugRows = (
       isLethal: true,
       relationship: 'suppressedByPhenotype',
       relationshipText: `${drug}R`,
+      derivedFrom: 'resistantToDrug',
+    },
+    {
+      id: 'resistantToDrug-0-condition',
+      copyNumber: '0',
+      name: `${drug}R`,
+      isWildType: true,
+      isLethal: true,
+      relationship: 'requiresCondition',
+      relationshipText: drug,
       derivedFrom: 'resistantToDrug',
     },
     {

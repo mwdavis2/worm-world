@@ -44,6 +44,16 @@ describe('computeResistantToDrugRows', () => {
         derivedFrom: 'resistantToDrug',
       },
       {
+        id: 'resistantToDrug-0-condition',
+        copyNumber: '0',
+        name: 'HygR',
+        isWildType: true,
+        isLethal: true,
+        relationship: 'requiresCondition',
+        relationshipText: 'Hyg',
+        derivedFrom: 'resistantToDrug',
+      },
+      {
         id: 'resistantToDrug-1or2',
         copyNumber: '1or2',
         name: 'HygR',
