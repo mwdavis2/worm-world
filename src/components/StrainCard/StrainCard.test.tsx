@@ -9,4 +9,14 @@ describe('StrainCard', () => {
     const body = screen.getByTestId('strainCard');
     expect(body).toHaveTextContent(/wild/i);
   });
+
+  test('a lethal strain gets the grayed card background', () => {
+    const lethal = strains.emptyWild.clone();
+    lethal.lethal = true;
+    const { rerender } = render(<StrainCard strain={lethal} id={''} />);
+    expect(screen.getByTestId('strainCard')).toHaveClass('bg-base-200');
+
+    rerender(<StrainCard strain={strains.emptyWild} id={''} />);
+    expect(screen.getByTestId('strainCard')).toHaveClass('bg-base-100');
+  });
 });

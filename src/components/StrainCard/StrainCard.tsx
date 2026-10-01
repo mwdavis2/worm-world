@@ -70,9 +70,9 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
     <StrainCardContext.Provider value={strainCardContextValue}>
       <div
         data-testid='strainCard'
-        className={`flex h-36 flex-col rounded bg-base-100 shadow-md ${
-          props.wide === true ? 'w-full' : 'w-64'
-        }`}
+        className={`flex h-36 flex-col rounded shadow-md ${
+          props.strain.lethal === true ? 'bg-base-200' : 'bg-base-100'
+        } ${props.wide === true ? 'w-full' : 'w-64'}`}
       >
         <div className='flex h-6 justify-between'>
           <SexButton />

@@ -153,4 +153,44 @@ describe('StrainFilter', () => {
     const filterBack = StrainFilter.fromJSON(filterStr);
     expect(filterBack).toEqual(filter);
   });
+
+  test('hides lethal genotypes by default', () => {
+    expect(new StrainFilter().showLethal).toBe(false);
+  });
+
+  test('JSON saved before showLethal existed loads with it on', () => {
+    const legacy = JSON.stringify({
+      alleleNames: [],
+      exprPhenotypes: [],
+      reqConditions: [],
+      supConditions: [],
+      hiddenNodes: [],
+      activeConditions: [],
+    });
+    expect(StrainFilter.fromJSON(legacy).showLethal).toBe(true);
+    // Interim inverted flag name, from designs saved mid-development.
+    const interim = StrainFilter.fromJSON(
+      JSON.stringify({ ...JSON.parse(legacy), hideLethal: true })
+    );
+    expect(interim.showLethal).toBe(false);
+    expect(Object.keys(interim)).not.toContain('hideLethal');
+  });
+
+  test('showLethal round-trips and is set via the "set" action', () => {
+    const filter = new StrainFilter();
+    filter.update({
+      field: 'showLethal',
+      action: 'set',
+      value: true,
+      name: '',
+      filterId: '',
+    });
+    expect(filter.showLethal).toBe(true);
+    expect(StrainFilter.fromJSON(filter.toJSON()).showLethal).toBe(true);
+    expect(StrainFilter.fromJSON(new StrainFilter().toJSON()).showLethal).toBe(
+      false
+    );
+    // The default viability filter doesn't count as a set filter.
+    expect(new StrainFilter().isEmpty()).toBe(true);
+  });
 });

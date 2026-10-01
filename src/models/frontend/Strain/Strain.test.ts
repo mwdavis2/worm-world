@@ -1262,3 +1262,71 @@ describe('passesFilter() - exprPhenotypes', () => {
     expect(strain.passesFilter(filterForMutant)).toBe(false);
   });
 });
+
+describe('isLethal() and the viability filter', () => {
+  const lethalAllele = (
+    name: string,
+    lethal: boolean | undefined,
+    requiredConditions: Condition[] = []
+  ): Allele => {
+    const allele = new Allele({
+      name,
+      variation: new Variation({ name }),
+    });
+    allele.alleleExpressions = [
+      new AlleleExpression({
+        alleleName: name,
+        expressingPhenotype: new Phenotype({
+          name: `${name}Phen`,
+          shortName: `${name}Phen`,
+          wild: false,
+          lethal,
+        }),
+        requiredPhenotypes: [],
+        suppressingPhenotypes: [],
+        requiredConditions,
+        suppressingConditions: [],
+        dominance: '2',
+      }),
+    ];
+    return allele;
+  };
+
+  test('a strain expressing a lethal phenotype is lethal; a non-lethal or unflagged one is not', () => {
+    const lethal = new Strain({
+      allelePairs: [lethalAllele('lethA', true).toHomo()],
+    });
+    const viable = new Strain({
+      allelePairs: [lethalAllele('lethB', false).toHomo()],
+    });
+    const unflagged = new Strain({
+      allelePairs: [lethalAllele('lethC', undefined).toHomo()],
+    });
+    expect(lethal.isLethal()).toBe(true);
+    expect(viable.isLethal()).toBe(false);
+    expect(unflagged.isLethal()).toBe(false);
+  });
+
+  test('lethality that depends on a condition only applies while the condition is active', () => {
+    const drug = new Condition({ name: 'lethDrug' });
+    const strain = new Strain({
+      allelePairs: [lethalAllele('lethD', true, [drug]).toHomo()],
+    });
+    expect(strain.isLethal([], new Set())).toBe(false);
+    expect(strain.isLethal([], new Set(['lethDrug']))).toBe(true);
+  });
+
+  test('passesFilter hides a lethal strain unless showLethal is on', () => {
+    const lethal = new Strain({
+      allelePairs: [lethalAllele('lethE', true).toHomo()],
+    });
+    expect(lethal.passesFilter(new StrainFilter({ showLethal: false }))).toBe(
+      false
+    );
+    expect(lethal.passesFilter(new StrainFilter({ showLethal: true }))).toBe(
+      true
+    );
+    // A new filter hides lethals by default.
+    expect(lethal.passesFilter(new StrainFilter())).toBe(false);
+  });
+});

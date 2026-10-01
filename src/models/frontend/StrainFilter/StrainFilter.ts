@@ -5,9 +5,11 @@ import { type Node } from 'reactflow';
 
 export interface StrainFilterUpdate {
   field: keyof IStrainFilter;
-  action: 'add' | 'remove' | 'clear';
+  action: 'add' | 'remove' | 'clear' | 'set';
   name: string;
   filterId: string;
+  // Only used by the 'set' action, for the boolean fields.
+  value?: boolean;
 }
 export interface IStrainFilter {
   alleleNames: Set<string>;
@@ -23,6 +25,10 @@ export interface IStrainFilter {
   // treated as not present. Feeds phenotype-expression resolution
   // (Strain.getExprPhenotypes), not just card visibility.
   activeConditions: Set<string>;
+  // Show genotypes that express a lethal phenotype. Off by default for newly
+  // created crosses (lethals are hidden); JSON saved before it existed loads
+  // as on so old designs keep showing every child.
+  showLethal: boolean;
 }
 
 export class StrainFilter implements IStrainFilter {
@@ -46,6 +52,8 @@ export class StrainFilter implements IStrainFilter {
   @Transform((data: any) => new Set(data?.obj?.activeConditions))
   public activeConditions = new Set<string>();
 
+  public showLethal = false;
+
   constructor(props?: Partial<IStrainFilter>) {
     if (props !== undefined) Object.assign(this, props);
   }
@@ -58,9 +66,15 @@ export class StrainFilter implements IStrainFilter {
       supConditions: new Set(this.supConditions),
       hiddenNodes: new Set(this.hiddenNodes),
       activeConditions: new Set(this.activeConditions),
+      showLethal: this.showLethal,
     });
   }
 
+  /**
+   * True when no Set-based filter is set. Deliberately ignores `showLethal`,
+   * so the middle-node filter icon doesn't change between a fresh cross
+   * (lethals hidden by default) and an old saved design (lethals shown).
+   */
   public isEmpty(): boolean {
     return (
       this.alleleNames.size === 0 &&
@@ -102,6 +116,7 @@ export class StrainFilter implements IStrainFilter {
       // Candidate conditions worth offering an "is this present" toggle for -
       // anything any allele expression declares as required/suppressing.
       activeConditions: new Set([...reqConditions, ...supConditions]),
+      showLethal: false,
     };
   }
 
@@ -151,12 +166,19 @@ export class StrainFilter implements IStrainFilter {
         supConditions: new Set(),
         hiddenNodes: new Set(),
         activeConditions: new Set(),
+        showLethal: false,
       }
     );
   }
 
   public update(update: StrainFilterUpdate): void {
+    if (update.action === 'set') {
+      if (update.field === 'showLethal')
+        this.showLethal = update.value ?? false;
+      return;
+    }
     const options = this[update.field];
+    if (typeof options === 'boolean') return;
     if (update.action === 'add') options.add(update.name);
     if (update.action === 'remove') options.delete(update.name);
     if (update.action === 'clear') options.clear();
@@ -167,10 +189,20 @@ export class StrainFilter implements IStrainFilter {
   }
 
   static fromJSON(json: string): StrainFilter {
-    return plainToInstance(
-      StrainFilter,
-      JSON.parse(json) as Record<string, unknown>
-    );
+    const plain = JSON.parse(json) as Record<string, unknown>;
+    const filter = plainToInstance(StrainFilter, plain);
+    // class-transformer only visits keys present in the source, so a field
+    // added later keeps its class default for old JSON. showLethal must load
+    // as on for designs saved before it existed (their children were never
+    // hidden), not pick up the off-by-default used for new crosses.
+    if (plain.showLethal === undefined) {
+      // Interim name of this flag, inverted; may be in designs saved while it
+      // was being built.
+      const legacyHide = (plain as { hideLethal?: boolean }).hideLethal;
+      filter.showLethal = legacyHide === undefined ? true : !legacyHide;
+      delete (filter as unknown as { hideLethal?: boolean }).hideLethal;
+    }
+    return filter;
   }
 }
 

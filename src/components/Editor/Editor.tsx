@@ -17,6 +17,7 @@ import { type MenuItem } from 'components/Menu/Menu';
 import NoteForm from 'components/NoteForm/NoteForm';
 import StrainForm from 'components/StrainForm/StrainForm';
 import { NodeType, Sex } from 'models/enums';
+import { type Allele } from 'models/frontend/Allele/Allele';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import CrossDesign, {
   addToArray,
@@ -511,6 +512,10 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           );
 
     childNodes.forEach((node: Node<Strain>) => {
+      node.data.lethal = node.data.isLethal(
+        parentAlleles,
+        filter.activeConditions
+      );
       node.hidden =
         !node.data.passesFilter(filter, parentAlleles) ||
         filter.hiddenNodes.has(node.id);
@@ -529,28 +534,36 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     setNodes((nodes) => addToArray(nodes, middleNode, ...childNodes));
   };
 
-  // Hides newly-created children below the user's configured probability
-  // threshold, reusing StrainFilter.hiddenNodes so the existing filter menu
-  // (per-strain checkboxes, "Select All") can reveal them unchanged.
+  // Hides newly-created children that are lethal (the default viability
+  // filter) or below the user's configured probability threshold. Probability
+  // hiding reuses StrainFilter.hiddenNodes so the existing filter menu
+  // (per-strain checkboxes, "Select All") can reveal them unchanged; lethal
+  // hiding is the filter's own `showLethal` flag, which is off for a new
+  // StrainFilter. Always records each child's resolved `lethal` for its card.
   const applyInitialHiddenFilter = (
     middleNode: Node<StrainFilter>,
-    childNodes: Array<Node<Strain>>
+    childNodes: Array<Node<Strain>>,
+    parentAlleles: Allele[]
   ): void => {
     const threshold = getPreferences().minChildProbability;
-    if (threshold <= 0) return;
+    const filter = new StrainFilter();
 
-    const hiddenIds = new Set<string>();
     childNodes.forEach((node) => {
-      if ((node.data.probability ?? 1) < threshold) {
+      node.data.lethal = node.data.isLethal(
+        parentAlleles,
+        filter.activeConditions
+      );
+      if (!node.data.passesFilter(filter, parentAlleles)) node.hidden = true;
+      if (threshold > 0 && (node.data.probability ?? 1) < threshold) {
         node.hidden = true;
-        hiddenIds.add(node.id);
+        filter.hiddenNodes.add(node.id);
       }
     });
-    if (hiddenIds.size === 0) return;
 
-    middleNode.data = new StrainFilter({ hiddenNodes: hiddenIds });
+    middleNode.data = filter;
     CrossDesign.applyFilteredProbabilities(childNodes);
-    repositionVisibleChildren(middleNode, childNodes);
+    if (childNodes.some((node) => node.hidden === true))
+      repositionVisibleChildren(middleNode, childNodes);
   };
 
   const getNodePositionFromLastClick = (): XYPosition => {
@@ -626,7 +639,11 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     };
     const strainOpts = await parentNode.data.selfCross();
     const childNodes = getChildNodes(selfNode, strainOpts);
-    applyInitialHiddenFilter(selfNode, childNodes);
+    applyInitialHiddenFilter(
+      selfNode,
+      childNodes,
+      parentNode.data.getNonWildAlleles()
+    );
     const childEdges = childNodes.map((node) => {
       return {
         id: props.crossDesign.createId(),
@@ -692,7 +709,10 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     };
     const childOptions = await maleStrain.crossWith(hermStrain);
     const childNodes = getChildNodes(xNode, childOptions);
-    applyInitialHiddenFilter(xNode, childNodes);
+    applyInitialHiddenFilter(xNode, childNodes, [
+      ...hermStrain.getNonWildAlleles(),
+      ...maleStrain.getNonWildAlleles(),
+    ]);
     const childEdges = childNodes.map((node) => {
       return {
         id: props.crossDesign.createId(),

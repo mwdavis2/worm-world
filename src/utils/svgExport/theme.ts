@@ -1,5 +1,6 @@
 export interface ThemeColors {
   cardBackground: string; // bg-base-100
+  lethalCardBackground: string; // bg-base-200 (grayed card for a lethal genotype)
   contentText: string; // text-base-content
   probabilityText: string; // text-accent
   selfNodeBackground: string; // bg-secondary
@@ -56,6 +57,7 @@ export const sampleThemeColors = (): ThemeColors => {
 
   return {
     cardBackground: probe('bg-base-100', 'backgroundColor'),
+    lethalCardBackground: probe('bg-base-200', 'backgroundColor'),
     contentText: probe('text-base-content', 'color'),
     probabilityText: probe('text-accent', 'color'),
     selfNodeBackground: probe('bg-secondary', 'backgroundColor'),

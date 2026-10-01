@@ -205,7 +205,11 @@ const renderStrainCard = (
   const parts: string[] = [];
 
   parts.push(
-    `<rect x="${x}" y="${y}" width="${STRAIN_NODE_WIDTH}" height="${STRAIN_NODE_HEIGHT}" rx="4" fill="${colors.cardBackground}" />`
+    `<rect x="${x}" y="${y}" width="${STRAIN_NODE_WIDTH}" height="${STRAIN_NODE_HEIGHT}" rx="4" fill="${
+      strain.lethal === true
+        ? colors.lethalCardBackground
+        : colors.cardBackground
+    }" />`
   );
 
   const sexIcon = strain.sex === Sex.Male ? MALE_ICON : HERM_ICON;

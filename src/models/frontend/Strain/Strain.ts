@@ -65,6 +65,11 @@ export class Strain {
   // siblings. Undefined (not shown) whenever nothing in the group is hidden,
   // since it would then equal `probability` and be pure clutter to repeat.
   public filteredProbability?: number;
+  // Whether this genotype expresses a lethal phenotype, as last resolved by
+  // the Editor against its cross's parent alleles and active conditions (see
+  // isLethal). Stored rather than recomputed at render time because
+  // StrainCard has neither of those inputs. Undefined until first resolved.
+  public lethal?: boolean;
 
   // Make sure that chromosome pairs in map are correctly deserialized
   @Transform(
@@ -151,8 +156,16 @@ export class Strain {
           .includes(exprPhenName)
       );
 
+    const passesViability =
+      filter.showLethal ||
+      !this.isLethal(parentAlleles, filter.activeConditions);
+
     return (
-      passesAlleleNames && passesReqConds && passesSupConds && passesExprPhens
+      passesAlleleNames &&
+      passesReqConds &&
+      passesSupConds &&
+      passesExprPhens &&
+      passesViability
     );
   }
 
@@ -834,6 +847,16 @@ export class Strain {
     if (maturationDays.length === 0) maturationDays.push(3); // default
 
     return Math.max(...maturationDays);
+  }
+
+  /** True if any currently-expressed phenotype is flagged lethal. */
+  public isLethal(
+    parentAlleles: Allele[] = [],
+    activeConditions = new Set<string>()
+  ): boolean {
+    return this.getExprPhenotypes(parentAlleles, activeConditions).some(
+      (phen) => phen.lethal === true
+    );
   }
 
   /**

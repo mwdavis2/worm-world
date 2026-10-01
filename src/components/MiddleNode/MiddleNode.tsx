@@ -5,7 +5,7 @@ import {
 import { AiOutlineEyeInvisible as EyeIcon } from 'react-icons/ai';
 import type StrainFilter from 'models/frontend/StrainFilter/StrainFilter';
 import { TbArrowLoopLeft as SelfIcon } from 'react-icons/tb';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useStore } from 'reactflow';
 import { BiX as CloseIcon } from 'react-icons/bi';
 import { NodeType } from 'models/enums';
 
@@ -16,6 +16,14 @@ export interface MiddleNodeProps {
 }
 
 const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
+  // The eye icon reflects whether any child is actually hidden, not just
+  // whether a filter is set: the default viability filter hides lethal
+  // children without the filter looking "set" (see StrainFilter.isEmpty).
+  const hasHiddenChild = useStore((state) =>
+    [...state.nodeInternals.values()].some(
+      (node) => node.parentNode === props.id && node.hidden === true
+    )
+  );
   return (
     // Sized to span both the circle and the icons above/right of it, so the
     // hoverable area that keeps the icons visible has no gap between them -
@@ -65,7 +73,7 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
       <label
         htmlFor={`filtered-out-modal-${props.id}`}
         className={`export-hide-icon absolute top-0 left-24 hover:cursor-pointer ${
-          props.data.isEmpty() ? 'invisible' : ''
+          hasHiddenChild ? '' : 'invisible'
         }`}
       >
         <EyeIcon size='30' />
