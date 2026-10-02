@@ -1,1 +1,15 @@
 name,description,male_mating,lethal,female_sterile,arrested,maturation_days
+15C,temperature,3,0,0,0,4.0
+25C,temperature,3,0,0,0,3.0
+Aldicarb,drug,3,0,0,0,3.0
+Benzimidazole,drug,3,0,0,0,3.0
+Blasticidin,drug,3,0,0,0,3.0
+Histamine,drug,3,0,0,0,3.0
+Hygromycin,drug,3,0,0,0,3.0
+Ivermectin,drug,3,0,0,0,3.0
+Levamisole,drug,3,0,0,0,3.0
+Neomycin,drug,3,0,0,0,3.0
+Nourseothricin,drug,3,0,0,0,3.0
+Puromycin,drug,3,0,0,0,3.0
+Tetracycline,drug,3,0,0,0,3.0
+heat-shock,"temperature shock",2,0,0,0,3.0

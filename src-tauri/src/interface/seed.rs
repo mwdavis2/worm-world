@@ -132,6 +132,21 @@ mod tests {
         }
     }
 
+    // INSERT OR IGNORE silently drops a row whose key already exists, so a
+    // duplicate key in a shipped file would quietly lose data (it did: three
+    // gene pairs shared a systematic name). Every row must have its own key.
+    #[test]
+    fn no_shipped_csv_has_duplicate_keys() {
+        for (table, csv_bytes, key_columns) in SEEDS {
+            let rows = Reader::from_reader(csv_bytes).records().count();
+            assert_eq!(
+                rows,
+                distinct_keys(csv_bytes, key_columns),
+                "{table} seed CSV has rows with duplicate keys"
+            );
+        }
+    }
+
     #[sqlx::test]
     async fn ships_genes(pool: Pool<Sqlite>) {
         let state = InnerDbState {
