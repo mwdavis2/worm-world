@@ -12,6 +12,14 @@ import { BsLightningCharge as MenuIcon } from 'react-icons/bs';
 import { IoMale as MaleIcon, IoMaleFemale as HermIcon } from 'react-icons/io5';
 import { RiArrowUpDownLine as SwapIcon } from 'react-icons/ri';
 
+// Lethal cards: the normal card color with the theme's text color laid over it
+// at 20%, so the card gets darker in light themes and lighter in dark ones
+// (see LETHAL_CARD_MIX in utils/svgExport/theme.ts, which the export mirrors).
+// An opaque gradient layer rather than color-mix(), which older macOS WebKit
+// doesn't support.
+const LETHAL_CARD_BACKGROUND =
+  'bg-base-100 bg-[linear-gradient(hsl(var(--bc)/0.2),hsl(var(--bc)/0.2))]';
+
 interface StrainCardProps {
   strain: Strain;
   id: string;
@@ -71,7 +79,7 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
       <div
         data-testid='strainCard'
         className={`flex h-36 flex-col rounded shadow-md ${
-          props.strain.lethal === true ? 'bg-base-200' : 'bg-base-100'
+          props.strain.lethal === true ? LETHAL_CARD_BACKGROUND : 'bg-base-100'
         } ${props.wide === true ? 'w-full' : 'w-64'}`}
       >
         <div className='flex h-6 justify-between'>
@@ -93,7 +101,7 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
             </div>
           )}
           {filteredProbability !== undefined && (
-            <div className='self-center text-xs text-base-content/60'>
+            <div className='self-center text-xs text-base-content/80'>
               {filteredProbability}
             </div>
           )}
@@ -109,7 +117,7 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
         <div className='min-w-0 overflow-hidden'>
           <div
             ref={contentRef}
-            className='flex h-24 min-w-min justify-center text-sm'
+            className='flex h-[82px] min-w-min justify-center text-sm'
             style={{
               transform: `scale(${contentScale})`,
               transformOrigin: 'top left',
@@ -118,12 +126,33 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
             <MainContentArea strain={props.strain} />
           </div>
         </div>
+        <ViabilityLine strain={props.strain} />
         <div className='h-6 text-center font-bold'>{props.strain.name}</div>
       </div>
     </StrainCardContext.Provider>
   );
 });
 StrainCard.displayName = 'StrainCard';
+
+// What this genotype expresses: its non-wild phenotypes, plus Lethal if it is.
+// Always renders (empty if there's nothing to show) so every card keeps the
+// same fixed height.
+const ViabilityLine = (props: { strain: Strain }): React.JSX.Element => {
+  const names = props.strain.exprPhenotypeNames ?? [];
+  const lethal = props.strain.lethal === true;
+  const title = [...names, ...(lethal ? ['Lethal'] : [])].join(' · ');
+  return (
+    <div
+      className='h-[14px] truncate px-2 text-center text-[11px] leading-[14px]'
+      title={title}
+      data-testid='strainCardViability'
+    >
+      {names.join(', ')}
+      {names.length > 0 && lethal && ' · '}
+      {lethal && <span className='font-bold'>Lethal</span>}
+    </div>
+  );
+};
 
 const SexButton = (): React.JSX.Element => {
   const context = useContext(StrainCardContext);

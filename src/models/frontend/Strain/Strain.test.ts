@@ -1343,4 +1343,50 @@ describe('isLethal() and the viability filter', () => {
     expect(lethal.passesFilter(only())).toBe(true);
     expect(viable.passesFilter(only())).toBe(true);
   });
+
+  test('refreshCardInfo stores lethal and the non-wild phenotype names', () => {
+    const lethal = new Strain({
+      allelePairs: [lethalAllele('cardA', true).toHomo()],
+    });
+    lethal.refreshCardInfo();
+    expect(lethal.lethal).toBe(true);
+    expect(lethal.exprPhenotypeNames).toEqual(['cardAPhen']);
+
+    const viable = new Strain({
+      allelePairs: [lethalAllele('cardB', false).toHomo()],
+    });
+    viable.refreshCardInfo();
+    expect(viable.lethal).toBe(false);
+    expect(viable.exprPhenotypeNames).toEqual(['cardBPhen']);
+
+    const nothing = new Strain();
+    nothing.refreshCardInfo();
+    expect(nothing.lethal).toBe(false);
+    expect(nothing.exprPhenotypeNames).toEqual([]);
+  });
+
+  test('refreshCardInfo leaves wild-type phenotypes off the card', () => {
+    const allele = new Allele({
+      name: 'cardC',
+      variation: new Variation({ name: 'cardC' }),
+    });
+    allele.alleleExpressions = [
+      new AlleleExpression({
+        alleleName: 'cardC',
+        expressingPhenotype: new Phenotype({
+          name: 'cardCPhen',
+          shortName: 'cardCPhen',
+          wild: true,
+        }),
+        requiredPhenotypes: [],
+        suppressingPhenotypes: [],
+        requiredConditions: [],
+        suppressingConditions: [],
+        dominance: '2',
+      }),
+    ];
+    const strain = new Strain({ allelePairs: [allele.toHomo()] });
+    strain.refreshCardInfo();
+    expect(strain.exprPhenotypeNames).toEqual([]);
+  });
 });

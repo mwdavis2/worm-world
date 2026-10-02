@@ -40,6 +40,7 @@ export const CHROM_LABEL_SIZE = 16;
 export const ALLELE_TEXT_SIZE = 16;
 const NAME_TEXT_SIZE = 14;
 const PROB_TEXT_SIZE = 10;
+const VIABILITY_TEXT_SIZE = 11;
 const ICON_SIZE = 16;
 export const COLUMN_GAP = 8; // approximates the card's mx-2 spacing
 
@@ -189,6 +190,21 @@ const measureAlleleColumn = (
     topName,
     botName,
   };
+};
+
+// Truncates text with an ellipsis so it fits within maxWidth at the
+// viability-line size, like the live card's CSS `truncate`.
+const fitText = (text: string, maxWidth: number, tr: TextRenderer): string => {
+  if (tr.measureWidth(text, VIABILITY_TEXT_SIZE, 'normal') <= maxWidth)
+    return text;
+  let end = text.length;
+  while (
+    end > 1 &&
+    tr.measureWidth(`${text.slice(0, end)}…`, VIABILITY_TEXT_SIZE, 'normal') >
+      maxWidth
+  )
+    end--;
+  return `${text.slice(0, end)}…`;
 };
 
 const renderStrainCard = (
@@ -424,6 +440,28 @@ const renderStrainCard = (
           }
         })
         .join('')
+    );
+  }
+
+  // Expressed phenotypes (+ Lethal), mirroring the live card's line between
+  // the genotype and the name row: the card's 24px name row sits at the
+  // bottom, so this 14px row occupies y+106..y+120, baseline ~y+117.
+  const viabilityText = [
+    (strain.exprPhenotypeNames ?? []).join(', '),
+    strain.lethal === true ? 'Lethal' : '',
+  ]
+    .filter((part) => part !== '')
+    .join(' · ');
+  if (viabilityText !== '') {
+    parts.push(
+      tr.centeredGlyphMarkup(
+        fitText(viabilityText, STRAIN_NODE_WIDTH - 16, tr),
+        centerX,
+        y + STRAIN_NODE_HEIGHT - 27,
+        VIABILITY_TEXT_SIZE,
+        'normal',
+        colors.contentText
+      )
     );
   }
 

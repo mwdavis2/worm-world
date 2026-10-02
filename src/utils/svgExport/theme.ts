@@ -1,6 +1,6 @@
 export interface ThemeColors {
   cardBackground: string; // bg-base-100
-  lethalCardBackground: string; // bg-base-200 (grayed card for a lethal genotype)
+  lethalCardBackground: string; // cardBackground blended toward contentText by LETHAL_CARD_MIX (matches StrainCard's overlay)
   contentText: string; // text-base-content
   probabilityText: string; // text-accent
   selfNodeBackground: string; // bg-secondary
@@ -22,6 +22,27 @@ const splitRgba = (color: string): { rgb: string; alpha: number } => {
     rgb: `rgb(${r}, ${g}, ${b})`,
     alpha: a === undefined ? 1 : Number(a),
   };
+};
+
+// How far a lethal card's background is pulled from the card color toward the
+// theme's text color. Must match the alpha of the overlay StrainCard.tsx
+// paints (hsl(var(--bc)/0.2) over bg-base-100). Blending toward base-content
+// rather than darkening: it darkens a light theme's card and lightens a dark
+// theme's, so the card stays distinguishable in both (near-black dark cards
+// have no room to get darker).
+export const LETHAL_CARD_MIX = 0.2;
+
+export const blendRgb = (from: string, to: string, amount: number): string => {
+  const channels = (color: string): number[] =>
+    (/rgba?\(([^)]+)\)/.exec(color)?.[1] ?? '0,0,0')
+      .split(',')
+      .slice(0, 3)
+      .map(Number);
+  const [fr, fg, fb] = channels(from);
+  const [tr, tg, tb] = channels(to);
+  const mix = (a: number, b: number): number =>
+    Math.round(a * (1 - amount) + b * amount);
+  return `rgb(${mix(fr, tr)}, ${mix(fg, tg)}, ${mix(fb, tb)})`;
 };
 
 // Reads real computed colors from the currently active daisyUI theme (one of
@@ -55,10 +76,17 @@ export const sampleThemeColors = (): ThemeColors => {
   // Illustrator, despite rendering fine in Chrome).
   const edge = splitRgba(probe('text-base-content/30', 'color'));
 
+  const cardBackground = probe('bg-base-100', 'backgroundColor');
+  const contentText = probe('text-base-content', 'color');
+
   return {
-    cardBackground: probe('bg-base-100', 'backgroundColor'),
-    lethalCardBackground: probe('bg-base-200', 'backgroundColor'),
-    contentText: probe('text-base-content', 'color'),
+    cardBackground,
+    lethalCardBackground: blendRgb(
+      cardBackground,
+      contentText,
+      LETHAL_CARD_MIX
+    ),
+    contentText,
     probabilityText: probe('text-accent', 'color'),
     selfNodeBackground: probe('bg-secondary', 'backgroundColor'),
     xNodeBackground: probe('bg-primary', 'backgroundColor'),

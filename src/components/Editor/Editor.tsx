@@ -95,12 +95,40 @@ interface StrainModalState {
   allowAlleleEditing?: boolean;
 }
 
+// Fills in each child strain's card info (lethal flag, expressed phenotypes)
+// for a design loaded from storage - these are only otherwise set when a cross
+// is created or its filter changes, so older designs would show neither. Only
+// updates what the cards display; never touches visibility or filters.
+const refreshLoadedCardInfo = (
+  nodes: Array<Node<any>>,
+  edges: Edge[]
+): void => {
+  nodes
+    .filter((node) => node.type === NodeType.Self || node.type === NodeType.X)
+    .forEach((middleNode: Node<StrainFilter>) => {
+      const parentAlleles = getIncomers(middleNode, nodes, edges).flatMap(
+        (parent: Node<Strain>) => parent.data.getNonWildAlleles()
+      );
+      nodes
+        .filter((node) => node.parentNode === middleNode.id)
+        .forEach((child: Node<Strain>) => {
+          child.data.refreshCardInfo(
+            parentAlleles,
+            middleNode.data.activeConditions
+          );
+        });
+    });
+};
+
 const Editor = (props: EditorProps): React.JSX.Element => {
   const navigate = useNavigate();
   const reactFlowInstance = useReactFlow();
   const onConnectParams = useRef<OnConnectStartParams | null>(null);
   const [name, setName] = useState(props.crossDesign.name);
-  const [nodes, setNodes] = useState(props.crossDesign.nodes);
+  const [nodes, setNodes] = useState(() => {
+    refreshLoadedCardInfo(props.crossDesign.nodes, props.crossDesign.edges);
+    return props.crossDesign.nodes;
+  });
   const [edges, setEdges] = useState(props.crossDesign.edges);
   const [drawerState, setDrawerState] = useState<DrawerState>({
     type: DrawerType.AddStrain,
@@ -512,10 +540,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           );
 
     childNodes.forEach((node: Node<Strain>) => {
-      node.data.lethal = node.data.isLethal(
-        parentAlleles,
-        filter.activeConditions
-      );
+      node.data.refreshCardInfo(parentAlleles, filter.activeConditions);
       node.hidden =
         !node.data.passesFilter(filter, parentAlleles) ||
         filter.hiddenNodes.has(node.id);
@@ -549,10 +574,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     const filter = new StrainFilter();
 
     childNodes.forEach((node) => {
-      node.data.lethal = node.data.isLethal(
-        parentAlleles,
-        filter.activeConditions
-      );
+      node.data.refreshCardInfo(parentAlleles, filter.activeConditions);
       if (!node.data.passesFilter(filter, parentAlleles)) node.hidden = true;
       if (threshold > 0 && (node.data.probability ?? 1) < threshold) {
         node.hidden = true;

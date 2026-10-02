@@ -74,6 +74,9 @@ export class Strain {
   // isLethal). Stored rather than recomputed at render time because
   // StrainCard has neither of those inputs. Undefined until first resolved.
   public lethal?: boolean;
+  // Short names of the non-wild phenotypes this genotype expresses, as last
+  // resolved alongside `lethal` (see refreshCardInfo). Shown on the card.
+  public exprPhenotypeNames?: string[];
 
   // Make sure that chromosome pairs in map are correctly deserialized
   @Transform(
@@ -855,6 +858,26 @@ export class Strain {
     if (maturationDays.length === 0) maturationDays.push(3); // default
 
     return Math.max(...maturationDays);
+  }
+
+  /**
+   * Resolves and stores what the strain card displays - whether the genotype
+   * is lethal and which non-wild phenotypes it expresses - since the card
+   * itself has no parent alleles or active conditions to resolve them with.
+   */
+  public refreshCardInfo(
+    parentAlleles: Allele[] = [],
+    activeConditions = new Set<string>()
+  ): void {
+    const expressed = this.getExprPhenotypes(parentAlleles, activeConditions);
+    this.lethal = expressed.some((phen) => phen.lethal === true);
+    this.exprPhenotypeNames = [
+      ...new Set(
+        expressed
+          .filter((phen) => !phen.wild)
+          .map((phen) => (phen.shortName === '' ? phen.name : phen.shortName))
+      ),
+    ];
   }
 
   /** True if any currently-expressed phenotype is flagged lethal. */

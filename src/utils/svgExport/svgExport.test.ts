@@ -313,6 +313,43 @@ describe('buildCrossDesignSvg', () => {
     });
   });
 
+  describe('viability line', () => {
+    const exportWith = async (
+      names: string[] | undefined,
+      lethal: boolean | undefined
+    ): Promise<string> => {
+      let done = false;
+      const nodes = simpleCrossDesign.nodes.map((node) => {
+        if (node.type !== NodeType.Strain || done) return node;
+        done = true;
+        const data = (node.data as Strain).clone();
+        data.exprPhenotypeNames = names;
+        data.lethal = lethal;
+        return { ...node, data };
+      });
+      return await buildCrossDesignSvg(
+        nodes,
+        simpleCrossDesign.edges,
+        'default',
+        true,
+        'text'
+      );
+    };
+
+    test('shows the expressed phenotypes and Lethal between the genotype and the name', async () => {
+      const svg = await exportWith(['Unc', 'Dpy'], true);
+      expect(svg).toContain('Unc, Dpy · Lethal');
+    });
+
+    test('shows only what applies, and nothing when there is nothing to show', async () => {
+      expect(await exportWith(['Unc'], false)).toContain('>Unc<');
+      expect(await exportWith(undefined, true)).toContain('>Lethal<');
+      const none = await exportWith(undefined, false);
+      expect(none).not.toContain('Lethal');
+      expect(none).not.toContain('·');
+    });
+  });
+
   describe('text export mode', () => {
     test('"text" mode emits <text> elements with the fallback font-family class, and no glyph paths', async () => {
       const svgString = await buildCrossDesignSvg(
