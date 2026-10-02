@@ -137,6 +137,38 @@ impl InnerDbState {
         }
     }
 
+    /// Updates the non-key columns of an existing phenotype; its name and
+    /// wild flag identify the row and are never changed.
+    pub async fn update_phenotype(&self, phenotype: &Phenotype) -> Result<(), DbError> {
+        match sqlx::query(
+            "UPDATE phenotypes SET short_name = ?, description = ?, male_mating = ?,
+            lethal = ?, female_sterile = ?, arrested = ?, maturation_days = ?
+            WHERE name = ? AND wild = ?",
+        )
+        .bind(&phenotype.short_name)
+        .bind(&phenotype.description)
+        .bind(phenotype.male_mating)
+        .bind(phenotype.lethal)
+        .bind(phenotype.female_sterile)
+        .bind(phenotype.arrested)
+        .bind(phenotype.maturation_days)
+        .bind(&phenotype.name)
+        .bind(phenotype.wild)
+        .execute(&self.conn_pool)
+        .await
+        {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No phenotype found with name '{}' (wild: {})",
+                phenotype.name, phenotype.wild
+            ))),
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprint!("Update phenotype error: {e}");
+                Err(DbError::Update(e.to_string()))
+            }
+        }
+    }
+
     pub async fn insert_phenotype(&self, phenotype: &Phenotype) -> Result<(), DbError> {
         match sqlx::query!(
             "INSERT INTO phenotypes (name, wild, short_name, description, male_mating, lethal, female_sterile, arrested, maturation_days)

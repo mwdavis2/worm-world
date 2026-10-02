@@ -70,6 +70,32 @@ impl InnerDbState {
         }
     }
 
+    /// Updates the dominance of an existing allele expression; the allele and
+    /// phenotype it links identify the row and are never changed.
+    pub async fn update_allele_expr(&self, expr: &AlleleExpression) -> Result<(), DbError> {
+        match sqlx::query(
+            "UPDATE allele_exprs SET dominance = ?
+            WHERE allele_name = ? AND expressing_phenotype_name = ? AND expressing_phenotype_wild = ?",
+        )
+        .bind(expr.dominance)
+        .bind(&expr.allele_name)
+        .bind(&expr.expressing_phenotype_name)
+        .bind(expr.expressing_phenotype_wild)
+        .execute(&self.conn_pool)
+        .await
+        {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No allele expression found for allele '{}' and phenotype '{}' (wild: {})",
+                expr.allele_name, expr.expressing_phenotype_name, expr.expressing_phenotype_wild
+            ))),
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprint!("Update allele expression error: {e}");
+                Err(DbError::Update(e.to_string()))
+            }
+        }
+    }
+
     pub async fn insert_allele_expr(&self, expr: &AlleleExpression) -> Result<(), DbError> {
         match sqlx::query!(
             "INSERT INTO allele_exprs (allele_name, expressing_phenotype_name, expressing_phenotype_wild, dominance)

@@ -1,5 +1,7 @@
 import {
   deleteExpressionRelation,
+  updateDbExpressionRelation,
+  deleteFilteredExpressionRelations,
   getCountFilteredExpressionRelations,
   getFilteredExpressionRelations,
   insertDbExpressionRelation,
@@ -84,6 +86,18 @@ export default function ExpressionRelationDataTable(): React.JSX.Element {
       insertRecord={insertDbExpressionRelation}
       insertRecordsFromFile={insertExpressionRelationsFromFile}
       deleteRecord={deleteExpressionRelation}
+      updateRow={updateDbExpressionRelation}
+      lockedFields={[
+        'alleleName',
+        'expressingPhenotypeName',
+        'expressingPhenotypeWild',
+        'alteringPhenotypeName',
+        'alteringPhenotypeWild',
+        'alteringCondition',
+      ]}
+      clearTable={async () => {
+        await deleteFilteredExpressionRelations({ filters: [], orderBy: [] });
+      }}
     />
   );
 }

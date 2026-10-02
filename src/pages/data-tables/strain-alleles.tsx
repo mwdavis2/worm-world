@@ -4,6 +4,8 @@ import {
   insertDbStrainAllele,
   insertStrainAllelesFromFile,
   deleteStrainAllele,
+  updateDbStrainAllele,
+  deleteFilteredStrainAlleles,
 } from 'api/strainAllele';
 import { type Field } from 'components/ColumnFilter/ColumnFilter';
 import DataTableView from 'components/DataTableView/DataTableView';
@@ -61,6 +63,11 @@ export default function StrainDataTable(): React.JSX.Element {
       insertRecord={insertDbStrainAllele}
       insertRecordsFromFile={insertStrainAllelesFromFile}
       deleteRecord={deleteStrainAllele}
+      updateRow={updateDbStrainAllele}
+      lockedFields={['strainName', 'alleleName']}
+      clearTable={async () => {
+        await deleteFilteredStrainAlleles({ filters: [], orderBy: [] });
+      }}
     />
   );
 }

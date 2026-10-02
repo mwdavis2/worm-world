@@ -125,6 +125,32 @@ impl InnerDbState {
         }
     }
 
+    /// Updates the non-key columns of an existing allele; its name identifies
+    /// the row and is never changed.
+    pub async fn update_allele(&self, allele: &Allele) -> Result<(), DbError> {
+        match sqlx::query(
+            "UPDATE alleles SET contents = ?, systematic_gene_name = ?, variation_name = ?
+            WHERE name = ?",
+        )
+        .bind(&allele.contents)
+        .bind(&allele.systematic_gene_name)
+        .bind(&allele.variation_name)
+        .bind(&allele.name)
+        .execute(&self.conn_pool)
+        .await
+        {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No allele found with name '{}'",
+                allele.name
+            ))),
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprint!("Update allele error: {e}");
+                Err(DbError::Update(e.to_string()))
+            }
+        }
+    }
+
     pub async fn insert_allele(&self, allele: &Allele) -> Result<(), DbError> {
         match sqlx::query!(
             "INSERT INTO alleles (name, contents, systematic_gene_name, variation_name)

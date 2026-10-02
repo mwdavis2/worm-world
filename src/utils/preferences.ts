@@ -13,6 +13,8 @@ export interface Preferences {
   // be less than 0.
   minChildProbability: number;
   textExportMode: TextExportMode;
+  // Rows per page in the data tables.
+  dataTablePageSize: number;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -20,6 +22,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   edgeStyle: 'straight',
   minChildProbability: 0,
   textExportMode: 'text',
+  dataTablePageSize: 50,
 };
 
 export const getPreferences = (): Preferences => {

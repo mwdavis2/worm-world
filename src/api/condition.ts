@@ -80,6 +80,13 @@ export const insertDbCondition = async (
   await invoke('insert_condition', { condition: record });
 };
 
+// Changes a condition's non-key columns; its name picks the row.
+export const updateDbCondition = async (
+  record: db_Condition
+): Promise<void> => {
+  await invoke('update_condition', { condition: record });
+};
+
 export const insertConditionsFromFile = async (path: string): Promise<void> => {
   await invoke('insert_conditions_from_file', { path });
 };

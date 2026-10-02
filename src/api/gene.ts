@@ -47,6 +47,11 @@ export const insertDbGene = async (record: db_Gene): Promise<void> => {
   await invoke('insert_gene', { gene: record });
 };
 
+// Changes a gene's non-key columns; its systematic name picks the row.
+export const updateDbGene = async (record: db_Gene): Promise<void> => {
+  await invoke('update_gene', { gene: record });
+};
+
 export const insertGenesFromFile = async (path: string): Promise<void> => {
   await invoke('insert_genes_from_file', { path });
 };

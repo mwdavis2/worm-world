@@ -62,6 +62,17 @@ export const insertDbAllele = async (record: db_Allele): Promise<void> => {
   await invoke('insert_allele', { allele: record });
 };
 
+// Changes an allele's non-key columns; its name picks the row. Same
+// gene-or-variation rule as inserting.
+export const updateDbAllele = async (record: db_Allele): Promise<void> => {
+  if (record.sysGeneName === null && record.variationName === null)
+    throw Error('An allele needs a gene OR a variation');
+  else if (record.sysGeneName !== null && record.variationName !== null)
+    throw Error('An allele can only belong to a gene OR a variation, not both');
+
+  await invoke('update_allele', { allele: record });
+};
+
 export const insertAllelesFromFile = async (path: string): Promise<void> => {
   await invoke('insert_alleles_from_file', { path });
 };

@@ -29,6 +29,14 @@ export const insertDbStrainAllele = async (
   await invoke('insert_strain_allele', { strainAllele: record });
 };
 
+// Changes which chromosome copies a strain allele is on; the strain and
+// allele pick the row.
+export const updateDbStrainAllele = async (
+  record: db_StrainAllele
+): Promise<void> => {
+  await invoke('update_strain_allele', { strainAllele: record });
+};
+
 export const insertStrainAllelesFromFile = async (
   path: string
 ): Promise<void> => {

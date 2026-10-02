@@ -56,6 +56,13 @@ export const insertDbVariation = async (
   await invoke('insert_variation', { variation: record });
 };
 
+// Changes a variation's non-key columns; its allele name picks the row.
+export const updateDbVariation = async (
+  record: db_Variation
+): Promise<void> => {
+  await invoke('update_variation', { variation: record });
+};
+
 export const insertVariationsFromFile = async (path: string): Promise<void> => {
   await invoke('insert_variations_from_file', { path });
 };

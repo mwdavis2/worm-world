@@ -1,5 +1,7 @@
 import {
   deleteGene,
+  updateDbGene,
+  deleteFilteredGenes,
   getCountFilteredGenes,
   getFilteredGenes,
   insertDbGene,
@@ -70,6 +72,13 @@ export default function GeneDataTable(): React.JSX.Element {
       insertRecord={insertDbGene}
       insertRecordsFromFile={insertGenesFromFile}
       deleteRecord={deleteGene}
+      updateRow={updateDbGene}
+      lockedFields={['sysName']}
+      clearTable={async () => {
+        await deleteFilteredGenes({ filters: [], orderBy: [] });
+      }}
+      clearBlockedBy='Alleles'
+      clearWarning='The built-in gene table can only be restored by importing a gene CSV.'
     />
   );
 }

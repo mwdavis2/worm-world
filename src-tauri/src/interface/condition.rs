@@ -130,6 +130,35 @@ impl InnerDbState {
         }
     }
 
+    /// Updates the non-key columns of an existing condition; its name
+    /// identifies the row and is never changed.
+    pub async fn update_condition(&self, condition: &Condition) -> Result<(), DbError> {
+        match sqlx::query(
+            "UPDATE conditions SET description = ?, male_mating = ?, lethal = ?,
+            female_sterile = ?, arrested = ?, maturation_days = ? WHERE name = ?",
+        )
+        .bind(&condition.description)
+        .bind(condition.male_mating)
+        .bind(condition.lethal)
+        .bind(condition.female_sterile)
+        .bind(condition.arrested)
+        .bind(condition.maturation_days)
+        .bind(&condition.name)
+        .execute(&self.conn_pool)
+        .await
+        {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No condition found with name '{}'",
+                condition.name
+            ))),
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprint!("Update condition error: {e}");
+                Err(DbError::Update(e.to_string()))
+            }
+        }
+    }
+
     pub async fn insert_condition(&self, condition: &Condition) -> Result<(), DbError> {
         match sqlx::query!(
             "INSERT INTO conditions (name, description, male_mating, lethal, female_sterile, arrested, maturation_days)

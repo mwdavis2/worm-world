@@ -93,6 +93,38 @@ impl InnerDbState {
         }
     }
 
+    /// Updates whether an existing relationship is suppressing; everything
+    /// else on the row identifies it and is never changed.
+    pub async fn update_expr_relation(&self, relation: &ExpressionRelation) -> Result<(), DbError> {
+        // The altering_* key columns are nullable, hence IS rather than =.
+        match sqlx::query(
+            "UPDATE expr_relations SET is_suppressing = ?
+            WHERE allele_name = ? AND expressing_phenotype_name = ? AND expressing_phenotype_wild = ?
+            AND altering_phenotype_name IS ? AND altering_phenotype_wild IS ?
+            AND altering_condition IS ?",
+        )
+        .bind(relation.is_suppressing)
+        .bind(&relation.allele_name)
+        .bind(&relation.expressing_phenotype_name)
+        .bind(relation.expressing_phenotype_wild)
+        .bind(&relation.altering_phenotype_name)
+        .bind(relation.altering_phenotype_wild)
+        .bind(&relation.altering_condition)
+        .execute(&self.conn_pool)
+        .await
+        {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No phenotype relationship found for allele '{}' and phenotype '{}'",
+                relation.allele_name, relation.expressing_phenotype_name
+            ))),
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprint!("Update phenotype relationship error: {e}");
+                Err(DbError::Update(e.to_string()))
+            }
+        }
+    }
+
     pub async fn insert_expr_relation(&self, relation: &ExpressionRelation) -> Result<(), DbError> {
         match sqlx::query!(
             "INSERT INTO expr_relations (

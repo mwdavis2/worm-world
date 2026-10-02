@@ -1,5 +1,7 @@
 import {
   deleteAlleleExpression,
+  updateDbAlleleExpression,
+  deleteFilteredAlleleExpressions,
   getCountFilteredAlleleExpressions,
   getFilteredAlleleExpressions,
   insertAlleleExpressionsFromFile,
@@ -64,6 +66,16 @@ export default function AlleleExpressionDataTable(): React.JSX.Element {
       insertRecord={insertDbAlleleExpression}
       insertRecordsFromFile={insertAlleleExpressionsFromFile}
       deleteRecord={deleteAlleleExpression}
+      updateRow={updateDbAlleleExpression}
+      lockedFields={[
+        'alleleName',
+        'expressingPhenotypeName',
+        'expressingPhenotypeWild',
+      ]}
+      clearTable={async () => {
+        await deleteFilteredAlleleExpressions({ filters: [], orderBy: [] });
+      }}
+      clearBlockedBy='Phenotype Relationships'
     />
   );
 }

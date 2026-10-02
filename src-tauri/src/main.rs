@@ -151,6 +151,14 @@ async fn main() {
             get_count_filtered_strains,
             insert_strain,
             insert_strains_from_file,
+            update_gene,
+            update_condition,
+            update_phenotype,
+            update_variation,
+            update_allele,
+            update_allele_expr,
+            update_expr_relation,
+            update_strain_allele,
             update_strain,
             delete_filtered_strains,
             // strain_alleles,
@@ -817,6 +825,72 @@ async fn insert_strains_from_file(
         Ok(bulk) => state_guard.insert_strains(bulk).await,
         Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
     }
+}
+
+#[tauri::command]
+async fn update_gene(state: tauri::State<'_, DbState>, gene: Gene) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.update_gene(&gene).await
+}
+
+#[tauri::command]
+async fn update_condition(
+    state: tauri::State<'_, DbState>,
+    condition: Condition,
+) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.update_condition(&condition).await
+}
+
+#[tauri::command]
+async fn update_phenotype(
+    state: tauri::State<'_, DbState>,
+    phenotype: Phenotype,
+) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.update_phenotype(&phenotype).await
+}
+
+#[tauri::command]
+async fn update_variation(
+    state: tauri::State<'_, DbState>,
+    variation: Variation,
+) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.update_variation(&variation).await
+}
+
+#[tauri::command]
+async fn update_allele(state: tauri::State<'_, DbState>, allele: Allele) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.update_allele(&allele).await
+}
+
+#[tauri::command]
+async fn update_allele_expr(
+    state: tauri::State<'_, DbState>,
+    allele_expr: AlleleExpression,
+) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.update_allele_expr(&allele_expr).await
+}
+
+#[tauri::command]
+async fn update_expr_relation(
+    state: tauri::State<'_, DbState>,
+    expr_relation: ExpressionRelation,
+) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.update_expr_relation(&expr_relation).await
+}
+
+#[tauri::command]
+async fn update_strain_allele(
+    state: tauri::State<'_, DbState>,
+    strain_allele: StrainAllele,
+) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.update_strain_allele(&strain_allele).await
 }
 
 #[tauri::command]

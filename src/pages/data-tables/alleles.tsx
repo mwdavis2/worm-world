@@ -1,5 +1,7 @@
 import {
   deleteAllele,
+  updateDbAllele,
+  deleteFilteredAlleles,
   getCountFilteredAlleles,
   getFilteredAlleles,
   insertAllelesFromFile,
@@ -61,6 +63,12 @@ export default function AlleleDataTable(): React.JSX.Element {
       insertRecord={insertDbAllele}
       insertRecordsFromFile={insertAllelesFromFile}
       deleteRecord={deleteAllele}
+      updateRow={updateDbAllele}
+      lockedFields={['name']}
+      clearTable={async () => {
+        await deleteFilteredAlleles({ filters: [], orderBy: [] });
+      }}
+      clearBlockedBy='Allele Phenotypes or Strain Alleles'
     />
   );
 }

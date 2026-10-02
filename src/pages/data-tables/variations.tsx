@@ -1,5 +1,7 @@
 import {
   deleteVariation,
+  updateDbVariation,
+  deleteFilteredVariations,
   getCountFilteredVariations,
   getFilteredVariations,
   insertDbVariation,
@@ -78,6 +80,12 @@ export default function VariationDataTable(): React.JSX.Element {
       insertRecord={insertDbVariation}
       insertRecordsFromFile={insertVariationsFromFile}
       deleteRecord={deleteVariation}
+      updateRow={updateDbVariation}
+      lockedFields={['alleleName']}
+      clearTable={async () => {
+        await deleteFilteredVariations({ filters: [], orderBy: [] });
+      }}
+      clearBlockedBy='Alleles'
     />
   );
 }

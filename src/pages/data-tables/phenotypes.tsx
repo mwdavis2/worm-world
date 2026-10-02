@@ -2,6 +2,8 @@ import { type db_Phenotype } from 'models/db/db_Phenotype';
 import { type ColumnDefinitionType } from 'components/Table/Table';
 import {
   deletePhenotype,
+  updateDbPhenotype,
+  deleteFilteredPhenotypes,
   getCountFilteredPhenotypes,
   getFilteredPhenotypes,
   insertDbPhenotype,
@@ -96,6 +98,12 @@ export default function PhenotypeDataTable(): React.JSX.Element {
       insertRecord={insertDbPhenotype}
       insertRecordsFromFile={insertPhenotypesFromFile}
       deleteRecord={deletePhenotype}
+      updateRow={updateDbPhenotype}
+      lockedFields={['name', 'wild']}
+      clearTable={async () => {
+        await deleteFilteredPhenotypes({ filters: [], orderBy: [] });
+      }}
+      clearBlockedBy='Allele Phenotypes or Phenotype Relationships'
     />
   );
 }

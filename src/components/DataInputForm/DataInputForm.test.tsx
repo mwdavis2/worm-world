@@ -118,4 +118,171 @@ describe('DataImportForm ', () => {
 
     expect(result).toEqual({ string: 'abc', number: 4 });
   });
+
+  describe('add mode resets between uses', () => {
+    interface Item {
+      name: string;
+      flag: boolean;
+    }
+    const fields: Array<FieldType<Item>> = [
+      { name: 'name', title: 'Name', type: 'text' },
+      { name: 'flag', title: 'Flag', type: 'boolean' },
+    ];
+
+    test('inputs are blank again after a successful insert', async () => {
+      user.setup();
+      render(
+        <DataImportForm<Item>
+          title='Items'
+          dataName='item'
+          fields={fields}
+          onSubmit={(_, success) => {
+            success();
+          }}
+        />
+      );
+      await user.type(screen.getByLabelText('Name'), 'typed');
+      await user.click(screen.getByLabelText('Flag'));
+      expect(screen.getByLabelText<HTMLInputElement>('Name').value).toBe(
+        'typed'
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: 'Insert Into Database' })
+      );
+
+      expect(screen.getByLabelText<HTMLInputElement>('Name').value).toBe('');
+      expect(screen.getByLabelText<HTMLInputElement>('Flag').checked).toBe(
+        false
+      );
+    });
+
+    test('inputs are blank again after cancelling (clicking outside)', async () => {
+      user.setup();
+      const { container } = render(
+        <DataImportForm<Item>
+          title='Items'
+          dataName='item'
+          fields={fields}
+          onSubmit={vi.fn()}
+        />
+      );
+      await user.click(screen.getByText('Add New Item'));
+      await user.type(screen.getByLabelText('Name'), 'typed');
+
+      await user.click(
+        container.querySelector('.modal > .absolute') as HTMLElement
+      );
+
+      expect(screen.getByLabelText<HTMLInputElement>('Name').value).toBe('');
+    });
+
+    test('a failed insert keeps what was typed', async () => {
+      user.setup();
+      render(
+        <DataImportForm<Item>
+          title='Items'
+          dataName='item'
+          fields={fields}
+          onSubmit={vi.fn() /* never calls the success callback */}
+        />
+      );
+      await user.type(screen.getByLabelText('Name'), 'typed');
+      await user.click(
+        screen.getByRole('button', { name: 'Insert Into Database' })
+      );
+      expect(screen.getByLabelText<HTMLInputElement>('Name').value).toBe(
+        'typed'
+      );
+    });
+  });
+
+  describe('edit mode', () => {
+    interface Thing {
+      name: string;
+      note: string | null;
+      count: number | null;
+      flag: boolean;
+      kind: string | null;
+    }
+    const fields: Array<FieldType<Thing>> = [
+      { name: 'name', title: 'Name', type: 'text' },
+      { name: 'note', title: 'Note', type: 'text' },
+      { name: 'count', title: 'Count', type: 'number' },
+      { name: 'flag', title: 'Flag', type: 'boolean' },
+      {
+        name: 'kind',
+        title: 'Kind',
+        type: 'select',
+        selectOptions: ['I', 'II'],
+      },
+    ];
+    const row: Thing = {
+      name: 'a-1',
+      note: 'hello',
+      count: 3,
+      flag: true,
+      kind: null,
+    };
+
+    const renderEdit = (onSubmit = vi.fn(), onClose = vi.fn()): void => {
+      render(
+        <DataImportForm<Thing>
+          mode='edit'
+          title='Things'
+          dataName='thing-edit'
+          fields={fields}
+          initialValues={row}
+          lockedFields={['name']}
+          open={true}
+          onClose={onClose}
+          onSubmit={onSubmit}
+        />
+      );
+    };
+
+    test('is prefilled, titled for editing, and has no Add New button', () => {
+      renderEdit();
+      expect(screen.getByRole('heading', { name: 'Edit Thing' })).toBeDefined();
+      expect(screen.queryByText(/Add New/)).toBeNull();
+      expect(screen.getByLabelText<HTMLInputElement>('Note').value).toBe(
+        'hello'
+      );
+      expect(screen.getByLabelText<HTMLInputElement>('Count').value).toBe('3');
+      expect(screen.getByLabelText<HTMLInputElement>('Flag').checked).toBe(
+        true
+      );
+    });
+
+    test('key columns are read-only, and submitting returns the row with them intact', async () => {
+      user.setup();
+      const onSubmit = vi.fn();
+      renderEdit(onSubmit);
+      expect(screen.getByLabelText<HTMLInputElement>('Name').disabled).toBe(
+        true
+      );
+
+      await user.clear(screen.getByLabelText('Note'));
+      await user.type(screen.getByLabelText('Note'), 'changed');
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit.mock.calls[0][0]).toEqual({
+        name: 'a-1',
+        note: 'changed',
+        count: 3,
+        flag: true,
+        kind: null,
+      });
+    });
+
+    test('an empty select stays empty instead of picking the first option', async () => {
+      user.setup();
+      const onSubmit = vi.fn();
+      renderEdit(onSubmit);
+      expect(screen.getByLabelText<HTMLSelectElement>('Kind').value).toBe('');
+      await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+      expect(onSubmit.mock.calls[0][0].kind).toBeNull();
+    });
+  });
 });

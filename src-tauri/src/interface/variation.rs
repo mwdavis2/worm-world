@@ -95,6 +95,42 @@ impl InnerDbState {
         }
     }
 
+    /// Updates the non-key columns of an existing variation; its allele name
+    /// identifies the row and is never changed.
+    pub async fn update_variation(&self, v: &Variation) -> Result<(), DbError> {
+        let chromosome = v.chromosome.as_ref().map(|v| v.to_string());
+        let (start, end): (Option<i32>, Option<i32>) = match v.recomb_suppressor {
+            Some(recomb_range) => (Some(recomb_range.0), Some(recomb_range.1)),
+            None => (None, None),
+        };
+        match sqlx::query(
+            "UPDATE variations SET chromosome = ?, phys_loc = ?, gen_loc = ?,
+            recomb_suppressor_start = ?, recomb_suppressor_end = ?,
+            is_location_reference = ?, percent_loss = ? WHERE allele_name = ?",
+        )
+        .bind(chromosome)
+        .bind(v.phys_loc)
+        .bind(v.gen_loc)
+        .bind(start)
+        .bind(end)
+        .bind(v.is_location_reference)
+        .bind(v.percent_loss)
+        .bind(&v.allele_name)
+        .execute(&self.conn_pool)
+        .await
+        {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No variation found with allele name '{}'",
+                v.allele_name
+            ))),
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprint!("Update variation error: {e}");
+                Err(DbError::Update(e.to_string()))
+            }
+        }
+    }
+
     pub async fn insert_variation(&self, v: &Variation) -> Result<(), DbError> {
         let chromosome = v.chromosome.as_ref().map(|v| v.to_string());
         let (start, end): (Option<i32>, Option<i32>) = match v.recomb_suppressor {

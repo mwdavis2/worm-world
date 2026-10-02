@@ -1,5 +1,6 @@
 import {
   deleteStrain,
+  deleteFilteredStrains,
   getCountFilteredStrains,
   getFilteredStrains,
   insertDbStrain,
@@ -67,6 +68,9 @@ export default function StrainDataTable(): React.JSX.Element {
         insertRecord={insertDbStrain}
         insertRecordsFromFile={insertStrainsFromFile}
         deleteRecord={deleteStrain}
+        clearTable={async () => {
+          await deleteFilteredStrains({ filters: [], orderBy: [] });
+        }}
         updateRecord={async (row, column, value) => {
           const newRow = structuredClone(row);
           newRow[column.key] = value;

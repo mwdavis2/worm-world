@@ -68,6 +68,34 @@ impl InnerDbState {
         }
     }
 
+    /// Updates the non-key columns of an existing gene; its systematic name
+    /// identifies the row and is never changed.
+    pub async fn update_gene(&self, gene: &Gene) -> Result<(), DbError> {
+        let chromosome = gene.chromosome.as_ref().map(|v| v.to_string());
+        match sqlx::query(
+            "UPDATE genes SET descriptive_name = ?, chromosome = ?, phys_loc = ?, gen_loc = ?
+            WHERE systematic_name = ?",
+        )
+        .bind(&gene.descriptive_name)
+        .bind(chromosome)
+        .bind(gene.phys_loc)
+        .bind(gene.gen_loc)
+        .bind(&gene.systematic_name)
+        .execute(&self.conn_pool)
+        .await
+        {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No gene found with systematic name '{}'",
+                gene.systematic_name
+            ))),
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprint!("Update gene error: {e}");
+                Err(DbError::Update(e.to_string()))
+            }
+        }
+    }
+
     pub async fn insert_gene(&self, gene: &Gene) -> Result<(), DbError> {
         let chromosome = gene.chromosome.as_ref().map(|v| v.to_string());
         match sqlx::query!(

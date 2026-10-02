@@ -56,6 +56,13 @@ export const insertDbAlleleExpression = async (
   await invoke('insert_allele_expr', { alleleExpr: record });
 };
 
+// Changes the dominance of an allele/phenotype link, which the two pick.
+export const updateDbAlleleExpression = async (
+  record: db_AlleleExpression
+): Promise<void> => {
+  await invoke('update_allele_expr', { alleleExpr: record });
+};
+
 export const insertAlleleExpressionsFromFile = async (
   path: string
 ): Promise<void> => {

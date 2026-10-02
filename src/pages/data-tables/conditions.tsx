@@ -2,6 +2,8 @@ import { type db_Condition } from 'models/db/db_Condition';
 import { type ColumnDefinitionType } from 'components/Table/Table';
 import {
   deleteCondition,
+  updateDbCondition,
+  deleteFilteredConditions,
   getCountFilteredConditions,
   getFilteredConditions,
   insertConditionsFromFile,
@@ -82,6 +84,12 @@ export default function ConditionDataTable(): React.JSX.Element {
       insertRecord={insertDbCondition}
       insertRecordsFromFile={insertConditionsFromFile}
       deleteRecord={deleteCondition}
+      updateRow={updateDbCondition}
+      lockedFields={['name']}
+      clearTable={async () => {
+        await deleteFilteredConditions({ filters: [], orderBy: [] });
+      }}
+      clearBlockedBy='Phenotype Relationships'
     />
   );
 }

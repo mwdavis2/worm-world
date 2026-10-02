@@ -80,6 +80,13 @@ export const insertDbPhenotype = async (
   await invoke('insert_phenotype', { phenotype: record });
 };
 
+// Changes a phenotype's non-key columns; its name and wild flag pick the row.
+export const updateDbPhenotype = async (
+  record: db_Phenotype
+): Promise<void> => {
+  await invoke('update_phenotype', { phenotype: record });
+};
+
 export const insertPhenotypesFromFile = async (path: string): Promise<void> => {
   await invoke('insert_phenotypes_from_file', { path });
 };

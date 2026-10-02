@@ -33,6 +33,15 @@ export const insertDbExpressionRelation = async (
   });
 };
 
+// Changes whether a relationship is suppressing; its other columns pick it.
+export const updateDbExpressionRelation = async (
+  record: db_ExpressionRelation
+): Promise<void> => {
+  await invoke('update_expr_relation', {
+    exprRelation: record,
+  });
+};
+
 export const insertExpressionRelationsFromFile = async (
   path: string
 ): Promise<void> => {

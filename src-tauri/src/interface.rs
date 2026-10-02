@@ -7,6 +7,8 @@ pub mod expr_relation;
 pub mod gene;
 pub mod mock;
 pub mod phenotype;
+#[cfg(test)]
+mod row_updates;
 pub mod seed;
 pub mod strain;
 pub mod strain_allele;

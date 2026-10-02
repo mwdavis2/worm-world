@@ -69,6 +69,32 @@ impl InnerDbState {
         }
     }
 
+    /// Updates which chromosome copies an existing strain allele is on; the
+    /// strain and allele identify the row and are never changed.
+    pub async fn update_strain_allele(&self, strain_allele: &StrainAllele) -> Result<(), DbError> {
+        match sqlx::query(
+            "UPDATE strain_alleles SET is_on_top = ?, is_on_bot = ?
+            WHERE strain_name = ? AND allele_name = ?",
+        )
+        .bind(strain_allele.is_on_top)
+        .bind(strain_allele.is_on_bot)
+        .bind(&strain_allele.strain_name)
+        .bind(&strain_allele.allele_name)
+        .execute(&self.conn_pool)
+        .await
+        {
+            Ok(result) if result.rows_affected() == 0 => Err(DbError::Update(format!(
+                "No strain allele found for strain '{}' and allele '{}'",
+                strain_allele.strain_name, strain_allele.allele_name
+            ))),
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprint!("Update strain allele error: {e}");
+                Err(DbError::Update(e.to_string()))
+            }
+        }
+    }
+
     pub async fn insert_strain_allele(&self, strain_allele: &StrainAllele) -> Result<(), DbError> {
         match sqlx::query!(
             "
