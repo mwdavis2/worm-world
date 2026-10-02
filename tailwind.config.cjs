@@ -7,6 +7,10 @@ module.exports = {
   plugins: [require('daisyui')],
   daisyui: {
     themes: true,
+    // The theme used when the OS is in dark mode and the user hasn't picked
+    // one (daisyUI's built-in prefers-color-scheme rule). Keep in sync with
+    // OS_DARK_THEME in src/components/Layout/Layout.tsx.
+    darkTheme: 'night',
   },
   variants: {
     extend: {

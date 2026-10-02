@@ -58,17 +58,44 @@ const NavItems = (): React.JSX.Element => {
 
 const allThemes = [
   'light',
-  'dark',
   'cupcake',
   'bumblebee',
   'emerald',
   'corporate',
+  'garden',
+  'lofi',
+  'night',
+  'dracula',
 ];
+
+// Theme daisyUI applies when the OS is in dark mode and no theme has been
+// chosen - the `darkTheme` setting in tailwind.config.cjs.
+const OS_DARK_THEME = 'night';
+const OS_LIGHT_THEME = 'light';
 
 const Layout = (props: LayoutProps): React.JSX.Element => {
   useEffect(() => {
     themeChange(false);
     // 👆 false parameter is required for react project
+
+    // theme-change only points the dropdown at a *saved* choice. With none
+    // saved the page follows the OS (see tailwind.config.cjs), but the
+    // dropdown would still show its first option - so mirror the OS theme
+    // there, and keep it in step if the OS setting changes meanwhile.
+    const select = document.querySelector<HTMLSelectElement>(
+      'select[data-choose-theme]'
+    );
+    if (select === null || typeof window.matchMedia !== 'function') return;
+    const osDarkMode = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncDropdownToOs = (): void => {
+      if (localStorage.getItem('theme') !== null) return;
+      select.value = osDarkMode.matches ? OS_DARK_THEME : OS_LIGHT_THEME;
+    };
+    syncDropdownToOs();
+    osDarkMode.addEventListener('change', syncDropdownToOs);
+    return () => {
+      osDarkMode.removeEventListener('change', syncDropdownToOs);
+    };
   }, []);
 
   return (
