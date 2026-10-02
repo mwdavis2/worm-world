@@ -38,9 +38,6 @@ const getUnresolvedPhenotypeNames = (
   return names;
 };
 
-// The filter fields that are Sets of names (as opposed to boolean toggles).
-type SetFilterField = Exclude<keyof IStrainFilter, 'showLethal'>;
-
 export const StrainFilterModal = (
   props: StrainFilterModalProps
 ): React.JSX.Element => {
@@ -48,12 +45,6 @@ export const StrainFilterModal = (
     props.childNodes,
     props.parentAlleles,
     props.filter.activeConditions
-  );
-  // Like the other filter sections, only offered when there's something to
-  // filter on - i.e. some child genotype is lethal under the current
-  // conditions.
-  const hasLethalChild = props.childNodes.some((node) =>
-    node.data.isLethal(props.parentAlleles, props.filter.activeConditions)
   );
   const unresolvedPhenotypeNames = getUnresolvedPhenotypeNames(
     props.childNodes,
@@ -102,13 +93,14 @@ export const StrainFilterModal = (
             filter={props.filter}
             updateFilter={props.updateFilter}
           />
-          {hasLethalChild && (
-            <ViabilityFilter
-              filterId={props.filterId}
-              filter={props.filter}
-              updateFilter={props.updateFilter}
-            />
-          )}
+          <FilterList
+            title='Filter by viability'
+            filterId={props.filterId}
+            options={options.viability}
+            field='viability'
+            filter={props.filter}
+            updateFilter={props.updateFilter}
+          />
           <ActiveConditionsList
             options={options.activeConditions}
             filterId={props.filterId}
@@ -132,7 +124,7 @@ export const StrainFilterModal = (
 const FilterList = (props: {
   title: string;
   options: Set<string>;
-  field: SetFilterField;
+  field: keyof IStrainFilter;
   filterId: string;
   filter: StrainFilter;
   updateFilter: (update: StrainFilterUpdate) => void;
@@ -186,46 +178,6 @@ const FilterList = (props: {
             <span>No filters</span>
           </li>
           {filterOptions}
-        </ul>
-      </div>
-    </div>
-  );
-};
-
-// Viability filter: check to show genotypes that express a lethal phenotype.
-// Unchecked (the default for a new cross) hides them; the strains stay in the
-// cross either way.
-const ViabilityFilter = (props: {
-  filterId: string;
-  filter: StrainFilter;
-  updateFilter: (update: StrainFilterUpdate) => void;
-}): React.JSX.Element => {
-  return (
-    <div className='collapse collapse-arrow rounded-box mb-2 border border-base-300 bg-base-200 shadow-md'>
-      <input type='checkbox' />
-      <div className='collapse-title text-xl font-medium'>
-        Filter by viability
-      </div>
-      <div className='collapse-content'>
-        <ul className='form-control ml-8'>
-          <li className={'mb-4 flex items-center'}>
-            <input
-              type='checkbox'
-              checked={props.filter.showLethal}
-              className='checkbox mx-4'
-              onClick={() => {
-                props.updateFilter({
-                  field: 'showLethal',
-                  action: 'set',
-                  value: !props.filter.showLethal,
-                  name: '',
-                  filterId: props.filterId,
-                });
-              }}
-              readOnly
-            />
-            <span>Lethal</span>
-          </li>
         </ul>
       </div>
     </div>

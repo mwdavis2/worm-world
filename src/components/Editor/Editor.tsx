@@ -538,8 +538,8 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   // filter) or below the user's configured probability threshold. Probability
   // hiding reuses StrainFilter.hiddenNodes so the existing filter menu
   // (per-strain checkboxes, "Select All") can reveal them unchanged; lethal
-  // hiding is the filter's own `showLethal` flag, which is off for a new
-  // StrainFilter. Always records each child's resolved `lethal` for its card.
+  // hiding is the filter's own `viability` set, which starts as {Non-lethal}
+  // for a new StrainFilter. Always records each child's resolved `lethal` for its card.
   const applyInitialHiddenFilter = (
     middleNode: Node<StrainFilter>,
     childNodes: Array<Node<Strain>>,

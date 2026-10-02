@@ -20,7 +20,11 @@ import {
 } from 'models/frontend/AlleleExpression/AlleleExpression';
 import { Sex } from 'models/enums';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
-import { StrainFilter } from 'models/frontend/StrainFilter/StrainFilter';
+import {
+  LETHAL,
+  NON_LETHAL,
+  StrainFilter,
+} from 'models/frontend/StrainFilter/StrainFilter';
 
 const PRECISION = 6;
 
@@ -1316,17 +1320,27 @@ describe('isLethal() and the viability filter', () => {
     expect(strain.isLethal([], new Set(['lethDrug']))).toBe(true);
   });
 
-  test('passesFilter hides a lethal strain unless showLethal is on', () => {
+  test('passesFilter narrows by viability group, and hides lethals by default', () => {
     const lethal = new Strain({
       allelePairs: [lethalAllele('lethE', true).toHomo()],
     });
-    expect(lethal.passesFilter(new StrainFilter({ showLethal: false }))).toBe(
-      false
-    );
-    expect(lethal.passesFilter(new StrainFilter({ showLethal: true }))).toBe(
-      true
-    );
-    // A new filter hides lethals by default.
+    const viable = new Strain({
+      allelePairs: [lethalAllele('lethF', false).toHomo()],
+    });
+    const only = (...groups: string[]): StrainFilter =>
+      new StrainFilter({ viability: new Set(groups) });
+
+    // A new filter is {Non-lethal}: lethals hidden, viables shown.
     expect(lethal.passesFilter(new StrainFilter())).toBe(false);
+    expect(viable.passesFilter(new StrainFilter())).toBe(true);
+    // Lethal narrows to lethals only; Non-lethal to viables only.
+    expect(lethal.passesFilter(only(LETHAL))).toBe(true);
+    expect(viable.passesFilter(only(LETHAL))).toBe(false);
+    expect(lethal.passesFilter(only(NON_LETHAL))).toBe(false);
+    // Both groups, or none, means no narrowing.
+    expect(lethal.passesFilter(only(LETHAL, NON_LETHAL))).toBe(true);
+    expect(viable.passesFilter(only(LETHAL, NON_LETHAL))).toBe(true);
+    expect(lethal.passesFilter(only())).toBe(true);
+    expect(viable.passesFilter(only())).toBe(true);
   });
 });

@@ -2,7 +2,11 @@ import { expect, test, describe } from 'vitest';
 import { ed3, n765 } from 'models/frontend/Allele/Allele.mock';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { Strain } from 'models/frontend/Strain/Strain';
-import { StrainFilter } from 'models/frontend/StrainFilter/StrainFilter';
+import {
+  LETHAL,
+  NON_LETHAL,
+  StrainFilter,
+} from 'models/frontend/StrainFilter/StrainFilter';
 import { mockIPC, clearMocks } from '@tauri-apps/api/mocks';
 
 beforeEach(() => {
@@ -154,43 +158,70 @@ describe('StrainFilter', () => {
     expect(filterBack).toEqual(filter);
   });
 
-  test('hides lethal genotypes by default', () => {
-    expect(new StrainFilter().showLethal).toBe(false);
+  test('hides lethal genotypes by default (viability starts as Non-lethal)', () => {
+    expect(new StrainFilter().viability).toEqual(new Set([NON_LETHAL]));
   });
 
-  test('JSON saved before showLethal existed loads with it on', () => {
-    const legacy = JSON.stringify({
+  test('JSON saved before viability existed loads with no narrowing', () => {
+    const legacy = {
       alleleNames: [],
       exprPhenotypes: [],
       reqConditions: [],
       supConditions: [],
       hiddenNodes: [],
       activeConditions: [],
-    });
-    expect(StrainFilter.fromJSON(legacy).showLethal).toBe(true);
-    // Interim inverted flag name, from designs saved mid-development.
-    const interim = StrainFilter.fromJSON(
-      JSON.stringify({ ...JSON.parse(legacy), hideLethal: true })
+    };
+    expect(StrainFilter.fromJSON(JSON.stringify(legacy)).viability).toEqual(
+      new Set()
     );
-    expect(interim.showLethal).toBe(false);
-    expect(Object.keys(interim)).not.toContain('hideLethal');
   });
 
-  test('showLethal round-trips and is set via the "set" action', () => {
+  test('interim boolean flags migrate and are dropped', () => {
+    const base = JSON.stringify({ alleleNames: [] });
+    const withFlag = (flag: Record<string, boolean>): StrainFilter =>
+      StrainFilter.fromJSON(JSON.stringify({ ...JSON.parse(base), ...flag }));
+
+    expect(withFlag({ showLethal: false }).viability).toEqual(
+      new Set([NON_LETHAL])
+    );
+    expect(withFlag({ showLethal: true }).viability).toEqual(new Set());
+    expect(withFlag({ hideLethal: true }).viability).toEqual(
+      new Set([NON_LETHAL])
+    );
+    expect(withFlag({ hideLethal: false }).viability).toEqual(new Set());
+    const migrated = withFlag({ showLethal: false });
+    expect(Object.keys(migrated)).not.toContain('showLethal');
+    expect(Object.keys(withFlag({ hideLethal: true }))).not.toContain(
+      'hideLethal'
+    );
+  });
+
+  test('viability updates like the other set filters and round-trips', () => {
     const filter = new StrainFilter();
     filter.update({
-      field: 'showLethal',
-      action: 'set',
-      value: true,
+      field: 'viability',
+      action: 'add',
+      name: LETHAL,
+      filterId: '',
+    });
+    expect(filter.viability).toEqual(new Set([NON_LETHAL, LETHAL]));
+    expect(StrainFilter.fromJSON(filter.toJSON()).viability).toEqual(
+      new Set([NON_LETHAL, LETHAL])
+    );
+    filter.update({
+      field: 'viability',
+      action: 'clear',
       name: '',
       filterId: '',
     });
-    expect(filter.showLethal).toBe(true);
-    expect(StrainFilter.fromJSON(filter.toJSON()).showLethal).toBe(true);
-    expect(StrainFilter.fromJSON(new StrainFilter().toJSON()).showLethal).toBe(
+    expect(StrainFilter.fromJSON(filter.toJSON()).viability).toEqual(new Set());
+  });
+
+  test('isEmpty ignores the default viability but counts Lethal', () => {
+    expect(new StrainFilter().isEmpty()).toBe(true);
+    expect(new StrainFilter({ viability: new Set() }).isEmpty()).toBe(true);
+    expect(new StrainFilter({ viability: new Set([LETHAL]) }).isEmpty()).toBe(
       false
     );
-    // The default viability filter doesn't count as a set filter.
-    expect(new StrainFilter().isEmpty()).toBe(true);
   });
 });

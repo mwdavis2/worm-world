@@ -28,7 +28,11 @@ import {
   ChromosomePair,
 } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { chromosomes } from 'models/frontend/Chromosome';
-import type StrainFilter from 'models/frontend/StrainFilter/StrainFilter';
+import {
+  LETHAL,
+  NON_LETHAL,
+  type StrainFilter,
+} from 'models/frontend/StrainFilter/StrainFilter';
 
 export interface Gamete {
   chromosomes: Allele[][];
@@ -157,8 +161,12 @@ export class Strain {
       );
 
     const passesViability =
-      filter.showLethal ||
-      !this.isLethal(parentAlleles, filter.activeConditions);
+      filter.viability.size === 0 ||
+      filter.viability.has(
+        this.isLethal(parentAlleles, filter.activeConditions)
+          ? LETHAL
+          : NON_LETHAL
+      );
 
     return (
       passesAlleleNames &&
