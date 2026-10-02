@@ -179,14 +179,35 @@ async fn sqlite_setup() -> Result<Pool<Sqlite>> {
     let database_dir = proj_dirs.data_dir().join("db");
     std::fs::create_dir_all(database_dir.clone())?;
 
-    let database_url = format!(
-        "sqlite:///{}",
-        database_dir.join("worm.sqlite").to_str().unwrap()
-    );
+    let database_file = database_dir.join("worm.sqlite");
+    let database_url = format!("sqlite:///{}", database_file.to_str().unwrap());
     println!("{}", database_url);
 
+    // Must be checked before connecting, which creates the file.
+    let first_run = interface::seed::is_first_run(&database_file);
+    let sqlite_pool = connect_and_migrate(&database_url).await?;
+
+    if first_run {
+        let state = InnerDbState {
+            conn_pool: sqlite_pool.clone(),
+        };
+        if let Err(err) = state.seed_defaults().await {
+            // A brand-new database holds no user data, so rather than keep a
+            // half-seeded one, start over with a clean empty database and
+            // let the app run (the tables are just empty).
+            eprintln!("Could not load the default data on first run: {err}");
+            sqlite_pool.close().await;
+            interface::seed::remove_database_files(&database_file);
+            return connect_and_migrate(&database_url).await;
+        }
+    }
+
+    Ok(sqlite_pool)
+}
+
+async fn connect_and_migrate(database_url: &str) -> Result<Pool<Sqlite>> {
     let pool_timeout = Duration::from_secs(30);
-    let connection_options = SqliteConnectOptions::from_str(&database_url)?
+    let connection_options = SqliteConnectOptions::from_str(database_url)?
         .create_if_missing(true)
         .journal_mode(SqliteJournalMode::Wal)
         .synchronous(SqliteSynchronous::Normal)
