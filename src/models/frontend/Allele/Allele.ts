@@ -209,6 +209,11 @@ export class Allele {
     return this.gene?.geneticLoc ?? this.variation?.geneticLoc;
   }
 
+  /** Physical position (bp) of this allele's gene or variation, if known. */
+  public getPhysPosition(): number | undefined {
+    return this.gene?.physLoc ?? this.variation?.physLoc;
+  }
+
   public toWild(): Allele {
     return new Allele({
       name: WILD_ALLELE_NAME,

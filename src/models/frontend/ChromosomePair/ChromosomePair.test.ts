@@ -17,6 +17,9 @@ import {
 } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import { cmpChromName } from 'models/frontend/Strain/Strain';
+import { Allele } from 'models/frontend/Allele/Allele';
+import { Gene } from 'models/frontend/Gene/Gene';
+import { Variation } from 'models/frontend/Variation/Variation';
 
 describe('ChromosomePair', () => {
   test('Constructor sorts alleles', () => {
@@ -259,5 +262,153 @@ describe('ChromosomePair.crossEx()', () => {
     expect(options).toHaveLength(8);
     const probSum = options.reduce((sum, option) => sum + option.prob, 0);
     expect(probSum).toBeCloseTo(1, 6);
+  });
+});
+
+describe('ChromosomePair.meiosis() with balancers', () => {
+  // A balanced region on IV, 6.6-12.5 Mb, anchored (like tmC5 should be in the
+  // data) at its midpoint so it sorts inside its own region.
+  const RANGE: [number, number] = [6_600_000, 12_500_000];
+  const balancerVariation = (
+    name: string,
+    range: [number, number] = RANGE
+  ): Variation =>
+    new Variation({
+      name,
+      chromosome: 'IV',
+      physLoc: (range[0] + range[1]) / 2,
+      geneticLoc: 4.31,
+      recombination: range,
+    });
+  const balancer = (name = 'tmC5', range: [number, number] = RANGE): Allele =>
+    new Allele({ name, variation: balancerVariation(name, range) });
+
+  // A mutant allele of a marker gene at a given position.
+  const marker = (
+    name: string,
+    physLoc: number | undefined,
+    geneticLoc: number
+  ): Allele =>
+    new Allele({
+      name,
+      gene: new Gene({
+        sysName: `${name}-gene`,
+        descName: `${name}-gene`,
+        chromosome: 'IV',
+        physLoc,
+        geneticLoc,
+      }),
+    });
+
+  /** Probability of the gamete chromosome with these allele names, in position order. */
+  const probOf = (pair: ChromosomePair, names: string[]): number =>
+    pair
+      .meiosis()
+      .filter(
+        (option) =>
+          option.chromosome.map((allele) => allele.name).join(' ') ===
+          names.join(' ')
+      )
+      .reduce((sum, option) => sum + option.prob, 0);
+
+  const inside1 = marker('a1', 8_000_000, 4.0);
+  const inside2 = marker('a2', 10_000_000, 5.0);
+
+  /** balancer / (markers) - the balancer on top, the mutant markers on the bottom. */
+  const balanced = (markers: Allele[], bal = balancer()): ChromosomePair =>
+    new ChromosomePair([
+      ...markers.map((m) => new AllelePair({ top: m.toWild(), bot: m })),
+      new AllelePair({ top: bal, bot: bal.toWild() }),
+    ]);
+
+  test('a heterozygous balancer leaves only the two parental chromosomes', () => {
+    const options = balanced([inside1, inside2]).meiosis();
+    const possible = options.filter((option) => option.prob > 1e-12);
+    // Position order: a1 (4.0 cM), the balancer (4.31, between them), a2 (5.0).
+    expect(
+      possible
+        .map((o) => o.chromosome.map((a) => a.name).join(' '))
+        .sort((x, y) => x.localeCompare(y))
+    ).toEqual(['+ tmC5 +', 'a1 + a2']);
+    possible.forEach((option) => {
+      expect(option.prob).toBeCloseTo(0.5);
+    });
+  });
+
+  test('without a balancer the same markers recombine at the genetic-distance rate', () => {
+    const pair = new ChromosomePair([
+      new AllelePair({ top: inside1.toWild(), bot: inside1 }),
+      new AllelePair({ top: inside2.toWild(), bot: inside2 }),
+    ]);
+    // |4.0 - 5.0| cM / 2 / 100 = 0.005 for each recombinant class.
+    expect(probOf(pair, ['+', 'a2'])).toBeCloseTo(0.005);
+    expect(probOf(pair, ['a1', '+'])).toBeCloseTo(0.005);
+    expect(probOf(pair, ['+', '+'])).toBeCloseTo(0.495);
+  });
+
+  test('a homozygous balancer suppresses nothing', () => {
+    const bal = balancer();
+    const pair = new ChromosomePair([
+      new AllelePair({ top: inside1.toWild(), bot: inside1 }),
+      new AllelePair({ top: bal, bot: bal }),
+      new AllelePair({ top: inside2.toWild(), bot: inside2 }),
+    ]);
+    expect(pair.getActiveSuppressors()).toEqual([]);
+    // inside1 (4.0) and the balancer (4.31) are 0.31 cM apart: 0.00155.
+    expect(probOf(pair, ['+', 'tmC5', 'a2'])).toBeCloseTo(0.00155);
+  });
+
+  test('a gap that straddles the balancer edge is scaled by its uncovered share', () => {
+    // Left marker at 5.6 Mb is outside the range; 8.0 Mb is inside. The gap
+    // spans 2.4 Mb, 1.4 Mb of it inside, so 1 - 1.4/2.4 stays crossable.
+    const left = marker('aL', 5_600_000, 2.5);
+    const pair = balanced([left, inside1]);
+    const base = Math.abs(2.5 - 4.0) / 2 / 100; // 0.0075
+    expect(probOf(pair, ['+', 'a1', '+'])).toBeCloseTo(base * (1 - 1.4 / 2.4));
+  });
+
+  test('a gap entirely outside the balanced region is unchanged', () => {
+    const out1 = marker('o1', 15_000_000, 8.0);
+    const out2 = marker('o2', 16_000_000, 9.0);
+    const pair = balanced([out1, out2]);
+    // |8 - 9| / 200 = 0.005, with the balancer sorted before both.
+    expect(probOf(pair, ['tmC5', '+', 'o2'])).toBeCloseTo(0.005);
+  });
+
+  test('a gap is not suppressed when a flanking locus has no physical position', () => {
+    const noPhys = marker('x1', undefined, 4.0);
+    const pair = balanced([noPhys, inside2]);
+    // x1 (4.0) and the balancer (4.31): 0.31 cM / 200, even though that is
+    // inside the range, since x1's physical position is unknown.
+    expect(probOf(pair, ['+', '+', 'a2'])).toBeCloseTo(0.00155);
+  });
+
+  test('overlapping balancer ranges are merged, not counted twice', () => {
+    const other = balancer('tmC5-variant', [10_000_000, 14_000_000]);
+    const pair = new ChromosomePair([
+      new AllelePair({ top: balancer(), bot: balancer().toWild() }),
+      new AllelePair({ top: other, bot: other.toWild() }),
+    ]);
+    expect(pair.getActiveSuppressors()).toEqual([[6_600_000, 14_000_000]]);
+  });
+
+  test('a wild copy of a balancer does not count as a balancer', () => {
+    const wildOnly = new ChromosomePair([
+      new AllelePair({ top: balancer().toWild(), bot: balancer().toWild() }),
+    ]);
+    expect(wildOnly.getActiveSuppressors()).toEqual([]);
+    expect(balanced([inside1]).getActiveSuppressors()).toEqual([RANGE]);
+  });
+
+  test('suppressed and unsuppressed gametes still total 1', () => {
+    [
+      balanced([inside1, inside2]),
+      balanced([marker('aL', 5_600_000, 2.5), inside1]),
+    ].forEach((pair) => {
+      const total = pair
+        .meiosis()
+        .reduce((sum, option) => sum + option.prob, 0);
+      expect(total).toBeCloseTo(1);
+    });
   });
 });

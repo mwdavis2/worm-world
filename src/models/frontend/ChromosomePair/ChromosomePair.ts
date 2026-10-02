@@ -180,7 +180,8 @@ export class ChromosomePair {
   private static permuteRecombOptions(
     startingChrom: Allele[],
     flippedChrom: Allele[],
-    chromPair: AllelePair[]
+    chromPair: AllelePair[],
+    suppressors: Array<[number, number]>
   ): ChromosomeOption[] {
     const chroms: ChromosomeOption[] = [];
 
@@ -193,7 +194,8 @@ export class ChromosomePair {
       for (let j = 1; j < chromPair.length; j++) {
         const recombinationProb = this.getRecombProb(
           chromPair[j - 1],
-          chromPair[j]
+          chromPair[j],
+          suppressors
         );
 
         // recombination event
@@ -217,15 +219,90 @@ export class ChromosomePair {
   }
 
   /**
-   * @returns absolute value of the genetic difference of 2 allele pairs (or 0 if a pair doesn't have a genetic location)
+   * @returns absolute value of the genetic difference of 2 allele pairs (or 0
+   * if a pair doesn't have a genetic location), reduced by how much of the
+   * gap between them a heterozygous balancer covers (see `uncoveredFraction`)
    */
-  private static getRecombProb(pair1: AllelePair, pair2: AllelePair): number {
+  private static getRecombProb(
+    pair1: AllelePair,
+    pair2: AllelePair,
+    suppressors: Array<[number, number]> = []
+  ): number {
     const genPos1 = pair1.top.getGenPosition();
     const genPos2 = pair2.top.getGenPosition();
     if (genPos1 === undefined || genPos2 === undefined) return 0;
 
     const halfDistance = Math.abs(genPos1 - genPos2) / 2;
-    return halfDistance / 100; // convert to decimal form
+    const baseProb = halfDistance / 100; // convert to decimal form
+    return (
+      baseProb *
+      ChromosomePair.uncoveredFraction(
+        pair1.top.getPhysPosition(),
+        pair2.top.getPhysPosition(),
+        suppressors
+      )
+    );
+  }
+
+  /**
+   * The physical ranges (bp) in which crossovers are currently suppressed on
+   * this chromosome: those of every balancer carried by only ONE homologue.
+   * A homozygous balancer suppresses nothing (crossovers between two balancer
+   * homologues are allowed), and a wild copy never counts as a balancer even
+   * though it keeps its variation. Overlapping ranges are merged so a stretch
+   * is never counted twice.
+   */
+  public getActiveSuppressors(): Array<[number, number]> {
+    const ranges: Array<[number, number]> = [];
+    this.allelePairs.forEach((pair) => {
+      if (pair.isHomo()) return;
+      [pair.top, pair.bot].forEach((allele) => {
+        const range = allele.variation?.recombination;
+        if (range !== undefined && !allele.isWild())
+          ranges.push([Math.min(...range), Math.max(...range)]);
+      });
+    });
+
+    ranges.sort((a, b) => a[0] - b[0]);
+    const merged: Array<[number, number]> = [];
+    ranges.forEach(([start, end]) => {
+      const last = merged.at(-1);
+      if (last !== undefined && start <= last[1])
+        last[1] = Math.max(last[1], end);
+      else merged.push([start, end]);
+    });
+    return merged;
+  }
+
+  /**
+   * The share (0-1) of the physical gap between two loci that is NOT inside a
+   * suppressed range, by which the crossover probability of that gap is
+   * scaled: fully inside a range = 0, fully outside = 1, straddling an edge =
+   * in between. A rough approximation - genetic and physical distance are not
+   * proportional - but it avoids a cliff at the balancer's breakpoints. If
+   * either locus has no physical position, nothing is suppressed.
+   */
+  private static uncoveredFraction(
+    physPos1: number | undefined,
+    physPos2: number | undefined,
+    suppressors: Array<[number, number]>
+  ): number {
+    if (suppressors.length === 0) return 1;
+    if (physPos1 === undefined || physPos2 === undefined) return 1;
+
+    const low = Math.min(physPos1, physPos2);
+    const high = Math.max(physPos1, physPos2);
+    if (low === high)
+      return suppressors.some(([start, end]) => start <= low && low <= end)
+        ? 0
+        : 1;
+
+    const covered = suppressors.reduce(
+      (sum, [start, end]) =>
+        sum + Math.max(0, Math.min(high, end) - Math.max(low, start)),
+      0
+    );
+    return 1 - covered / (high - low);
   }
 
   /**
@@ -236,17 +313,21 @@ export class ChromosomePair {
     const topAlleles = this.getTop();
     const botAlleles = this.getBot();
 
+    const suppressors = this.getActiveSuppressors();
+
     // Permute possible recombinations starting on both top and bottom
     const topRecombOptions = ChromosomePair.permuteRecombOptions(
       topAlleles,
       botAlleles,
-      this.allelePairs
+      this.allelePairs,
+      suppressors
     );
 
     const botRecombOptions = ChromosomePair.permuteRecombOptions(
       botAlleles,
       topAlleles,
-      this.allelePairs
+      this.allelePairs,
+      suppressors
     );
 
     const totalRecombOptions = topRecombOptions.concat(botRecombOptions);

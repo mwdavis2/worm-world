@@ -1390,3 +1390,54 @@ describe('isLethal() and the viability filter', () => {
     expect(strain.exprPhenotypeNames).toEqual([]);
   });
 });
+
+describe('balancers in a cross', () => {
+  test('selfing a balancer / (two inside markers) strain gives only the three parental classes', async () => {
+    const range: [number, number] = [6_600_000, 12_500_000];
+    const balancer = new Allele({
+      name: 'tmC5',
+      variation: new Variation({
+        name: 'tmC5',
+        chromosome: 'IV',
+        physLoc: 9_550_000,
+        geneticLoc: 4.31,
+        recombination: range,
+      }),
+    });
+    const markerAllele = (
+      name: string,
+      physLoc: number,
+      geneticLoc: number
+    ): Allele =>
+      new Allele({
+        name,
+        gene: new Gene({
+          sysName: `${name}-gene`,
+          descName: `${name}-gene`,
+          chromosome: 'IV',
+          physLoc,
+          geneticLoc,
+        }),
+      });
+    const m1 = markerAllele('m1', 8_000_000, 4.0);
+    const m2 = markerAllele('m2', 10_000_000, 5.0);
+    const strain = new Strain({
+      allelePairs: [
+        new AllelePair({ top: m1.toWild(), bot: m1 }),
+        new AllelePair({ top: m2.toWild(), bot: m2 }),
+        new AllelePair({ top: balancer, bot: balancer.toWild() }),
+      ],
+    });
+
+    const offspring = (await strain.selfCross()).filter(
+      (child) => child.probability > 1e-9
+    );
+    const probabilities = offspring
+      .map((child) => child.probability)
+      .sort((a, b) => a - b);
+    expect(probabilities).toHaveLength(3);
+    expect(probabilities[0]).toBeCloseTo(0.25);
+    expect(probabilities[1]).toBeCloseTo(0.25);
+    expect(probabilities[2]).toBeCloseTo(0.5);
+  });
+});
