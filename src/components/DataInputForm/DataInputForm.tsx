@@ -30,6 +30,19 @@ interface FieldsProps<T> {
   lockedFields?: Array<keyof T>;
 }
 
+/**
+ * Reads a number typed into a form field. Thousands separators are accepted
+ * ("9,550,000"), but only when they really are thousands separators, so a
+ * decimal comma ("1,5") is rejected rather than silently read as 15.
+ * Returns NaN for anything that isn't a number.
+ */
+export const parseNumberInput = (text: string): number => {
+  const trimmed = text.trim();
+  if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(trimmed))
+    return Number(trimmed.replace(/,/g, ''));
+  return trimmed === '' ? NaN : Number(trimmed);
+};
+
 const Fields = <T,>(props: FieldsProps<T>): React.JSX.Element => {
   const fieldList = props.fieldList;
   const editing = props.initialValues !== undefined;
@@ -147,15 +160,12 @@ const DataImportForm = <T,>(
         }
         record[field.name] = boolValue;
       } else if (field.type === 'number' && datum != null && datum !== '') {
-        if (Number.isNaN(+datum)) {
-          toast(
-            `Please enter a valid number for the field:  + ${String(
-              field.name
-            )}`
-          );
+        const parsed = parseNumberInput(datum.toString());
+        if (Number.isNaN(parsed)) {
+          toast(`Please enter a valid number for ${field.title}`);
           return;
         }
-        record[field.name] = +datum;
+        record[field.name] = parsed;
       } else {
         if (datum === '' || datum === null) {
           record[field.name] = null;

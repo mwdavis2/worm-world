@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import user from '@testing-library/user-event';
 import DataImportForm, {
   type FieldType,
+  parseNumberInput,
 } from 'components/DataInputForm/DataInputForm';
 import { type db_Allele } from 'models/db/db_Allele';
 import { vi } from 'vitest';
@@ -117,6 +118,62 @@ describe('DataImportForm ', () => {
     await user.click(submit);
 
     expect(result).toEqual({ string: 'abc', number: 4 });
+  });
+
+  describe('number fields', () => {
+    test('parseNumberInput accepts thousands separators but not decimal commas', () => {
+      expect(parseNumberInput('9,550,000')).toBe(9550000);
+      expect(parseNumberInput('-1,234.5')).toBe(-1234.5);
+      expect(parseNumberInput('9550000')).toBe(9550000);
+      expect(parseNumberInput(' 4.31 ')).toBe(4.31);
+      expect(parseNumberInput('1,5')).toBeNaN();
+      expect(parseNumberInput('12,34,567')).toBeNaN();
+      expect(parseNumberInput('abc')).toBeNaN();
+      expect(parseNumberInput('')).toBeNaN();
+    });
+
+    interface Loc {
+      physLoc: number | null;
+    }
+    const fields: Array<FieldType<Loc>> = [
+      { name: 'physLoc', title: 'Physical Location', type: 'number' },
+    ];
+
+    test('a number typed with commas is submitted as a plain number', async () => {
+      user.setup();
+      const onSubmit = vi.fn();
+      render(
+        <DataImportForm<Loc>
+          title='Locs'
+          dataName='loc'
+          fields={fields}
+          onSubmit={onSubmit}
+        />
+      );
+      await user.type(screen.getByLabelText('Physical Location'), '9,550,000');
+      await user.click(
+        screen.getByRole('button', { name: 'Insert Into Database' })
+      );
+      expect(onSubmit.mock.calls[0][0]).toEqual({ physLoc: 9550000 });
+    });
+
+    test('an invalid number is not submitted', async () => {
+      user.setup();
+      const onSubmit = vi.fn();
+      render(
+        <DataImportForm<Loc>
+          title='Locs'
+          dataName='loc'
+          fields={fields}
+          onSubmit={onSubmit}
+        />
+      );
+      await user.type(screen.getByLabelText('Physical Location'), '1,5');
+      await user.click(
+        screen.getByRole('button', { name: 'Insert Into Database' })
+      );
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
   });
 
   describe('add mode resets between uses', () => {
