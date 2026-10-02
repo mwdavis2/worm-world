@@ -62,6 +62,7 @@ export class Allele {
       gene: undefined,
       variation: undefined,
       alleleExpressions: [],
+      contents: fields.contents,
     };
 
     await Allele.setGeneOrVariation(newAlleleState, fields).catch((err) => {
@@ -120,13 +121,23 @@ export class Allele {
     );
   }
 
-  /** For alleles of genes, return a string of the form 'genename(allelename)'; for other alleles, returns 'allelename' */
-  public getQualifiedName(excludeWilds = false): string {
+  /**
+   * The pieces of this allele's label: its own name, and what it is an allele
+   * *of* (its gene's name, or - for a wild-type copy of a variation - the
+   * variation's name), if anything.
+   */
+  public getLabelParts(): { prefix?: string; name: string } {
     if (this.gene === undefined)
       return this.isWild()
-        ? `${this.variation?.name}(${this.name})`
-        : this.name;
-    else return `${this.gene.descName}(${this.name})`;
+        ? { prefix: String(this.variation?.name), name: this.name }
+        : { name: this.name };
+    return { prefix: String(this.gene.descName), name: this.name };
+  }
+
+  /** For alleles of genes, return a string of the form 'genename(allelename)'; for other alleles, returns 'allelename' */
+  public getQualifiedName(excludeWilds = false): string {
+    const { prefix, name } = this.getLabelParts();
+    return prefix === undefined ? name : `${prefix}(${name})`;
   }
 
   private static setAlleleExpressionsFilter(

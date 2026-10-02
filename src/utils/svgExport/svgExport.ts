@@ -8,6 +8,8 @@ import {
 import { NodeType, Sex } from 'models/enums';
 import { type Strain } from 'models/frontend/Strain/Strain';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
+import { formatAlleleLabel } from 'models/frontend/Allele/alleleDisplay';
+import { minContentWidth, wrapLabel } from 'utils/svgExport/wrapLabel';
 import {
   STRAIN_NODE_WIDTH,
   STRAIN_NODE_HEIGHT,
@@ -43,6 +45,12 @@ const PROB_TEXT_SIZE = 10;
 const VIABILITY_TEXT_SIZE = 11;
 const ICON_SIZE = 16;
 export const COLUMN_GAP = 8; // approximates the card's mx-2 spacing
+// Wrapped extrachromosomal-array labels: the first line sits level with the
+// top allele row, and each further line is one line-height lower.
+const ECA_FIRST_LINE_Y = 40;
+const ECA_LINE_PITCH = 24;
+// Height of the card's genotype area (see StrainCard.tsx).
+const CONTENT_AREA_HEIGHT = 82;
 
 interface Size {
   width: number;
@@ -160,28 +168,28 @@ interface MeasuredColumn {
   width: number;
   isEca: boolean;
   ecaLabel?: string; // set (and non-empty) only for a non-wild Eca pair
+  // The label broken into lines, only when it had to wrap to fit the card.
+  ecaLines?: string[];
   topName?: string;
   botName?: string;
 }
 
 const measureAlleleColumn = (
   pair: AllelePair,
-  showGenes: boolean,
+  alleleDisplayMode: string,
   isMaleX: boolean,
   tr: TextRenderer
 ): MeasuredColumn => {
   if (pair.isEca()) {
     if (pair.isWild()) return { width: 0, isEca: true };
-    const label = pair.top.name;
+    const label = formatAlleleLabel(pair.top, alleleDisplayMode);
     const width = tr.measureWidth(label, ALLELE_TEXT_SIZE, 'normal');
     return { width, isEca: true, ecaLabel: label };
   }
-  const topName = showGenes ? pair.top.getQualifiedName() : pair.top.name;
+  const topName = formatAlleleLabel(pair.top, alleleDisplayMode);
   const botName = isMaleX
     ? '0'
-    : showGenes
-    ? pair.bot.getQualifiedName()
-    : pair.bot.name;
+    : formatAlleleLabel(pair.bot, alleleDisplayMode);
   const topWidth = tr.measureWidth(topName, ALLELE_TEXT_SIZE, 'normal');
   const botWidth = tr.measureWidth(botName, ALLELE_TEXT_SIZE, 'normal');
   return {
@@ -212,7 +220,7 @@ const renderStrainCard = (
   position: { x: number; y: number },
   colors: ThemeColors,
   tr: TextRenderer,
-  showGenes: boolean
+  alleleDisplayMode: string
 ): string => {
   const strain = node.data;
   const { x, y } = position;
@@ -269,31 +277,70 @@ const renderStrainCard = (
     const chromPairs = strain
       .getSortedChromPairs()
       .filter((cp) => !(cp.isEca() && cp.isWild()));
+    const boxWidthOf = (name: string, cols: MeasuredColumn[]): number => {
+      const colsWidth =
+        cols.reduce((sum, c) => sum + c.width + COLUMN_GAP, 0) - COLUMN_GAP;
+      const nameWidth = tr.measureWidth(name, CHROM_LABEL_SIZE, 'bold');
+      return Math.max(nameWidth, colsWidth) + 16;
+    };
     const measured = chromPairs.map((cp) => {
       const name = cp.getChromName() ?? '?';
       const isMaleX = strain.sex === Sex.Male && cp.isX();
       const cols = cp.allelePairs.map((ap) =>
-        measureAlleleColumn(ap, showGenes, isMaleX, tr)
+        measureAlleleColumn(ap, alleleDisplayMode, isMaleX, tr)
       );
-      const colsWidth =
-        cols.reduce((sum, c) => sum + c.width + COLUMN_GAP, 0) - COLUMN_GAP;
-      const nameWidth = tr.measureWidth(name, CHROM_LABEL_SIZE, 'bold');
-      const boxWidth = Math.max(nameWidth, colsWidth) + 16;
-      return { name, cols, boxWidth };
+      return {
+        name,
+        cols,
+        boxWidth: boxWidthOf(name, cols),
+        isEca: cp.isEca(),
+      };
     });
     const semicolonWidth = tr.measureWidth(';', ALLELE_TEXT_SIZE, 'normal');
-    const totalWidth = measured.reduce(
-      (sum, m, i) =>
-        sum + m.boxWidth + (i < measured.length - 1 ? semicolonWidth + 4 : 0),
-      0
-    );
+    const separators = Math.max(measured.length - 1, 0) * (semicolonWidth + 4);
+
+    // On the card, a long extrachromosomal-array label (e.g. one with
+    // contents) wraps to the width left over by the other columns - or to its
+    // longest unbreakable piece if there is none. Do the same here.
+    const measureLabel = (s: string): number =>
+      tr.measureWidth(s, ALLELE_TEXT_SIZE, 'normal');
+    const otherWidth = measured
+      .filter((m) => !m.isEca)
+      .reduce((sum, m) => sum + m.boxWidth, 0);
+    let maxEcaLines = 1;
+    measured
+      .filter((m) => m.isEca)
+      .forEach((m) => {
+        m.cols.forEach((c) => {
+          if (c.ecaLabel === undefined) return;
+          const leftover = STRAIN_NODE_WIDTH - otherWidth - separators - 16;
+          const allowed = Math.max(
+            minContentWidth(c.ecaLabel, measureLabel),
+            leftover
+          );
+          if (c.width <= allowed) return;
+          c.ecaLines = wrapLabel(c.ecaLabel, allowed, measureLabel);
+          c.width = Math.max(...c.ecaLines.map(measureLabel));
+          maxEcaLines = Math.max(maxEcaLines, c.ecaLines.length);
+        });
+        m.boxWidth = boxWidthOf(m.name, m.cols);
+      });
+    const totalWidth =
+      measured.reduce((sum, m) => sum + m.boxWidth, 0) + separators;
 
     // Mirrors the live app's useFitScale: the card is a fixed size, so wide
     // genotypes (many chromosome columns / long allele names) get the whole
     // content block shrunk to fit rather than overflowing into neighboring
     // cards.
+    // A wrapped label also makes the content taller, which the card shrinks to
+    // fit as well (ordinary content already fits, so this stays 1 for it).
+    const wrappedHeight =
+      ECA_FIRST_LINE_Y + (maxEcaLines - 1) * ECA_LINE_PITCH + 6;
+    const heightScale = Math.min(1, CONTENT_AREA_HEIGHT / wrappedHeight);
     const contentScale =
-      totalWidth > 0 ? Math.min(1, STRAIN_NODE_WIDTH / totalWidth) : 1;
+      totalWidth > 0
+        ? Math.min(1, STRAIN_NODE_WIDTH / totalWidth, heightScale)
+        : heightScale;
     const layoutItems: LayoutItem[] = [];
 
     let cursorX = centerX - totalWidth / 2;
@@ -314,7 +361,20 @@ const renderStrainCard = (
       let colX = boxCenterX - colsWidth / 2;
       m.cols.forEach((c) => {
         if (c.isEca) {
-          if (c.ecaLabel !== undefined) {
+          if (c.ecaLines !== undefined) {
+            c.ecaLines.forEach((line, lineIdx) => {
+              layoutItems.push({
+                kind: 'centeredText',
+                text: line,
+                naturalCenterX: colX + c.width / 2,
+                naturalBaselineY:
+                  contentTop + ECA_FIRST_LINE_Y + lineIdx * ECA_LINE_PITCH,
+                naturalFontSize: ALLELE_TEXT_SIZE,
+                weight: 'normal',
+                color: colors.contentText,
+              });
+            });
+          } else if (c.ecaLabel !== undefined) {
             layoutItems.push({
               kind: 'centeredText',
               text: c.ecaLabel,
@@ -632,7 +692,7 @@ export const buildCrossDesignSvg = async (
   allNodes: Node[],
   edges: Edge[],
   edgeStyle: EdgeStyle,
-  showGenes: boolean,
+  alleleDisplayMode: string,
   textMode: TextExportMode
 ): Promise<string> => {
   // Defensive: a saved CrossDesign's node array can end up with duplicate
@@ -689,7 +749,7 @@ export const buildCrossDesignSvg = async (
           position,
           colors,
           textRenderer,
-          showGenes
+          alleleDisplayMode
         );
       if (node.type === NodeType.Self || node.type === NodeType.X)
         return renderMiddleNode(node, position, colors);

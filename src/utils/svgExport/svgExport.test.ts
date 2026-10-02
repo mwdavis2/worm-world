@@ -6,6 +6,7 @@ import { Strain } from 'models/frontend/Strain/Strain';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { Allele } from 'models/frontend/Allele/Allele';
 import { Variation } from 'models/frontend/Variation/Variation';
+import * as alleles from 'models/frontend/Allele/Allele.mock';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import { createTextRenderer } from './textToPath';
 import {
@@ -46,7 +47,7 @@ describe('buildCrossDesignSvg', () => {
       simpleCrossDesign.nodes,
       simpleCrossDesign.edges,
       'default',
-      true,
+      'gene-name',
       'textPath'
     );
 
@@ -68,7 +69,7 @@ describe('buildCrossDesignSvg', () => {
       [],
       [],
       'straight',
-      true,
+      'gene-name',
       'textPath'
     );
 
@@ -91,7 +92,7 @@ describe('buildCrossDesignSvg', () => {
       simpleCrossDesign.nodes,
       simpleCrossDesign.edges,
       'default',
-      true,
+      'gene-name',
       'textPath'
     );
     expect(svgString).not.toContain('NaN');
@@ -122,7 +123,7 @@ describe('buildCrossDesignSvg', () => {
       [parent, child],
       [],
       'default',
-      true,
+      'gene-name',
       'textPath'
     );
     const parsed = new DOMParser().parseFromString(svgString, 'image/svg+xml');
@@ -238,7 +239,7 @@ describe('buildCrossDesignSvg', () => {
         [node],
         [],
         'default',
-        true,
+        'gene-name',
         'textPath'
       );
       // "III" is drawn as three separate glyph <path> elements (one 'I' each,
@@ -274,7 +275,7 @@ describe('buildCrossDesignSvg', () => {
         [node],
         [],
         'default',
-        true,
+        'gene-name',
         'text'
       );
       const parsed = new DOMParser().parseFromString(
@@ -300,7 +301,7 @@ describe('buildCrossDesignSvg', () => {
         [node],
         [],
         'default',
-        true,
+        'gene-name',
         'textPath'
       );
       const lineMatch = /<line[^>]*stroke-width="([\d.]+)"/.exec(svgString);
@@ -310,6 +311,94 @@ describe('buildCrossDesignSvg', () => {
       // divider's stroke-width must be less than the unscaled literal 1.
       expect(strokeWidth).toBeGreaterThan(0);
       expect(strokeWidth).toBeLessThan(1);
+    });
+  });
+
+  describe('wrapped extrachromosomal-array labels', () => {
+    const long =
+      '[Psnt-1::Flp, Punc-122::GAP-43::mScarlet, cbr-unc-119(+), NeoR]';
+    const exportStrain = async (strain: Strain): Promise<string[]> => {
+      const svg = await buildCrossDesignSvg(
+        [
+          {
+            id: 's',
+            type: NodeType.Strain,
+            position: { x: 0, y: 0 },
+            data: strain,
+          },
+        ],
+        [],
+        'default',
+        'name-contents',
+        'text'
+      );
+      return [
+        ...new DOMParser()
+          .parseFromString(svg, 'image/svg+xml')
+          .querySelectorAll('text'),
+      ].map((el) => el.textContent ?? '');
+    };
+    const array = new Allele({
+      name: 'oxEx2254',
+      variation: new Variation({ name: 'oxEx2254', chromosome: 'Ex' }),
+      contents: long,
+    });
+
+    test('a long label wraps onto several lines when the other columns leave little room', async () => {
+      const strain = new Strain({
+        allelePairs: [
+          new AllelePair({ top: array, bot: array.toWild() }),
+          alleles.ed3.toTopHet(),
+          alleles.e1282.toTopHet(),
+        ],
+      });
+      const texts = await exportStrain(strain);
+      expect(texts.some((t) => t.includes('oxEx2254'))).toBe(true);
+      // No single text element carries the whole label...
+      expect(
+        texts.some((t) => t.includes('mScarlet') && t.includes('NeoR'))
+      ).toBe(false);
+      // ...but together the lines still hold all of its pieces.
+      const joined = texts.join(' ');
+      expect(joined).toContain('Psnt-');
+      expect(joined).toContain('mScarlet');
+    });
+
+    test('a short label stays on one line', async () => {
+      const short = new Allele({
+        name: 'oxEx1',
+        variation: new Variation({ name: 'oxEx1', chromosome: 'Ex' }),
+        contents: 'GFP',
+      });
+      const texts = await exportStrain(
+        new Strain({
+          allelePairs: [new AllelePair({ top: short, bot: short.toWild() })],
+        })
+      );
+      expect(texts).toContain('oxEx1 [GFP]');
+    });
+  });
+
+  describe('allele display modes', () => {
+    const exportIn = async (mode: string): Promise<string> =>
+      await buildCrossDesignSvg(
+        simpleCrossDesign.nodes,
+        simpleCrossDesign.edges,
+        'default',
+        mode,
+        'text'
+      );
+
+    test('the export uses the same label text as the cards', async () => {
+      const qualified = await exportIn('gene-name');
+      const signs = await exportIn('gene-sign');
+      const nameOnly = await exportIn('name');
+      // gene(name) labels have a gene prefix; the sign mode swaps the allele
+      // name for - or +; name-only has no parentheses around alleles.
+      expect(qualified).toMatch(/\(\w[^<]*\)</);
+      expect(signs).toMatch(/\([-+]\)</);
+      expect(nameOnly).not.toMatch(/\([-+]\)</);
+      expect(qualified).not.toEqual(signs);
     });
   });
 
@@ -331,7 +420,7 @@ describe('buildCrossDesignSvg', () => {
         nodes,
         simpleCrossDesign.edges,
         'default',
-        true,
+        'gene-name',
         'text'
       );
     };
@@ -356,7 +445,7 @@ describe('buildCrossDesignSvg', () => {
         simpleCrossDesign.nodes,
         simpleCrossDesign.edges,
         'default',
-        true,
+        'gene-name',
         'text'
       );
       const parsed = new DOMParser().parseFromString(
@@ -383,7 +472,7 @@ describe('buildCrossDesignSvg', () => {
         simpleCrossDesign.nodes,
         simpleCrossDesign.edges,
         'default',
-        true,
+        'gene-name',
         'textPath'
       );
       const parsed = new DOMParser().parseFromString(

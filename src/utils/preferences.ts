@@ -1,3 +1,4 @@
+import { DEFAULT_ALLELE_DISPLAY_MODE } from 'models/frontend/Allele/alleleDisplay';
 import { type TextExportMode } from 'utils/svgExport/textToPath';
 
 const STORAGE_KEY = 'worm-world:preferences';
@@ -15,6 +16,8 @@ export interface Preferences {
   textExportMode: TextExportMode;
   // Rows per page in the data tables.
   dataTablePageSize: number;
+  // How allele labels read on strain cards (an id from ALLELE_DISPLAY_MODES).
+  alleleDisplayMode: string;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -23,6 +26,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   minChildProbability: 0,
   textExportMode: 'text',
   dataTablePageSize: 50,
+  alleleDisplayMode: DEFAULT_ALLELE_DISPLAY_MODE,
 };
 
 export const getPreferences = (): Preferences => {

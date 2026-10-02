@@ -13,7 +13,7 @@ const FilteredOutModal = (props: FilteredOutModalProps): React.JSX.Element => {
   const context = useContext(EditorContext);
 
   const filteredOutModalContext = {
-    showGenes: context.showGenes,
+    alleleDisplayMode: context.alleleDisplayMode,
   };
 
   return (

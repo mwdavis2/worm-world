@@ -18,6 +18,9 @@ import NoteForm from 'components/NoteForm/NoteForm';
 import StrainForm from 'components/StrainForm/StrainForm';
 import { NodeType, Sex } from 'models/enums';
 import { type Allele } from 'models/frontend/Allele/Allele';
+import { useAlleleDisplayMode } from 'hooks/useAlleleDisplayMode';
+import { getAlleles } from 'api/allele';
+import { refreshAlleleContents } from 'utils/refreshAlleleContents';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import CrossDesign, {
   addToArray,
@@ -136,7 +139,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   });
   const [editStrainModalState, setEditStrainModalState] =
     useState<StrainModalState>({ isOpen: false, strain: new Strain() });
-  const [showGenes, setShowGenes] = useState(true);
+  const alleleDisplay = useAlleleDisplayMode();
   const [preferences] = useState(getPreferences);
   const [isSaving, setIsSaving] = useState(false);
   const timeout = useRef<NodeJS.Timeout>();
@@ -162,6 +165,25 @@ const Editor = (props: EditorProps): React.JSX.Element => {
         });
     }, 1000);
   }, [nodes, edges, name]);
+
+  // Alleles inside a saved design are copies from when the strain was added,
+  // so refresh their display-only contents text from the allele table when a
+  // design opens (see refreshAlleleContents).
+  useEffect(() => {
+    let cancelled = false;
+    getAlleles()
+      .then((records) => {
+        if (cancelled) return;
+        const contentsByName = new Map(
+          records.map((record) => [record.name, record.contents ?? undefined])
+        );
+        setNodes((current) => refreshAlleleContents(current, contentsByName));
+      })
+      .catch(console.error);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const closeDrawer = (): void => {
     setDrawerState({
@@ -195,12 +217,12 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   // Memoized so unrelated state changes (isSaving, drawerState, etc.) don't
   // recreate this object - every StrainCard subscribes to it via useContext,
   // so a new reference re-renders all of them regardless of React.memo. Only
-  // recompute when something a consumer actually reads changes: showGenes
-  // directly, and nodes/edges/name because scheduleNode (called from
+  // recompute when something a consumer actually reads changes: the allele
+  // display mode directly, and nodes/edges/name because scheduleNode (called from
   // getMenuItems) closes over them directly rather than reading live state.
   const editorContextValue = useMemo(
     () => ({
-      showGenes,
+      alleleDisplayMode: alleleDisplay.mode,
       toggleSex: (id: string): void => {
         const node = reactFlowInstance.getNode(id);
         if (node === undefined || node.type !== NodeType.Strain) {
@@ -320,7 +342,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
         return menuOptions;
       },
     }),
-    [showGenes, nodes, edges, name]
+    [alleleDisplay.mode, nodes, edges, name]
   );
 
   /**
@@ -955,12 +977,11 @@ const Editor = (props: EditorProps): React.JSX.Element => {
             >
               <CustomControls
                 reactFlowInstance={reactFlowInstance}
-                toggleGenes={() => {
-                  setShowGenes(!showGenes);
-                }}
+                cycleAlleleDisplayMode={alleleDisplay.cycle}
                 crossDesignEditable={props.crossDesign.editable}
                 edgeStyle={preferences.edgeStyle}
-                showGenes={showGenes}
+                alleleDisplayMode={alleleDisplay.mode}
+                alleleDisplayLabel={alleleDisplay.label}
                 textExportMode={preferences.textExportMode}
               />
               <MiniMap
@@ -1010,7 +1031,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
               <StrainForm
                 onSubmit={getStrainFormCallback()}
                 newId={props.crossDesign.createId()}
-                showGenes={showGenes}
+                alleleDisplayMode={alleleDisplay.mode}
                 enforcedSex={
                   drawerState.id === undefined
                     ? undefined

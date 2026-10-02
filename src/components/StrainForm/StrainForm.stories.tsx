@@ -15,7 +15,7 @@ const Template: StoryFn<typeof StrainForm> = (args: StrainFormProps) => {
             alert('clicked submit');
           }}
           newId={''}
-          showGenes={false}
+          alleleDisplayMode='name'
         />
       </div>
     </div>

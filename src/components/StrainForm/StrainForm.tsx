@@ -17,7 +17,7 @@ export interface StrainFormProps {
   onSubmit: (strain: Strain) => void;
   enforcedSex?: Sex;
   newId: string;
-  showGenes: boolean;
+  alleleDisplayMode: string;
 }
 
 export type StrainFormSource = 'select' | 'alleles' | 'toggle';
@@ -88,7 +88,7 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
   }
 
   const editorContextValue = {
-    showGenes: props.showGenes,
+    alleleDisplayMode: props.alleleDisplayMode,
     strain: state.strain,
     toggleHetPair: (id: string, pair: AllelePair) => {
       pair.flip();

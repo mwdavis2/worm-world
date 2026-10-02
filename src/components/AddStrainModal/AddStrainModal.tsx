@@ -1,3 +1,4 @@
+import { useAlleleDisplayMode } from 'hooks/useAlleleDisplayMode';
 import { AlleleMultiSelect } from 'components/AlleleMultiSelect/AlleleMultiSelect';
 import NewAlleleModal from 'components/NewAlleleModal/NewAlleleModal';
 import EditorContext from 'components/EditorContext/EditorContext';
@@ -82,6 +83,7 @@ const buildStrain = async (
 };
 
 const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
+  const alleleDisplay = useAlleleDisplayMode();
   const allowAlleleEditing = props.allowAlleleEditing ?? true;
   const [strain, setStrain] = useState(new Strain());
   const [name, setName] = useState('');
@@ -157,7 +159,7 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
   };
 
   const editorContextValue = {
-    showGenes: true,
+    alleleDisplayMode: alleleDisplay.mode,
     toggleHetPair: !allowAlleleEditing
       ? undefined
       : (id: string, pair: AllelePair) => {

@@ -1,4 +1,5 @@
 import { deleteAllTasks, deleteTasks, getTasks, updateTask } from 'api/task';
+import { useAlleleDisplayMode } from 'hooks/useAlleleDisplayMode';
 import { pushTask, syncTasksNow } from 'api/taskSync';
 import TaskList from 'components/TaskList/TaskList';
 import { getTaskStatementText } from 'components/TaskItem/TaskItem';
@@ -28,7 +29,7 @@ export const ToDoView = (): React.JSX.Element => {
   const [filteredOnDesignId, setFilteredOnDesignId] = useState<string>();
   const [stagedDesignId, setStagedDesignId] = useState<string>(); // Whose tasks are staged for deletion
   const [showCompleted, setShowCompleted] = useState(true);
-  const [showGenes, setShowGenes] = useState(true);
+  const alleleDisplay = useAlleleDisplayMode();
 
   useEffect(() => {
     refreshTasks()
@@ -134,7 +135,9 @@ export const ToDoView = (): React.JSX.Element => {
       {hasLoadedOnce && tasks.length === 0 ? (
         <NoTaskPlaceholder />
       ) : (
-        <EditorContext.Provider value={{ showGenes }}>
+        <EditorContext.Provider
+          value={{ alleleDisplayMode: alleleDisplay.mode }}
+        >
           <div className='no-print'>
             <TaskDeleteModal
               tasks={tasks.filter(
@@ -185,10 +188,9 @@ export const ToDoView = (): React.JSX.Element => {
                     setShowCompleted(!showCompleted);
                   }}
                 />
-                <ShowGenesButton
-                  toggleShowGenes={() => {
-                    setShowGenes(!showGenes);
-                  }}
+                <AlleleDisplayButton
+                  label={alleleDisplay.label}
+                  cycle={alleleDisplay.cycle}
                 />
                 <TaskRemovalButton
                   tasks={tasks}
@@ -288,12 +290,16 @@ const ShowCompletedButton = (
   );
 };
 
-const ShowGenesButton = (props: {
-  toggleShowGenes: () => void;
+const AlleleDisplayButton = (props: {
+  label: string;
+  cycle: () => void;
 }): React.JSX.Element => {
   return (
-    <div className='tooltip tooltip-bottom' data-tip={'Show genes'}>
-      <button className='btn btn-outline' onClick={props.toggleShowGenes}>
+    <div
+      className='tooltip tooltip-bottom'
+      data-tip={`Allele labels: ${props.label}`}
+    >
+      <button className='btn btn-outline' onClick={props.cycle}>
         <GeneIcon size='20' />
       </button>
     </div>

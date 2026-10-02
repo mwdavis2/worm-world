@@ -3,6 +3,8 @@ import EditorContext from 'components/EditorContext/EditorContext';
 import { Menu } from 'components/Menu/Menu';
 import StrainCardContext from 'components/StrainCardContext/StrainCardContext';
 import { Sex } from 'models/enums';
+import { type Allele } from 'models/frontend/Allele/Allele';
+import { formatAlleleLabel } from 'models/frontend/Allele/alleleDisplay';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { type ChromosomePair } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { type Strain } from 'models/frontend/Strain/Strain';
@@ -63,14 +65,14 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
           : () => {
               context.toggleSex?.(props.id);
             },
-      showGenes: context.showGenes,
+      alleleDisplayMode: context.alleleDisplayMode,
     }),
     [
       props.strain,
       props.id,
       context.toggleHetPair,
       context.toggleSex,
-      context.showGenes,
+      context.alleleDisplayMode,
     ]
   );
 
@@ -237,6 +239,13 @@ const ChromPairBox = (props: {
   );
 };
 
+// The untruncated label, for a hover tooltip - only set when truncating
+// actually cut something.
+const fullLabel = (allele: Allele, modeId: string): string | undefined => {
+  const full = formatAlleleLabel(allele, modeId, false);
+  return full === formatAlleleLabel(allele, modeId) ? undefined : full;
+};
+
 const MutationBox = (props: {
   allelePair: AllelePair;
   toggleEnabled: boolean;
@@ -248,8 +257,11 @@ const MutationBox = (props: {
     return props.allelePair.isWild() ? (
       <></>
     ) : (
-      <div className='text-align w-full px-2 text-center'>
-        {props.allelePair.top.name}
+      <div
+        className='text-align w-full px-2 text-center'
+        title={fullLabel(props.allelePair.top, context.alleleDisplayMode)}
+      >
+        {formatAlleleLabel(props.allelePair.top, context.alleleDisplayMode)}
       </div>
     );
   else {
@@ -269,18 +281,27 @@ const MutationBox = (props: {
             <SwapIcon />
           </div>
         )}
-        <div className='text-align w-full px-2 text-center'>
-          {context.showGenes
-            ? props.allelePair.top.getQualifiedName()
-            : props.allelePair.top.name}
+        <div
+          className='text-align w-full px-2 text-center'
+          title={fullLabel(props.allelePair.top, context.alleleDisplayMode)}
+        >
+          {formatAlleleLabel(props.allelePair.top, context.alleleDisplayMode)}
         </div>
         <hr className={`border-base-content ${hiddenStyling}`} />
-        <div className='text-align w-full px-2 text-center'>
+        <div
+          className='text-align w-full px-2 text-center'
+          title={
+            context.strain.sex === Sex.Male && props.isX
+              ? undefined
+              : fullLabel(props.allelePair.bot, context.alleleDisplayMode)
+          }
+        >
           {context.strain.sex === Sex.Male && props.isX
             ? '0'
-            : context.showGenes
-            ? props.allelePair.bot.getQualifiedName()
-            : props.allelePair.bot.name}
+            : formatAlleleLabel(
+                props.allelePair.bot,
+                context.alleleDisplayMode
+              )}
         </div>
       </div>
     );

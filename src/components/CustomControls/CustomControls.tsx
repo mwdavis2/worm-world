@@ -16,10 +16,11 @@ import { buildCrossDesignSvg } from 'utils/svgExport/svgExport';
 
 interface CustomControlsProps {
   reactFlowInstance?: ReactFlowInstance;
-  toggleGenes: () => void;
+  cycleAlleleDisplayMode: () => void;
   crossDesignEditable: boolean;
   edgeStyle: EdgeStyle;
-  showGenes: boolean;
+  alleleDisplayMode: string;
+  alleleDisplayLabel: string;
   textExportMode: TextExportMode;
 }
 
@@ -58,7 +59,7 @@ const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
                     'png',
                     props.reactFlowInstance,
                     props.edgeStyle,
-                    props.showGenes,
+                    props.alleleDisplayMode,
                     props.textExportMode
                   );
                   // This is a CSS/focus-driven daisyUI dropdown (tabIndex +
@@ -79,7 +80,7 @@ const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
                     'svg',
                     props.reactFlowInstance,
                     props.edgeStyle,
-                    props.showGenes,
+                    props.alleleDisplayMode,
                     props.textExportMode
                   );
                   (document.activeElement as HTMLElement | null)?.blur();
@@ -91,7 +92,10 @@ const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
           </ul>
         </div>
       </ControlButton>
-      <ControlButton onClick={props.toggleGenes}>
+      <ControlButton
+        onClick={props.cycleAlleleDisplayMode}
+        title={`Allele labels: ${props.alleleDisplayLabel} (click to change)`}
+      >
         <GeneIcon />
       </ControlButton>
     </Controls>
@@ -108,14 +112,14 @@ type SaveMethod = 'png' | 'svg';
 const exportSvg = async (
   reactFlowInstance: ReactFlowInstance,
   edgeStyle: EdgeStyle,
-  showGenes: boolean,
+  alleleDisplayMode: string,
   textExportMode: TextExportMode
 ): Promise<string> => {
   const svgString = await buildCrossDesignSvg(
     reactFlowInstance.getNodes(),
     reactFlowInstance.getEdges(),
     edgeStyle,
-    showGenes,
+    alleleDisplayMode,
     textExportMode
   );
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
@@ -167,7 +171,7 @@ const saveImg = (
   saveMethod: SaveMethod,
   reactFlowInstance: ReactFlowInstance | undefined,
   edgeStyle: EdgeStyle,
-  showGenes: boolean,
+  alleleDisplayMode: string,
   textExportMode: TextExportMode
 ): void => {
   if (exportInProgress) {
@@ -233,7 +237,12 @@ const saveImg = (
             transform: `translate(${x}px, ${y}px) scale(1)`,
           },
         })
-      : exportSvg(reactFlowInstance, edgeStyle, showGenes, textExportMode);
+      : exportSvg(
+          reactFlowInstance,
+          edgeStyle,
+          alleleDisplayMode,
+          textExportMode
+        );
 
   Promise.all([
     save({
