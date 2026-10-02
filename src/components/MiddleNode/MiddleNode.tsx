@@ -19,11 +19,14 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
   // The eye icon reflects whether any child is actually hidden, not just
   // whether a filter is set: the default viability filter hides lethal
   // children without the filter looking "set" (see StrainFilter.isEmpty).
-  const hasHiddenChild = useStore((state) =>
-    [...state.nodeInternals.values()].some(
-      (node) => node.parentNode === props.id && node.hidden === true
-    )
+  const hiddenChildCount = useStore(
+    (state) =>
+      [...state.nodeInternals.values()].filter(
+        (node) => node.parentNode === props.id && node.hidden === true
+      ).length
   );
+  const filterSummary = props.data.describe();
+  if (filterSummary.length === 0) filterSummary.push('No filters');
   return (
     // Sized to span both the circle and the icons above/right of it, so the
     // hoverable area that keeps the icons visible has no gap between them -
@@ -70,26 +73,41 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
           )}
         </div>
       </div>
-      <label
-        htmlFor={`filtered-out-modal-${props.id}`}
-        className={`export-hide-icon absolute left-24 top-0 hover:cursor-pointer ${
-          hasHiddenChild ? '' : 'invisible'
+      <div
+        className={`export-hide-icon tooltip tooltip-top absolute left-24 top-0 ${
+          hiddenChildCount > 0 ? '' : 'invisible'
         }`}
+        data-tip={`${hiddenChildCount} strain${
+          hiddenChildCount === 1 ? '' : 's'
+        } hidden`}
       >
-        <EyeIcon size='30' />
-      </label>
-      <label
-        htmlFor={`strain-filter-modal-${props.id}`}
-        className={`export-hide-icon absolute left-16 top-0 hover:cursor-pointer ${
+        <label
+          htmlFor={`filtered-out-modal-${props.id}`}
+          className='hover:cursor-pointer'
+        >
+          <EyeIcon size='30' />
+        </label>
+      </div>
+      <div
+        // before:whitespace-pre-line: daisyUI draws the tooltip text from
+        // data-tip, where newlines would otherwise collapse - this keeps one
+        // active filter per line.
+        className={`export-hide-icon tooltip tooltip-top absolute left-16 top-0 before:whitespace-pre-line ${
           props.data.isEmpty() ? 'invisible group-hover:visible' : ''
         }`}
+        data-tip={filterSummary.join('\n')}
       >
-        {props.data.isEmpty() ? (
-          <OutlineFilterIcon size='30' />
-        ) : (
-          <FilterIcon size='30' />
-        )}
-      </label>
+        <label
+          htmlFor={`strain-filter-modal-${props.id}`}
+          className='hover:cursor-pointer'
+        >
+          {props.data.isEmpty() ? (
+            <OutlineFilterIcon size='30' />
+          ) : (
+            <FilterIcon size='30' />
+          )}
+        </label>
+      </div>
     </div>
   );
 };

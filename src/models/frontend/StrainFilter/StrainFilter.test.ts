@@ -224,4 +224,24 @@ describe('StrainFilter', () => {
       false
     );
   });
+
+  test('describe() lists one line per filter in effect', () => {
+    expect(new StrainFilter().describe()).toEqual(['Viability: Non-lethal']);
+    expect(new StrainFilter({ viability: new Set() }).describe()).toEqual([]);
+    expect(
+      new StrainFilter({
+        alleleNames: new Set(['unc-5', 'dpy-7']),
+        exprPhenotypes: new Set(['Unc']),
+        viability: new Set([NON_LETHAL, LETHAL]),
+        activeConditions: new Set(['drug']),
+        hiddenNodes: new Set(['a', 'b']),
+      }).describe()
+    ).toEqual([
+      'Alleles: unc-5, dpy-7',
+      'Phenotypes: Unc',
+      'Viability: Lethal, Non-lethal',
+      'Conditions present: drug',
+      'Hidden individually: 2',
+    ]);
+  });
 });
