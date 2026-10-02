@@ -1,4 +1,4 @@
-import { parse, type Font } from 'opentype.js';
+import { parse, type Font, type PathCommand } from 'opentype.js';
 // The same self-hosted Lato files already bundled via @fontsource/lato
 // (src/main.tsx) - reused here so the export needs no separate font asset.
 // Using the plain .woff (zlib) files, not .woff2 (brotli) - opentype.js only
@@ -53,6 +53,42 @@ const loadFont = async (url: string): Promise<Font> => {
   const buffer = await (await fetch(url)).arrayBuffer();
   return parse(buffer);
 };
+
+// Rounds to 2 decimals and prints without a trailing ".0" or a "-0".
+const formatCoordinate = (n: number): string =>
+  String(Math.round(n * 100) / 100);
+
+/**
+ * Serializes glyph outline commands to SVG path data with a space between
+ * every number. opentype.js's own toPathData() drops separators it considers
+ * unnecessary and gets it wrong for some glyphs (e.g. Lato's "a", ";" and ",":
+ * the pair 2.12 and 0 came out as "2.120", one number), which strict parsers
+ * such as Illustrator's then misread, dropping the whole glyph.
+ */
+export const commandsToPathData = (commands: PathCommand[]): string =>
+  commands
+    .map((command) => {
+      switch (command.type) {
+        case 'M':
+        case 'L':
+          return `${command.type}${formatCoordinate(
+            command.x
+          )} ${formatCoordinate(command.y)}`;
+        case 'Q':
+          return `Q${formatCoordinate(command.x1)} ${formatCoordinate(
+            command.y1
+          )} ${formatCoordinate(command.x)} ${formatCoordinate(command.y)}`;
+        case 'C':
+          return `C${formatCoordinate(command.x1)} ${formatCoordinate(
+            command.y1
+          )} ${formatCoordinate(command.x2)} ${formatCoordinate(
+            command.y2
+          )} ${formatCoordinate(command.x)} ${formatCoordinate(command.y)}`;
+        default:
+          return 'Z';
+      }
+    })
+    .join('');
 
 const escapeXml = (text: string): string =>
   text
@@ -124,7 +160,7 @@ export const createTextRenderer = async (
       // specific (glyph, position) combinations (reproduced directly
       // against this app's own allele/gene name strings). The origin is
       // always safe; the transform math is ours, not opentype.js's.
-      const d = font.getPath(ch, 0, 0, fontSizePx).toPathData(2);
+      const d = commandsToPathData(font.getPath(ch, 0, 0, fontSizePx).commands);
       parts.push(
         `<path d="${d}" fill="${color}" transform="translate(${cursorX}, ${y})" />`
       );
