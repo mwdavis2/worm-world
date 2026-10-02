@@ -1,10 +1,29 @@
 import { TopNav } from 'components/TopNav/TopNav';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+
+// Route segments of the tabs below, in tab order.
+const TAB_PATHS = [
+  'genes',
+  'variations',
+  'alleles',
+  'phenotypes',
+  'conditions',
+  'allele-expressions',
+  'expression-relations',
+  'strains',
+  'strain-alleles',
+];
 
 const DataTables = (): React.JSX.Element => {
+  // The highlighted tab follows the URL, so it stays right when the page is
+  // opened directly on a table (e.g. after a reload) and not only on clicks.
+  const { pathname } = useLocation();
+  const activeTab = TAB_PATHS.indexOf(
+    pathname.split('/').filter(Boolean).pop() ?? ''
+  );
   return (
     <>
-      <TopNav title={'Data Tables'} tabIndex={0}>
+      <TopNav title={'Data Tables'} tabIndex={Math.max(activeTab, 0)}>
         <Link key='genes' to='genes' className='tab'>
           Genes
         </Link>

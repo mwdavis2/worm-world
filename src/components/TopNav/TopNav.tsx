@@ -10,6 +10,11 @@ interface TopNavInputProps {
 export function TopNav(props: TopNavInputProps): React.JSX.Element {
   const initialTabIdx = props.tabIndex === undefined ? 0 : props.tabIndex;
   const [tabIdx, setTabIdx] = React.useState(initialTabIdx);
+  // Follow the prop when it changes (e.g. the active tab is derived from the
+  // URL), not just its initial value.
+  React.useEffect(() => {
+    setTabIdx(initialTabIdx);
+  }, [initialTabIdx]);
   return (
     <div className='justify-left no-print flex flex-row items-center bg-base-200 py-4 shadow-md'>
       <label htmlFor='nav-drawer' className='btn btn-ghost drawer-button ml-4'>
