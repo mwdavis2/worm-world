@@ -1,0 +1,85 @@
+allele_name,expressing_phenotype_name,expressing_phenotype_wild,altering_phenotype_name,altering_phenotype_wild,altering_condition,is_suppressing
+eT1(III),translocation aneuploid (het),0,eT1(V) 1 copy,1,,1
+eT1(III),translocation aneuploid (hom),0,eT1(V) 2 copies,1,,1
+eT1(V),translocation aneuploid (het),0,eT1(III) 1 copy,1,,1
+eT1(V),translocation aneuploid (hom),0,eT1(III) 2 copies,1,,1
+eT1[let-?(s1799)](III),translocation aneuploid (het),0,eT1(V) 1 copy,1,,1
+eT1[let-?(s1799)](III),translocation aneuploid (hom),0,eT1(V) 2 copies,1,,1
+eT1[let-?(s1799)](V),translocation aneuploid (het),0,eT1(III) 1 copy,1,,1
+eT1[let-?(s1799)](V),translocation aneuploid (hom),0,eT1(III) 2 copies,1,,1
+eT1[let-500(s2165)](III),translocation aneuploid (het),0,eT1(V) 1 copy,1,,1
+eT1[let-500(s2165)](III),translocation aneuploid (hom),0,eT1(V) 2 copies,1,,1
+eT1[let-500(s2165)](V),translocation aneuploid (het),0,eT1(III) 1 copy,1,,1
+eT1[let-500(s2165)](V),translocation aneuploid (hom),0,eT1(III) 2 copies,1,,1
+eT1[let-?(n886)](III),translocation aneuploid (het),0,eT1(V) 1 copy,1,,1
+eT1[let-?(n886)](III),translocation aneuploid (hom),0,eT1(V) 2 copies,1,,1
+eT1[let-?(n886)](V),translocation aneuploid (het),0,eT1(III) 1 copy,1,,1
+eT1[let-?(n886)](V),translocation aneuploid (hom),0,eT1(III) 2 copies,1,,1
+eT1[him-5(e1467)](III),translocation aneuploid (het),0,eT1(V) 1 copy,1,,1
+eT1[him-5(e1467)](III),translocation aneuploid (hom),0,eT1(V) 2 copies,1,,1
+eT1[him-5(e1467)](V),translocation aneuploid (het),0,eT1(III) 1 copy,1,,1
+eT1[him-5(e1467)](V),translocation aneuploid (hom),0,eT1(III) 2 copies,1,,1
+nT1(IV),translocation aneuploid (het),0,nT1(V) 1 copy,1,,1
+nT1(IV),translocation aneuploid (hom),0,nT1(V) 2 copies,1,,1
+nT1(V),translocation aneuploid (het),0,nT1(IV) 1 copy,1,,1
+nT1(V),translocation aneuploid (hom),0,nT1(IV) 2 copies,1,,1
+nT1[qIs51](IV),translocation aneuploid (het),0,nT1(V) 1 copy,1,,1
+nT1[qIs51](IV),translocation aneuploid (hom),0,nT1(V) 2 copies,1,,1
+nT1[qIs51](V),translocation aneuploid (het),0,nT1(IV) 1 copy,1,,1
+nT1[qIs51](V),translocation aneuploid (hom),0,nT1(IV) 2 copies,1,,1
+nT1[unc-?(n754dm) let-?](IV),translocation aneuploid (het),0,nT1(V) 1 copy,1,,1
+nT1[unc-?(n754dm) let-?](IV),translocation aneuploid (hom),0,nT1(V) 2 copies,1,,1
+nT1[unc-?(n754dm) let-?](V),translocation aneuploid (het),0,nT1(IV) 1 copy,1,,1
+nT1[unc-?(n754dm) let-?](V),translocation aneuploid (hom),0,nT1(IV) 2 copies,1,,1
+nT1[unc-?(n754) let-? qIs50](IV),translocation aneuploid (het),0,nT1(V) 1 copy,1,,1
+nT1[unc-?(n754) let-? qIs50](IV),translocation aneuploid (hom),0,nT1(V) 2 copies,1,,1
+nT1[unc-?(n754) let-? qIs50](V),translocation aneuploid (het),0,nT1(IV) 1 copy,1,,1
+nT1[unc-?(n754) let-? qIs50](V),translocation aneuploid (hom),0,nT1(IV) 2 copies,1,,1
+nT1[unc-?(n754) let-?(m435)](IV),translocation aneuploid (het),0,nT1(V) 1 copy,1,,1
+nT1[unc-?(n754) let-?(m435)](IV),translocation aneuploid (hom),0,nT1(V) 2 copies,1,,1
+nT1[unc-?(n754) let-?(m435)](V),translocation aneuploid (het),0,nT1(IV) 1 copy,1,,1
+nT1[unc-?(n754) let-?(m435)](V),translocation aneuploid (hom),0,nT1(IV) 2 copies,1,,1
+nT1[let-?(m435)](IV),translocation aneuploid (het),0,nT1(V) 1 copy,1,,1
+nT1[let-?(m435)](IV),translocation aneuploid (hom),0,nT1(V) 2 copies,1,,1
+nT1[let-?(m435)](V),translocation aneuploid (het),0,nT1(IV) 1 copy,1,,1
+nT1[let-?(m435)](V),translocation aneuploid (hom),0,nT1(IV) 2 copies,1,,1
+hT2(I),translocation aneuploid (het),0,hT2(III) 1 copy,1,,1
+hT2(I),translocation aneuploid (hom),0,hT2(III) 2 copies,1,,1
+hT2(III),translocation aneuploid (het),0,hT2(I) 1 copy,1,,1
+hT2(III),translocation aneuploid (hom),0,hT2(I) 2 copies,1,,1
+hT2[bli-4(e937)](I),translocation aneuploid (het),0,hT2(III) 1 copy,1,,1
+hT2[bli-4(e937)](I),translocation aneuploid (hom),0,hT2(III) 2 copies,1,,1
+hT2[bli-4(e937)](III),translocation aneuploid (het),0,hT2(I) 1 copy,1,,1
+hT2[bli-4(e937)](III),translocation aneuploid (hom),0,hT2(I) 2 copies,1,,1
+hT2[bli-4(e937) let-?(q782) qIs48](I),translocation aneuploid (het),0,hT2(III) 1 copy,1,,1
+hT2[bli-4(e937) let-?(q782) qIs48](I),translocation aneuploid (hom),0,hT2(III) 2 copies,1,,1
+hT2[bli-4(e937) let-?(q782) qIs48](III),translocation aneuploid (het),0,hT2(I) 1 copy,1,,1
+hT2[bli-4(e937) let-?(q782) qIs48](III),translocation aneuploid (hom),0,hT2(I) 2 copies,1,,1
+hT2[bli-4(e937) qIs48](I),translocation aneuploid (het),0,hT2(III) 1 copy,1,,1
+hT2[bli-4(e937) qIs48](I),translocation aneuploid (hom),0,hT2(III) 2 copies,1,,1
+hT2[bli-4(e937) qIs48](III),translocation aneuploid (het),0,hT2(I) 1 copy,1,,1
+hT2[bli-4(e937) qIs48](III),translocation aneuploid (hom),0,hT2(I) 2 copies,1,,1
+hT2[bli-4(e937) let-?(h661)](I),translocation aneuploid (het),0,hT2(III) 1 copy,1,,1
+hT2[bli-4(e937) let-?(h661)](I),translocation aneuploid (hom),0,hT2(III) 2 copies,1,,1
+hT2[bli-4(e937) let-?(h661)](III),translocation aneuploid (het),0,hT2(I) 1 copy,1,,1
+hT2[bli-4(e937) let-?(h661)](III),translocation aneuploid (hom),0,hT2(I) 2 copies,1,,1
+hT2[dpy-18(h662)](I),translocation aneuploid (het),0,hT2(III) 1 copy,1,,1
+hT2[dpy-18(h662)](I),translocation aneuploid (hom),0,hT2(III) 2 copies,1,,1
+hT2[dpy-18(h662)](III),translocation aneuploid (het),0,hT2(I) 1 copy,1,,1
+hT2[dpy-18(h662)](III),translocation aneuploid (hom),0,hT2(I) 2 copies,1,,1
+szT1[lon-2(e678)](I),translocation aneuploid (het),0,szT1(X) 1 copy,1,,1
+szT1[lon-2(e678)](I),translocation aneuploid (hom),0,szT1(X) 2 copies,1,,1
+szT1[lon-2(e678)](X),translocation aneuploid (het),0,szT1(I) 1 copy,1,,1
+szT1[lon-2(e678)](X),translocation aneuploid (hom),0,szT1(I) 2 copies,1,,1
+szT1[lon-2(e678) unc-29(e403)](I),translocation aneuploid (het),0,szT1(X) 1 copy,1,,1
+szT1[lon-2(e678) unc-29(e403)](I),translocation aneuploid (hom),0,szT1(X) 2 copies,1,,1
+szT1[lon-2(e678) unc-29(e403)](X),translocation aneuploid (het),0,szT1(I) 1 copy,1,,1
+szT1[lon-2(e678) unc-29(e403)](X),translocation aneuploid (hom),0,szT1(I) 2 copies,1,,1
+hT3(I),translocation aneuploid (het),0,hT3(X) 1 copy,1,,1
+hT3(I),translocation aneuploid (hom),0,hT3(X) 2 copies,1,,1
+hT3(X),translocation aneuploid (het),0,hT3(I) 1 copy,1,,1
+hT3(X),translocation aneuploid (hom),0,hT3(I) 2 copies,1,,1
+mT1[dpy-10(e128)](II),translocation aneuploid (het),0,mT1(III) 1 copy,1,,1
+mT1[dpy-10(e128)](II),translocation aneuploid (hom),0,mT1(III) 2 copies,1,,1
+mT1[dpy-10(e128)](III),translocation aneuploid (het),0,mT1(II) 1 copy,1,,1
+mT1[dpy-10(e128)](III),translocation aneuploid (hom),0,mT1(II) 2 copies,1,,1
