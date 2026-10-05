@@ -343,6 +343,21 @@ describe('Cross algorithm', () => {
     testStrains(crossStrains, strains.homoWildCross);
   });
 
+  test('crossing does not add wild alleles to the parents', async () => {
+    const strainA = new Strain({ allelePairs: [alleles.e204.toHomo()] });
+    const strainB = new Strain({ allelePairs: [alleles.ox802.toHomo()] });
+    const wildStrain = new Strain({});
+    const before = strainA.toString();
+
+    await strainA.crossWith(strainB);
+    expect(strainA.toString()).toBe(before);
+    expect(strainB.chromPairMap.size).toBe(1);
+
+    await strainA.crossWith(wildStrain);
+    expect(wildStrain.chromPairMap.size).toBe(0);
+    expect(strainA.toString()).toBe(before);
+  });
+
   test('cross of homozygous and heterozygous strains', async () => {
     const hetPairs: AllelePair[] = [alleles.e204.toTopHet()];
     const homoPairs: AllelePair[] = [alleles.ox802.toHomo()];

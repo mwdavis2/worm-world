@@ -472,6 +472,19 @@ export class Strain {
     });
   }
 
+  /** Like clone(), but the chromosome pairs are copied too. */
+  private deepClone(): Strain {
+    return new Strain({
+      ...this,
+      chromPairMap: new Map(
+        [...this.chromPairMap.entries()].map(([name, pair]) => [
+          name,
+          pair.clone(),
+        ])
+      ),
+    });
+  }
+
   /**
    * Crosses this strain with itself
    * @returns Permuted list of all possible strains and their respective probabilities
@@ -486,14 +499,18 @@ export class Strain {
    * @returns Permuted list of all possible strains and their respective probabilities
    */
   public async crossWith(other: Strain): Promise<Strain[]> {
-    this.fillWildsFrom(other);
-    other.fillWildsFrom(this);
+    // Fill missing loci on private copies: the parents (which may be shared
+    // with cards on the canvas) must not gain wild alleles from a cross.
+    const parent1 = this.deepClone();
+    const parent2 = other.deepClone();
+    parent1.fillWildsFrom(parent2);
+    parent2.fillWildsFrom(parent1);
 
-    const gametes1 = this.meiosis();
-    const gametes2 = other.meiosis();
+    const gametes1 = parent1.meiosis();
+    const gametes2 = parent2.meiosis();
     const exOptions = ChromosomePair.crossEx(
-      this.chromPairMap.get('Ex'),
-      other.chromPairMap.get('Ex')
+      parent1.chromPairMap.get('Ex'),
+      parent2.chromPairMap.get('Ex')
     );
     return await Strain.fertilize(gametes1, gametes2, exOptions);
   }
