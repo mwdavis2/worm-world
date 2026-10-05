@@ -1,4 +1,4 @@
-alleleName,chromosome,physLoc,geneticloc,recombSuppressorStart,recombSuppressorEnd
+alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd
 oxIs363,IV,,,,
 oxIs644,,,,,
 oxIs12,X,,,,
