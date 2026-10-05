@@ -46,6 +46,13 @@ import { ImLoop2 as SelfIcon } from 'react-icons/im';
 import { TbArrowsCross as CrossIcon } from 'react-icons/tb';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { writeText } from '@tauri-apps/api/clipboard';
+import { MdContentCopy as CopyIcon } from 'react-icons/md';
+import { serializeNotation } from 'models/frontend/Notation/notationText';
+import {
+  ancestryToNotation,
+  walkAncestry,
+} from 'models/frontend/Notation/notationTree';
 import ReactFlow, {
   Position,
   applyNodeChanges,
@@ -220,6 +227,40 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   // recompute when something a consumer actually reads changes: the allele
   // display mode directly, and nodes/edges/name because scheduleNode (called from
   // getMenuItems) closes over them directly rather than reading live state.
+  // Copies a card's ancestry, as notation text, to the clipboard.
+  const copyNotationToClipboard = (id: string): void => {
+    const node = reactFlowInstance.getNode(id);
+    if (node === undefined || node.type !== NodeType.Strain) {
+      console.error(
+        'Cannot copy the notation of an undefined or non-strain node'
+      );
+      return;
+    }
+    let text: string;
+    try {
+      text = serializeNotation(
+        ancestryToNotation(
+          walkAncestry(
+            node as Node<Strain>,
+            reactFlowInstance.getNodes(),
+            reactFlowInstance.getEdges()
+          )
+        )
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Could not write the notation'
+      );
+      return;
+    }
+    writeText(text)
+      .then(() => toast.success('Copied the notation to the clipboard'))
+      .catch((error) => {
+        console.error(error);
+        toast.error('Could not copy to the clipboard');
+      });
+  };
+
   const editorContextValue = useMemo(
     () => ({
       alleleDisplayMode: alleleDisplay.mode,
@@ -241,7 +282,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           parentMiddleNode?.type === NodeType.Self
         ) {
           toast.warning(
-            'Male offspring from a self-cross are rare unless in a Him background.'
+            'Male offspring from a self-cross are rare unless in a Him background or after a heat shock.'
           );
         }
         setNodes((nodes) =>
@@ -330,7 +371,15 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           },
         };
 
-        const menuOptions = [schedule];
+        const copyNotation: MenuItem = {
+          icon: <CopyIcon />,
+          text: 'Copy notation',
+          menuCallback: () => {
+            copyNotationToClipboard(id);
+          },
+        };
+
+        const menuOptions = [schedule, copyNotation];
         if (!strainNode.data.isParent) menuOptions.push(cross);
         if (
           strainNode.data.sex === Sex.Hermaphrodite &&
