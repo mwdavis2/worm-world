@@ -1,7 +1,7 @@
 strainName,alleleName,isOnTop,isOnBot
-eT1,eT1(III),true,false
-eT1,eT1(V),true,false
-eT1,e873,true,false
+eT1,eT1(III),true,true
+eT1,eT1(V),true,true
+eT1,e873,true,true
 eT1[let-?(s1799)],eT1(III),true,false
 eT1[let-?(s1799)],eT1(V),true,false
 eT1[let-?(s1799)],e873,true,false
@@ -14,17 +14,17 @@ eT1[let-?(n886)],eT1(III),true,false
 eT1[let-?(n886)],eT1(V),true,false
 eT1[let-?(n886)],e873,true,false
 eT1[let-?(n886)],n886,true,false
-eT1[him-5(e1467)],eT1(III),true,false
-eT1[him-5(e1467)],eT1(V),true,false
-eT1[him-5(e1467)],e873,true,false
-eT1[him-5(e1467)],e1467,true,false
-nT1,nT1(IV),true,false
-nT1,nT1(V),true,false
-nT1,nT1vul,true,false
-nT1[qIs51],nT1(IV),true,false
-nT1[qIs51],nT1(V),true,false
-nT1[qIs51],nT1vul,true,false
-nT1[qIs51],qIs51,true,false
+eT1[him-5(e1467)],eT1(III),true,true
+eT1[him-5(e1467)],eT1(V),true,true
+eT1[him-5(e1467)],e873,true,true
+eT1[him-5(e1467)],e1467,true,true
+nT1,nT1(IV),true,true
+nT1,nT1(V),true,true
+nT1,nT1vul,true,true
+nT1[qIs51],nT1(IV),true,true
+nT1[qIs51],nT1(V),true,true
+nT1[qIs51],nT1vul,true,true
+nT1[qIs51],qIs51,true,true
 nT1[unc-?(n754dm) let-?],nT1(IV),true,false
 nT1[unc-?(n754dm) let-?],nT1(V),true,false
 nT1[unc-?(n754dm) let-?],nT1vul,true,false
@@ -45,40 +45,36 @@ nT1[let-?(m435)],nT1(IV),true,false
 nT1[let-?(m435)],nT1(V),true,false
 nT1[let-?(m435)],nT1vul,true,false
 nT1[let-?(m435)],m435,true,false
-hT2,hT2(I),true,false
-hT2,hT2(III),true,false
-hT2,e937,true,false
+hT2,hT2(I),true,true
+hT2,hT2(III),true,true
+hT2,e937,true,true
 hT2[bli-4(e937) let-?(q782) qIs48],hT2(I),true,false
 hT2[bli-4(e937) let-?(q782) qIs48],hT2(III),true,false
 hT2[bli-4(e937) let-?(q782) qIs48],e937,true,false
 hT2[bli-4(e937) let-?(q782) qIs48],q782,true,false
 hT2[bli-4(e937) let-?(q782) qIs48],qIs48,true,false
-hT2[bli-4(e937) qIs48],hT2(I),true,false
-hT2[bli-4(e937) qIs48],hT2(III),true,false
-hT2[bli-4(e937) qIs48],e937,true,false
-hT2[bli-4(e937) qIs48],qIs48,true,false
 hT2[bli-4(e937) let-?(h661)],hT2(I),true,false
 hT2[bli-4(e937) let-?(h661)],hT2(III),true,false
 hT2[bli-4(e937) let-?(h661)],e937,true,false
 hT2[bli-4(e937) let-?(h661)],h661,true,false
-hT2[dpy-18(h662)],hT2(I),true,false
-hT2[dpy-18(h662)],hT2(III),true,false
-hT2[dpy-18(h662)],e937,true,false
-hT2[dpy-18(h662)],h662,true,false
-szT1,szT1(I),true,false
-szT1,szT1(X),true,false
-szT1[lon-2(e678)],szT1(I),true,false
-szT1[lon-2(e678)],szT1(X),true,false
-szT1[lon-2(e678)],e678,true,false
-szT1[lon-2(e678) unc-29(e403)],szT1(I),true,false
-szT1[lon-2(e678) unc-29(e403)],szT1(X),true,false
-szT1[lon-2(e678) unc-29(e403)],e678,true,false
-szT1[lon-2(e678) unc-29(e403)],e403,true,false
-mT1,mT1(II),true,false
-mT1,mT1(III),true,false
-mT1[dpy-10(e128)],mT1(II),true,false
-mT1[dpy-10(e128)],mT1(III),true,false
-mT1[dpy-10(e128)],e128,true,false
+hT2[dpy-18(h662)],hT2(I),true,true
+hT2[dpy-18(h662)],hT2(III),true,true
+hT2[dpy-18(h662)],e937,true,true
+hT2[dpy-18(h662)],h662,true,true
+szT1,szT1(I),true,true
+szT1,szT1(X),true,true
+szT1[lon-2(e678)],szT1(I),true,true
+szT1[lon-2(e678)],szT1(X),true,true
+szT1[lon-2(e678)],e678,true,true
+szT1[lon-2(e678) unc-29(e403)],szT1(I),true,true
+szT1[lon-2(e678) unc-29(e403)],szT1(X),true,true
+szT1[lon-2(e678) unc-29(e403)],e678,true,true
+szT1[lon-2(e678) unc-29(e403)],e403,true,true
+mT1,mT1(II),true,true
+mT1,mT1(III),true,true
+mT1[dpy-10(e128)],mT1(II),true,true
+mT1[dpy-10(e128)],mT1(III),true,true
+mT1[dpy-10(e128)],e128,true,true
 hT3,hT3(I),true,false
 hT3,hT3(X),true,false
-hT1,hT1(V),true,false
+hT1,hT1(V),true,true

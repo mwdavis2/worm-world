@@ -185,14 +185,8 @@ const VARIANTS = [
     name: 'bli-4(e937) let-?(q782) qIs48',
     rows: [{ pheno: 'pharyngeal GFP', zyg: '1or2' }, LETHAL],
   },
-  {
-    family: 'hT2',
-    name: 'bli-4(e937) qIs48',
-    rows: [
-      { pheno: 'pharyngeal GFP', zyg: '1or2' },
-      { pheno: 'bli-4', zyg: '2', gene: 'bli-4', verify: 'homozygote viability' },
-    ],
-  },
+  // hT2[bli-4(e937) qIs48] is not a strain: qIs48 only occurs with the lethal
+  // q782, and the one CGC genotype without it is described as homozygous lethal.
   { family: 'hT2', name: 'bli-4(e937) let-?(h661)', rows: [LETHAL] },
   {
     family: 'hT2',

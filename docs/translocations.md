@@ -53,7 +53,6 @@ strain includes that allele. The variants to build:
 - `nT1[unc-?(n754dm) let-?(m435)]`
 - `nT1[let-?(m435)]`
 - `hT2[bli-4(e937) let-?(q782) qIs48]`
-- `hT2[bli-4(e937) qIs48]`
 - `hT2[bli-4(e937) let-?(h661)]`
 - `hT2[dpy-18(h662)]`
 - `szT1[lon-2(e678)]`

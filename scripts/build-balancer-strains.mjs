@@ -8,10 +8,12 @@
 // translocation data (data/translocations/) and the real alleles
 // (data/balancer_alleles/), since strain_alleles points at their alleles.
 //
-// Each strain is the balancer heterozygous over wild type (both halves, top
-// homolog) with its marker alleles on the same homolog (cis). A strain's
-// alleles are all "on top" (isOnTop true, isOnBot false); the genotype text is
-// built the way the app builds it (Strain.toString), and
+// Each strain is homozygous for the balancer (both halves) and its marker
+// alleles (isOnTop and isOnBot true) - unless that homozygote would be lethal,
+// as with the let alleles, n754dm and hT3's recessive lethality: then it is the
+// balancer heterozygous over wild type, every allele on the top homolog (cis;
+// isOnTop true, isOnBot false). The genotype text is built the way the app
+// builds it (Strain.toString), and
 // src/models/frontend/Strain/balancerStrains.test.ts checks it against the
 // app's own code. The one allele that is not generated here is dpy-10(e128):
 // it is the existing allele `e128`.
@@ -23,6 +25,8 @@ const E128 = { name: 'e128', geneSys: 'T14B4.7' }; // dpy-10(e128), already in t
 // [strain name, balancer family, extra alleles, description]
 // Every eT1 carries unc-36(e873), every nT1 egl-18(nT1vul), every hT2 bli-4(e937).
 const BASE = { eT1: ['e873'], nT1: ['nT1vul'], hT2: ['e937'], szT1: [], hT3: [], mT1: [], hT1: [] };
+// (No hT2[bli-4(e937) qIs48]: the literature shows no strain with qIs48 but
+// without the lethal q782; the one CGC genotype listed says it is homozygous lethal.)
 const STRAINS = [
   ['eT1', 'eT1', []],
   ['eT1[let-?(s1799)]', 'eT1', ['s1799']],
@@ -37,7 +41,6 @@ const STRAINS = [
   ['nT1[let-?(m435)]', 'nT1', ['m435']],
   ['hT2', 'hT2', []],
   ['hT2[bli-4(e937) let-?(q782) qIs48]', 'hT2', ['q782', 'qIs48']],
-  ['hT2[bli-4(e937) qIs48]', 'hT2', ['qIs48']],
   ['hT2[bli-4(e937) let-?(h661)]', 'hT2', ['h661']],
   ['hT2[dpy-18(h662)]', 'hT2', ['h662']],
   ['szT1', 'szT1', []],
@@ -54,6 +57,35 @@ const parseCsv = (path) =>
 const csvEscape = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
 const toCsv = (header, rows) =>
   [header, ...rows.map((r) => header.map((h) => r[h] ?? ''))].map((r) => r.map(csvEscape).join(',')).join('\n') + '\n';
+
+// Which alleles make a homozygote lethal: one that expresses a lethal
+// phenotype when homozygous (stored dominance 0 = 2 copies, 2 = 1 or 2 copies,
+// 4 = 2 copies LOF).
+const DIRS = ['data/translocations', 'data/balancer_alleles'];
+const lethalPhenotypes = new Set(
+  DIRS.flatMap((dir) => parseCsv(`${dir}/phenotypes.csv`))
+    .filter(([, , , , , lethal]) => lethal === '1')
+    .map(([name, wild]) => `${name}|${wild}`)
+);
+const HOMOZYGOUS_DOMINANCE = new Set(['0', '2', '4']);
+// A lethal row that another phenotype suppresses (the translocation halves'
+// "aneuploid" rows, suppressed by the partner half) is not a lethal homozygote:
+// a balanced homozygote carries both halves in equal numbers.
+const suppressedRows = new Set(
+  DIRS.flatMap((dir) => parseCsv(`${dir}/expr_relations.csv`)).map(
+    ([allele, phenotype, wild]) => `${allele}|${phenotype}|${wild}`
+  )
+);
+const lethalWhenHomozygous = new Set(
+  DIRS.flatMap((dir) => parseCsv(`${dir}/allele_exprs.csv`))
+    .filter(
+      ([allele, phenotype, wild, dominance]) =>
+        lethalPhenotypes.has(`${phenotype}|${wild}`) &&
+        HOMOZYGOUS_DOMINANCE.has(dominance) &&
+        !suppressedRows.has(`${allele}|${phenotype}|${wild}`)
+    )
+    .map(([allele]) => allele)
+);
 
 const errors = [];
 const check = (condition, message) => {
@@ -100,7 +132,7 @@ const CHROMOSOME_ORDER = ['I', 'II', 'III', 'IV', 'V', 'X'];
 // The genotype text as Strain.toString builds it: chromosomes in order, each
 // "<top alleles>/<wild partners> <chromosome>", alleles sorted by genetic
 // position (the same comparator as AllelePair.sort), joined with "; ".
-const genotypeOf = (alleleNames) => {
+const genotypeOf = (alleleNames, homozygous) => {
   const byChromosome = new Map();
   alleleNames.forEach((name) => {
     const info = alleleInfo.get(name);
@@ -110,7 +142,8 @@ const genotypeOf = (alleleNames) => {
     .map((chr) => {
       const infos = byChromosome.get(chr);
       infos.sort((a, b) => (a.gen < b.gen ? -1 : 1));
-      return `${infos.map((i) => i.label).join(' ')}/${infos.map(() => '+').join(' ')} ${chr}`;
+      const top = infos.map((i) => i.label).join(' ');
+      return homozygous ? `${top} ${chr}` : `${top}/${infos.map(() => '+').join(' ')} ${chr}`;
     })
     .join('; ');
   return `${text}.`;
@@ -125,13 +158,14 @@ STRAINS.forEach(([name, family, extras]) => {
   alleles.forEach((a) => check(alleleInfo.has(a), `${name}: allele ${a} not found`));
   if (alleles.some((a) => !alleleInfo.has(a))) return;
   const markers = [...BASE[family], ...extras].map((a) => alleleInfo.get(a).label);
+  const homozygous = !alleles.some((a) => lethalWhenHomozygous.has(a));
   strains.push({
     name,
-    genotype: genotypeOf(alleles),
-    description: `${family} translocation balancer heterozygous over wild type${markers.length > 0 ? ` with ${markers.join(' ')}` : ''}.`,
+    genotype: genotypeOf(alleles, homozygous),
+    description: `${family} translocation balancer ${homozygous ? 'homozygous' : 'heterozygous over wild type (the homozygote is lethal)'}${markers.length > 0 ? ` with ${markers.join(' ')}` : ''}.`,
   });
   alleles.forEach((alleleName) =>
-    strainAlleles.push({ strainName: name, alleleName, isOnTop: 'true', isOnBot: 'false' })
+    strainAlleles.push({ strainName: name, alleleName, isOnTop: 'true', isOnBot: homozygous ? 'true' : 'false' })
   );
 });
 

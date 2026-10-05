@@ -1,24 +1,23 @@
 name,genotype,description
-eT1,unc-36(e873) eT1(III)/+ + III; eT1(V)/+ V.,eT1 translocation balancer heterozygous over wild type with unc-36(e873).
-eT1[let-?(s1799)],unc-36(e873) eT1(III) let-?(s1799)/+ + + III; eT1(V)/+ V.,eT1 translocation balancer heterozygous over wild type with unc-36(e873) let-?(s1799).
-eT1[let-500(s2165)],unc-36(e873) eT1(III) let-500(s2165)/+ + + III; eT1(V)/+ V.,eT1 translocation balancer heterozygous over wild type with unc-36(e873) let-500(s2165).
-eT1[let-?(n886)],unc-36(e873) eT1(III) let-?(n886)/+ + + III; eT1(V)/+ V.,eT1 translocation balancer heterozygous over wild type with unc-36(e873) let-?(n886).
-eT1[him-5(e1467)],unc-36(e873) eT1(III)/+ + III; eT1(V) him-5(e1467)/+ + V.,eT1 translocation balancer heterozygous over wild type with unc-36(e873) him-5(e1467).
-nT1,nT1(IV) egl-18(nT1vul)/+ + IV; nT1(V)/+ V.,nT1 translocation balancer heterozygous over wild type with egl-18(nT1vul).
-nT1[qIs51],nT1(IV) egl-18(nT1vul) qIs51/+ + + IV; nT1(V)/+ V.,nT1 translocation balancer heterozygous over wild type with egl-18(nT1vul) qIs51.
-nT1[unc-?(n754dm) let-?],nT1(IV) unc-?(n754dm) let-?(nT1_1) egl-18(nT1vul)/+ + + + IV; nT1(V)/+ V.,nT1 translocation balancer heterozygous over wild type with egl-18(nT1vul) unc-?(n754dm) let-?(nT1_1).
-nT1[unc-?(n754dm) let-? qIs50],nT1(IV) unc-?(n754dm) let-?(nT1_2) egl-18(nT1vul) qIs50/+ + + + + IV; nT1(V)/+ V.,nT1 translocation balancer heterozygous over wild type with egl-18(nT1vul) unc-?(n754dm) let-?(nT1_2) qIs50.
-nT1[unc-?(n754dm) let-?(m435)],nT1(IV) unc-?(n754dm) let-?(m435) egl-18(nT1vul)/+ + + + IV; nT1(V)/+ V.,nT1 translocation balancer heterozygous over wild type with egl-18(nT1vul) unc-?(n754dm) let-?(m435).
-nT1[let-?(m435)],nT1(IV) let-?(m435) egl-18(nT1vul)/+ + + IV; nT1(V)/+ V.,nT1 translocation balancer heterozygous over wild type with egl-18(nT1vul) let-?(m435).
-hT2,bli-4(e937) hT2(I)/+ + I; hT2(III)/+ III.,hT2 translocation balancer heterozygous over wild type with bli-4(e937).
-hT2[bli-4(e937) let-?(q782) qIs48],bli-4(e937) qIs48 hT2(I) let-?(q782)/+ + + + I; hT2(III)/+ III.,hT2 translocation balancer heterozygous over wild type with bli-4(e937) let-?(q782) qIs48.
-hT2[bli-4(e937) qIs48],bli-4(e937) qIs48 hT2(I)/+ + + I; hT2(III)/+ III.,hT2 translocation balancer heterozygous over wild type with bli-4(e937) qIs48.
-hT2[bli-4(e937) let-?(h661)],bli-4(e937) hT2(I) let-?(h661)/+ + + I; hT2(III)/+ III.,hT2 translocation balancer heterozygous over wild type with bli-4(e937) let-?(h661).
-hT2[dpy-18(h662)],bli-4(e937) hT2(I)/+ + I; hT2(III) dpy-18(h662)/+ + III.,hT2 translocation balancer heterozygous over wild type with bli-4(e937) dpy-18(h662).
-szT1,szT1(I)/+ I; szT1(X)/+ X.,szT1 translocation balancer heterozygous over wild type.
-szT1[lon-2(e678)],szT1(I)/+ I; szT1(X) lon-2(e678)/+ + X.,szT1 translocation balancer heterozygous over wild type with lon-2(e678).
-szT1[lon-2(e678) unc-29(e403)],szT1(I) unc-29(e403)/+ + I; szT1(X) lon-2(e678)/+ + X.,szT1 translocation balancer heterozygous over wild type with lon-2(e678) unc-29(e403).
-mT1,mT1(II)/+ II; mT1(III)/+ III.,mT1 translocation balancer heterozygous over wild type.
-mT1[dpy-10(e128)],mT1(II) dpy-10(e128)/+ + II; mT1(III)/+ III.,mT1 translocation balancer heterozygous over wild type with dpy-10(e128).
-hT3,hT3(I)/+ I; hT3(X)/+ X.,hT3 translocation balancer heterozygous over wild type.
-hT1,hT1(V)/+ V.,hT1 translocation balancer heterozygous over wild type.
+eT1,unc-36(e873) eT1(III) III; eT1(V) V.,eT1 translocation balancer homozygous with unc-36(e873).
+eT1[let-?(s1799)],unc-36(e873) eT1(III) let-?(s1799)/+ + + III; eT1(V)/+ V.,eT1 translocation balancer heterozygous over wild type (the homozygote is lethal) with unc-36(e873) let-?(s1799).
+eT1[let-500(s2165)],unc-36(e873) eT1(III) let-500(s2165)/+ + + III; eT1(V)/+ V.,eT1 translocation balancer heterozygous over wild type (the homozygote is lethal) with unc-36(e873) let-500(s2165).
+eT1[let-?(n886)],unc-36(e873) eT1(III) let-?(n886)/+ + + III; eT1(V)/+ V.,eT1 translocation balancer heterozygous over wild type (the homozygote is lethal) with unc-36(e873) let-?(n886).
+eT1[him-5(e1467)],unc-36(e873) eT1(III) III; eT1(V) him-5(e1467) V.,eT1 translocation balancer homozygous with unc-36(e873) him-5(e1467).
+nT1,nT1(IV) egl-18(nT1vul) IV; nT1(V) V.,nT1 translocation balancer homozygous with egl-18(nT1vul).
+nT1[qIs51],nT1(IV) egl-18(nT1vul) qIs51 IV; nT1(V) V.,nT1 translocation balancer homozygous with egl-18(nT1vul) qIs51.
+nT1[unc-?(n754dm) let-?],nT1(IV) unc-?(n754dm) let-?(nT1_1) egl-18(nT1vul)/+ + + + IV; nT1(V)/+ V.,nT1 translocation balancer heterozygous over wild type (the homozygote is lethal) with egl-18(nT1vul) unc-?(n754dm) let-?(nT1_1).
+nT1[unc-?(n754dm) let-? qIs50],nT1(IV) unc-?(n754dm) let-?(nT1_2) egl-18(nT1vul) qIs50/+ + + + + IV; nT1(V)/+ V.,nT1 translocation balancer heterozygous over wild type (the homozygote is lethal) with egl-18(nT1vul) unc-?(n754dm) let-?(nT1_2) qIs50.
+nT1[unc-?(n754dm) let-?(m435)],nT1(IV) unc-?(n754dm) let-?(m435) egl-18(nT1vul)/+ + + + IV; nT1(V)/+ V.,nT1 translocation balancer heterozygous over wild type (the homozygote is lethal) with egl-18(nT1vul) unc-?(n754dm) let-?(m435).
+nT1[let-?(m435)],nT1(IV) let-?(m435) egl-18(nT1vul)/+ + + IV; nT1(V)/+ V.,nT1 translocation balancer heterozygous over wild type (the homozygote is lethal) with egl-18(nT1vul) let-?(m435).
+hT2,bli-4(e937) hT2(I) I; hT2(III) III.,hT2 translocation balancer homozygous with bli-4(e937).
+hT2[bli-4(e937) let-?(q782) qIs48],bli-4(e937) qIs48 hT2(I) let-?(q782)/+ + + + I; hT2(III)/+ III.,hT2 translocation balancer heterozygous over wild type (the homozygote is lethal) with bli-4(e937) let-?(q782) qIs48.
+hT2[bli-4(e937) let-?(h661)],bli-4(e937) hT2(I) let-?(h661)/+ + + I; hT2(III)/+ III.,hT2 translocation balancer heterozygous over wild type (the homozygote is lethal) with bli-4(e937) let-?(h661).
+hT2[dpy-18(h662)],bli-4(e937) hT2(I) I; hT2(III) dpy-18(h662) III.,hT2 translocation balancer homozygous with bli-4(e937) dpy-18(h662).
+szT1,szT1(I) I; szT1(X) X.,szT1 translocation balancer homozygous.
+szT1[lon-2(e678)],szT1(I) I; szT1(X) lon-2(e678) X.,szT1 translocation balancer homozygous with lon-2(e678).
+szT1[lon-2(e678) unc-29(e403)],szT1(I) unc-29(e403) I; szT1(X) lon-2(e678) X.,szT1 translocation balancer homozygous with lon-2(e678) unc-29(e403).
+mT1,mT1(II) II; mT1(III) III.,mT1 translocation balancer homozygous.
+mT1[dpy-10(e128)],mT1(II) dpy-10(e128) II; mT1(III) III.,mT1 translocation balancer homozygous with dpy-10(e128).
+hT3,hT3(I)/+ I; hT3(X)/+ X.,hT3 translocation balancer heterozygous over wild type (the homozygote is lethal).
+hT1,hT1(V) V.,hT1 translocation balancer homozygous.

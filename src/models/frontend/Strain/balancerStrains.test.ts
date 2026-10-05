@@ -147,7 +147,10 @@ alleles.set(
 const strainRows = readCsv('data/balancer_strains/strains.csv');
 const strainAlleleRows = readCsv('data/balancer_strains/strain_alleles.csv');
 
-const buildStrain = (name: string): Strain =>
+// The strain as stored: every allele on top, and on the bottom too when the
+// strain is homozygous. `forceHomozygous` builds the homozygous version of any
+// strain, to ask whether that homozygote would be lethal.
+const buildStrain = (name: string, forceHomozygous = false): Strain =>
   new Strain({
     name,
     allelePairs: strainAlleleRows
@@ -157,10 +160,20 @@ const buildStrain = (name: string): Strain =>
         if (allele === undefined)
           throw new Error(`${name}: missing allele ${row.alleleName}`);
         expect(row.isOnTop).toBe('true');
-        expect(row.isOnBot).toBe('false');
-        return allele.toTopHet();
+        return forceHomozygous || row.isOnBot === 'true'
+          ? allele.toHomo()
+          : allele.toTopHet();
       }),
   });
+
+const isStoredHomozygous = (name: string): boolean => {
+  const flags = strainAlleleRows
+    .filter((row) => row.strainName === name)
+    .map((row) => row.isOnBot);
+  // All of a strain's alleles are homozygous, or none is.
+  expect(new Set(flags).size, name).toBe(1);
+  return flags[0] === 'true';
+};
 
 describe('generated balancer strains', () => {
   test('there is a strain for every balancer family', () => {
@@ -182,10 +195,17 @@ describe('generated balancer strains', () => {
     '%s: is viable, with every phenotype resolved',
     (name) => {
       const strain = buildStrain(name);
-      // hT3 carries its recessive lethality in the half; as a heterozygote it
-      // is still viable, like every other balancer over wild type.
       expect(strain.isLethal()).toBe(false);
       expect(strain.getUnresolvedExprPhenotypes()).toEqual([]);
+    }
+  );
+
+  test.each(strainRows.map((row) => [row.name]))(
+    '%s: is homozygous unless the homozygote would be lethal',
+    (name) => {
+      expect(isStoredHomozygous(name)).toBe(
+        !buildStrain(name, true).isLethal()
+      );
     }
   );
 });
