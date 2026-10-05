@@ -3,6 +3,7 @@ import { Sex } from 'models/enums';
 import { Allele } from 'models/frontend/Allele/Allele';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { Gene } from 'models/frontend/Gene/Gene';
+import { Variation } from 'models/frontend/Variation/Variation';
 import { Strain } from 'models/frontend/Strain/Strain';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import {
@@ -87,6 +88,38 @@ describe('strainToLoci', () => {
     expect(strainToLoci(new Strain({ allelePairs: [] }))).toEqual([
       { top: '+', bot: '+' },
     ]);
+  });
+});
+
+describe('extrachromosomal arrays', () => {
+  // An array has no second copy, so it is written bare: "oxEx6", not "oxEx6/+".
+  const ex = new Allele({
+    name: 'oxEx6',
+    variation: new Variation({ name: 'oxEx6', chromosome: 'Ex' }),
+  });
+  const withArray = new Strain({ allelePairs: [het(a1), ex.toTopHet()] });
+
+  test('are written bare and round-trip', () => {
+    expect(strainToLoci(withArray)).toEqual([
+      { top: 'a1', bot: '+' },
+      { top: 'oxEx6' },
+      { top: '+', bot: '+' },
+    ]);
+    const alleles = new Map([...lookup, ['oxEx6', ex]]);
+    const rebuilt = lociToStrain(strainToLoci(withArray), alleles);
+    expect(rebuilt.equals(withArray)).toBe(true);
+    expect(strainToLoci(rebuilt)).toEqual(strainToLoci(withArray));
+  });
+
+  test('a bare name that is not an array is an error, and "array/+" still reads', () => {
+    expect(() => lociToStrain([{ top: 'a1' }], lookup)).toThrow(
+      /not an extrachromosomal array/
+    );
+    const alleles = new Map([...lookup, ['oxEx6', ex]]);
+    const older = lociToStrain([{ top: 'oxEx6', bot: '+' }], alleles);
+    expect(older.equals(new Strain({ allelePairs: [ex.toTopHet()] }))).toBe(
+      true
+    );
   });
 });
 

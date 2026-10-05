@@ -6,14 +6,16 @@
 //   self-cross  {{herm}{}{own loci}}       - the empty second slot: no male parent
 //
 // In a locus `+` is the wild-type allele and `0` (second position, X only) means
-// there is no second X: a male. A backslash escapes `\`, `{`, `}`, `/` and
+// there is no second X: a male. An extrachromosomal array has no second copy at
+// all, so it is written bare, `oxEx6`, with no slash. A backslash escapes `\`, `{`, `}`, `/` and
 // whitespace inside a name, so any name can be written.
 //
 // This file is the pure text layer: no strains, no database.
 
 export interface NotationLocus {
   top: string;
-  bot: string;
+  // Undefined for an extrachromosomal array, written without a slash
+  bot?: string;
 }
 
 export type NotationNode =
@@ -39,7 +41,9 @@ export const escapeName = (name: string): string =>
   name.replace(NEEDS_ESCAPE, (char) => `\\${char}`);
 
 const serializeLocus = (locus: NotationLocus): string =>
-  `${escapeName(locus.top)}/${escapeName(locus.bot)}`;
+  locus.bot === undefined
+    ? escapeName(locus.top)
+    : `${escapeName(locus.top)}/${escapeName(locus.bot)}`;
 
 const serializeLoci = (loci: NotationLocus[]): string =>
   loci.map(serializeLocus).join(' ');
@@ -138,6 +142,10 @@ class Parser {
       this.skipSpace();
     }
     if (loci.length === 0) throw this.error('A group has no loci');
+    // Every genotype lists its X (+/+, +/0 or X alleles), so a group of only
+    // bare names is not notation.
+    if (!loci.some((locus) => locus.bot !== undefined))
+      throw this.error('A group needs at least one top/bottom locus');
     return loci;
   }
 
@@ -157,8 +165,9 @@ class Parser {
       } else if (char === '/') parts.push('');
       else parts[parts.length - 1] += char;
     }
-    if (parts.length !== 2)
-      throw this.error('A locus must be written "top/bottom"');
+    if (parts.length === 1) return { top: parts[0] };
+    if (parts.length > 2)
+      throw this.error('A locus must be "top/bottom" or a bare array name');
     if (parts[0] === '' || parts[1] === '')
       throw this.error('A locus has an empty allele name');
     return { top: parts[0], bot: parts[1] };
@@ -191,7 +200,7 @@ export const collectAlleleNames = (node: NotationNode): Set<string> => {
   const visit = (current: NotationNode): void => {
     current.loci.forEach(({ top, bot }) => {
       [top, bot].forEach((name) => {
-        if (name !== '+' && name !== '0') names.add(name);
+        if (name !== undefined && name !== '+' && name !== '0') names.add(name);
       });
     });
     if (current.kind === 'cross') {

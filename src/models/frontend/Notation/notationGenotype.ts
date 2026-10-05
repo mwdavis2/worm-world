@@ -37,7 +37,9 @@ export const strainToLoci = (strain: Strain): NotationLocus[] => {
       return;
     }
     chromPair.simplify().allelePairs.forEach((pair) => {
-      loci.push({ top: pair.top.name, bot: pair.bot.name });
+      // An extrachromosomal array has no second copy: written bare.
+      if (chromPair.isEca()) loci.push({ top: pair.top.name });
+      else loci.push({ top: pair.top.name, bot: pair.bot.name });
       if (chromPair.isX()) wroteX = true;
     });
   });
@@ -65,6 +67,16 @@ export const lociToStrain = (
   const isMale = loci.some((locus) => locus.bot === NO_SECOND_X);
   const pairs: AllelePair[] = [];
   loci.forEach(({ top, bot }) => {
+    if (bot === undefined) {
+      // A bare name is an extrachromosomal array.
+      const array = lookup(top);
+      if (!array.isEca())
+        throw new NotationGenotypeError(
+          `"${top}" is not an extrachromosomal array - write it as top/bottom`
+        );
+      pairs.push(new AllelePair({ top: array, bot: array.toWild() }));
+      return;
+    }
     if (top === WILD && (bot === WILD || bot === NO_SECOND_X)) return;
     if (top === NO_SECOND_X || (bot === NO_SECOND_X && top === WILD))
       throw new NotationGenotypeError(`"${top}/${bot}" is not a valid locus`);

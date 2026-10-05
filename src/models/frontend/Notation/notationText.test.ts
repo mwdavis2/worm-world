@@ -58,6 +58,25 @@ describe('serializeNotation / parseNotation', () => {
     expect(cross.kind === 'cross' && cross.male?.kind).toBe('founder');
   });
 
+  test('an extrachromosomal array is a bare name with no slash', () => {
+    const text = '{{oxEx6 +/+}{}{oxEx6 +/+}}';
+    const node = parseNotation(text);
+    expect(node).toEqual({
+      kind: 'cross',
+      herm: { kind: 'founder', loci: [{ top: 'oxEx6' }, locus('+', '+')] },
+      male: undefined,
+      loci: [{ top: 'oxEx6' }, locus('+', '+')],
+    });
+    expect(serializeNotation(node)).toBe(text);
+    // An escaped name stays one bare name
+    expect(
+      serializeNotation({
+        kind: 'founder',
+        loci: [{ top: 'a b' }, locus('+', '+')],
+      })
+    ).toBe('{a\\ b +/+}');
+  });
+
   test('names with parentheses and brackets are ordinary characters', () => {
     const text = '{eT1(III)/+ nT1[qIs51](IV)/eT1(III)}';
     const node = parseNotation(text);
@@ -106,7 +125,8 @@ describe('parse errors', () => {
     ['{a/+', 'unclosed'],
     ['{a/+}}', 'extra closing brace'],
     ['{a/+} {b/+}', 'text after the notation'],
-    ['{a+}', 'a locus without a slash'],
+    ['{a}', 'a group of only bare names - no X entry'],
+    ['{oxEx6 oxEx8}', 'a group of only arrays'],
     ['{a/b/c}', 'a locus with two slashes'],
     ['{/+}', 'an empty allele name'],
     ['{a/}', 'an empty allele name'],
@@ -120,7 +140,7 @@ describe('parse errors', () => {
   });
 
   test('the error says where it went wrong', () => {
-    expect(() => parseNotation('{a/+ b}')).toThrow(/character 7/);
+    expect(() => parseNotation('{a/+ b/c/d}')).toThrow(/character 11/);
   });
 });
 
