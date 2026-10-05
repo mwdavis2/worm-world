@@ -1,0 +1,8 @@
+allele_name,expressing_phenotype_name,expressing_phenotype_wild,altering_phenotype_name,altering_phenotype_wild,altering_condition,is_suppressing
+e873,Unc-36,0,Unc-36,1,,1
+nT1vul,Egl-18(Vul),0,Egl-18,1,,1
+e937,Bli-4,0,Bli-4,1,,1
+e1467,Him-5,0,Him-5,1,,1
+h662,Dpy-18,0,Dpy-18,1,,1
+e678,Lon-2,0,Lon-2,1,,1
+e403,Unc-29,0,Unc-29,1,,1

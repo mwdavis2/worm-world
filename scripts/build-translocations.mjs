@@ -60,7 +60,7 @@ const FAMILIES = [
       { chr: 'IV', range: [1_902_322, 17_493_829] },
       { chr: 'V', range: [1, 15_071_760] },
     ],
-    note: 'Chromoplexy; the IV breakpoint is IN egl-18 (it causes the Vul mutation), so the range starts at egl-18 (IV 1,902,322; more recent data than the earlier unc-17 flank at 3,618,259). Many V breakpoints (5.5-16.8 Mb).',
+    note: 'Chromoplexy. The IV breakpoint is within about 800 bp upstream of a potential egl-18 transcriptional start site (PubMed 14975731, https://pubmed.ncbi.nlm.nih.gov/14975731/), disrupting egl-18/elt-6 function in the vulva (the Vul phenotype). egl-18 mutations do not complement nT1 for the vulval defect, so genetically the breakpoint is an allele of egl-18 - within the functional interval of the gene though outside its coding region (hence egl-18(nT1vul)); the range starts at egl-18 (IV 1,902,322), replacing the earlier unc-17 flank at 3,618,259. Many V breakpoints (5.5-16.8 Mb).',
   },
   {
     name: 'hT2',

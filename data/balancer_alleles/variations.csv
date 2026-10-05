@@ -1,0 +1,4 @@
+alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd,isLocationReference,percentLoss
+qIs51,IV,9698076,4.38,,,false,
+qIs50,IV,9698076,4.38,,,false,
+qIs48,I,6593567,1.23,,,false,
