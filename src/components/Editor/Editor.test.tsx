@@ -29,10 +29,10 @@ describe('Editor', () => {
     }));
   });
 
-  const renderComponent = (tree: CrossDesign): void => {
-    render(<Editor crossDesign={tree} testing={true} />, {
+  const renderComponent = (tree: CrossDesign): HTMLElement => {
+    return render(<Editor crossDesign={tree} testing={true} />, {
       wrapper: Wrapper, // Need this wrapper since the component uses the react router
-    });
+    }).container;
   };
 
   test('Renders', () => {
@@ -111,6 +111,29 @@ describe('Editor', () => {
       const notes = screen.getAllByTestId('noteNode');
       expect(notes).toHaveLength(2);
     });
+  });
+
+  test('every control button in the upper left has a tooltip', () => {
+    const container = renderComponent(crossDesigns.simpleCrossDesign);
+    const buttons = container.querySelectorAll('.react-flow__controls button');
+    const tips = [...buttons].map((button) =>
+      (
+        button.getAttribute('data-tip') ??
+        button.closest('[data-tip]')?.getAttribute('data-tip') ??
+        ''
+      ).replace(/ \(click to change\)$/, '')
+    );
+    expect(tips.every((tip) => tip !== '')).toBe(true);
+    expect(tips).toEqual(
+      expect.arrayContaining([
+        'Fit view',
+        'Zoom in',
+        'Zoom out',
+        'Export image',
+        expect.stringMatching(/^Allele labels: /),
+      ])
+    );
+    expect(tips.some((tip) => /canvas$/.test(tip))).toBe(true);
   });
 
   describe('paste notation', () => {

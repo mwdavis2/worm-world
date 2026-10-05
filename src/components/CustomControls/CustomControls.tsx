@@ -1,7 +1,7 @@
 import { fs } from '@tauri-apps/api';
 import { toPng } from 'html-to-image';
 import { BsCardImage } from 'react-icons/bs';
-import { FaPlus, FaMinus } from 'react-icons/fa6';
+import { FaPlus, FaMinus, FaExpand, FaLock, FaLockOpen } from 'react-icons/fa6';
 import { SiMicrogenetics as GeneIcon } from 'react-icons/si';
 import { toast } from 'react-toastify';
 import {
@@ -9,6 +9,8 @@ import {
   Controls,
   ControlButton,
   getRectOfNodes,
+  useStore,
+  useStoreApi,
 } from 'reactflow';
 import { save } from '@tauri-apps/api/dialog';
 import { type EdgeStyle, type TextExportMode } from 'utils/preferences';
@@ -24,25 +26,74 @@ interface CustomControlsProps {
   textExportMode: TextExportMode;
 }
 
+// Each button gets a daisyUI tooltip to its right (the controls sit in the
+// upper-left corner), like the hover tips elsewhere in the app. The flex classes
+// keep react-flow's centered icon layout, which .tooltip's inline-block would
+// otherwise override.
+const TIP = 'tooltip tooltip-right flex items-center justify-center';
+
 const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
+  // react-flow's own fit-view and lock buttons can't take a tooltip, so they are
+  // rebuilt here: the lock is what react-flow's built-in one does.
+  const store = useStoreApi();
+  const isInteractive = useStore(
+    (state) =>
+      state.nodesDraggable || state.nodesConnectable || state.elementsSelectable
+  );
+  const toggleInteractive = (): void => {
+    store.setState({
+      nodesDraggable: !isInteractive,
+      nodesConnectable: !isInteractive,
+      elementsSelectable: !isInteractive,
+    });
+  };
+
   return (
     <Controls
       position='top-left'
       className='bg-base-100 text-base-content'
       showZoom={false}
-      showInteractive={props.crossDesignEditable}
+      showFitView={false}
+      showInteractive={false}
     >
       <ControlButton
+        className={TIP}
+        data-tip='Fit view'
+        onClick={() => props.reactFlowInstance?.fitView()}
+      >
+        <FaExpand className='hover:cursor-pointer' />
+      </ControlButton>
+      {props.crossDesignEditable && (
+        <ControlButton
+          className={TIP}
+          data-tip={isInteractive ? 'Lock the canvas' : 'Unlock the canvas'}
+          onClick={toggleInteractive}
+        >
+          {isInteractive ? (
+            <FaLockOpen className='hover:cursor-pointer' />
+          ) : (
+            <FaLock className='hover:cursor-pointer' />
+          )}
+        </ControlButton>
+      )}
+      <ControlButton
+        className={TIP}
+        data-tip='Zoom in'
         onClick={() => props.reactFlowInstance?.zoomIn({ duration: 150 })}
       >
         <FaPlus className='hover:cursor-pointer' />
       </ControlButton>
       <ControlButton
+        className={TIP}
+        data-tip='Zoom out'
         onClick={() => props.reactFlowInstance?.zoomOut({ duration: 150 })}
       >
         <FaMinus className='hover:cursor-pointer' />
       </ControlButton>
-      <ControlButton className='drowndown-hover dropdown'>
+      <ControlButton
+        className='drowndown-hover dropdown tooltip tooltip-right'
+        data-tip='Export image'
+      >
         <div>
           <label tabIndex={0} className=''>
             <BsCardImage className='text-3xl text-base-content hover:cursor-pointer' />
@@ -93,8 +144,9 @@ const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
         </div>
       </ControlButton>
       <ControlButton
+        className={TIP}
+        data-tip={`Allele labels: ${props.alleleDisplayLabel} (click to change)`}
         onClick={props.cycleAlleleDisplayMode}
-        title={`Allele labels: ${props.alleleDisplayLabel} (click to change)`}
       >
         <GeneIcon />
       </ControlButton>
