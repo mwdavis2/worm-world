@@ -423,7 +423,7 @@ describe('buildCrossDesignSvg', () => {
       ].map((el) => el.textContent ?? '');
     };
 
-    test('is drawn with brackets around the markers, the balancer first, and no "tmC5(+)"', async () => {
+    test('is drawn with brackets around the markers, the balancer first, and its wild copy as "tmC5(+)"', async () => {
       const texts = await textsOf(
         new Strain({
           allelePairs: [
@@ -437,8 +437,19 @@ describe('buildCrossDesignSvg', () => {
       expect(at('tmC5')).toBeLessThan(at('['));
       expect(at('[')).toBeLessThan(at('unc-43(+)'));
       expect(at('unc-43(+)')).toBeLessThan(at(']'));
+      expect(texts).toContain('tmC5(+)');
+    });
+
+    test('a homozygote of the wild copy draws no label, and no empty <text>', async () => {
+      const texts = await textsOf(
+        new Strain({
+          allelePairs: [
+            new AllelePair({ top: unc43.toWild(), bot: unc43 }),
+            new AllelePair({ top: tmC5.toWild(), bot: tmC5.toWild() }),
+          ],
+        })
+      );
       expect(texts.some((t) => t.includes('tmC5(+)'))).toBe(false);
-      // A blank cell draws no empty <text>.
       expect(texts).not.toContain('');
     });
 

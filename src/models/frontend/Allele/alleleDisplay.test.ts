@@ -108,20 +108,36 @@ describe('the wild copy of a rearrangement', () => {
     }),
   });
 
-  test('is never shown, in any mode', () => {
+  test('reads "tmC5(+)" in every mode when its partner is the rearrangement (a heterozygote)', () => {
     ALLELE_DISPLAY_MODES.forEach((mode) => {
+      expect(formatAlleleLabel(tmC5.toWild(), mode.id, true, tmC5)).toBe(
+        'tmC5(+)'
+      );
+    });
+  });
+
+  test('is blank in a homozygote of the wild copy, or without a partner', () => {
+    ALLELE_DISPLAY_MODES.forEach((mode) => {
+      expect(
+        formatAlleleLabel(tmC5.toWild(), mode.id, true, tmC5.toWild())
+      ).toBe('');
       expect(formatAlleleLabel(tmC5.toWild(), mode.id)).toBe('');
     });
   });
 
-  test('the rearrangement itself still shows, and other wild copies are unchanged', () => {
-    expect(formatAlleleLabel(tmC5, 'gene-name')).toBe('tmC5');
+  test('the rearrangement itself still shows, and other wild copies keep their behavior', () => {
+    expect(formatAlleleLabel(tmC5, 'gene-name', true, tmC5.toWild())).toBe(
+      'tmC5'
+    );
     expect(formatAlleleLabel(geneAllele.toWild(), 'gene-name')).toBe(
       'unc-5(+)'
     );
-    // A wild copy of an ordinary variation allele is not blanked.
+    // A wild copy of an ordinary variation allele follows the display mode.
     expect(formatAlleleLabel(transgene.toWild(), 'gene-name')).toBe(
       'oxIs363(+)'
+    );
+    expect(formatAlleleLabel(transgene.toWild(), 'name', true, transgene)).toBe(
+      '+'
     );
   });
 });

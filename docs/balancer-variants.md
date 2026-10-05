@@ -23,10 +23,15 @@ because it lies inside the balancer's range.
 
 ```
  III
- eT1   [ let-500(s2165) ]
- ───   ──────────────────
- +       let-500(+)
+ eT1      [ let-500(s2165) ]
+ ──────   ──────────────────
+ eT1(+)     let-500(+)
 ```
+
+In a heterozygote the wild copy of the balancer is shown as `eT1(+)` (in every
+allele display mode, for inversions and translocation halves alike). In a
+strain where both copies are wild (`eT1(+)/eT1(+)`) the cell is left blank, and
+other variations' wild copies follow the display mode as usual.
 
 The balancer's range is stored once, so crossover suppression and the bracket
 are computed from a single variation, and every strain using any eT1 variant
@@ -66,9 +71,9 @@ other homolog of a gene in the region):
 
 ```
  III
- eT1[let-500(s2165)]   [ unc-36(+) ]
- ───────────────────   ─────────────
- +                       unc-36(e873)
+ eT1[let-500(s2165)]      [ unc-36(+) ]
+ ──────────────────────   ─────────────
+ eT1[let-500(s2165)](+)     unc-36(e873)
 ```
 
 Here the first pair of brackets belongs to the name and the second marks the

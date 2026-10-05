@@ -59,16 +59,23 @@ export const nextAlleleDisplayMode = (modeId: string): string => {
 /**
  * The text to show for an allele in the given display mode. `truncate`
  * (default on) cuts long contents; pass false for the full text, e.g. a
- * tooltip.
+ * tooltip. `partner` is the allele it is paired with, which decides how the
+ * wild copy of a rearrangement is shown (see below).
  */
 export const formatAlleleLabel = (
   allele: Allele,
   modeId: string,
-  truncate = true
+  truncate = true,
+  partner?: Allele
 ): string => {
-  // The wild copy of a rearrangement ("tmC5(+)") is never shown: the card
-  // marks the region itself, so its partner cell is just left blank.
-  if (allele.isWild() && allele.hasRearrangementRange()) return '';
+  // The wild copy of a rearrangement (an inversion balancer such as tmC1, or a
+  // translocation half): in a heterozygote it reads "tmC1(+)" in every display
+  // mode; in a homozygote (both copies wild) it is left blank, since the card
+  // marks the region itself. Without a partner it is blank.
+  if (allele.isWild() && allele.hasRearrangementRange())
+    return partner !== undefined && !partner.isWild()
+      ? allele.getQualifiedName()
+      : '';
 
   const { fields } = modeFor(modeId);
   const { prefix, name } = allele.getLabelParts();

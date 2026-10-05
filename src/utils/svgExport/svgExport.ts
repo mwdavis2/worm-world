@@ -192,10 +192,15 @@ const measureAlleleColumn = (
     const width = tr.measureWidth(label, ALLELE_TEXT_SIZE, 'normal');
     return { width, isEca: true, ecaLabel: label };
   }
-  const topName = formatAlleleLabel(pair.top, alleleDisplayMode);
+  const topName = formatAlleleLabel(
+    pair.top,
+    alleleDisplayMode,
+    true,
+    pair.bot
+  );
   const botName = isMaleX
     ? '0'
-    : formatAlleleLabel(pair.bot, alleleDisplayMode);
+    : formatAlleleLabel(pair.bot, alleleDisplayMode, true, pair.top);
   const topWidth = tr.measureWidth(topName, ALLELE_TEXT_SIZE, 'normal');
   const botWidth = tr.measureWidth(botName, ALLELE_TEXT_SIZE, 'normal');
   return {

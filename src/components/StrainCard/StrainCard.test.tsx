@@ -141,12 +141,23 @@ describe('StrainCard', () => {
       return { text: card.textContent ?? '', card };
     };
 
-    test('shows the balancer first, the region in brackets, and never "tmC5(+)"', () => {
+    test('shows the balancer first, its wild copy as "tmC5(+)" in a heterozygote, and the region in brackets', () => {
       const { text } = cardText(balanced);
-      expect(text).toMatch(/tmC5.*\[.*unc43\(\+\).*dpy20\(\+\).*\]/);
-      expect(text).not.toContain('tmC5(+)');
+      expect(text).toMatch(/tmC5tmC5\(\+\)\[.*unc43\(\+\).*dpy20\(\+\).*\]/);
       expect(text.split('[').length - 1).toBe(1);
       expect(text.split(']').length - 1).toBe(1);
+    });
+
+    test('a homozygote of the wild copy leaves the cell blank', () => {
+      const { text } = cardText(
+        new Strain({
+          allelePairs: [
+            het(unc43),
+            new AllelePair({ top: tmC5.toWild(), bot: tmC5.toWild() }),
+          ],
+        })
+      );
+      expect(text).not.toContain('tmC5(+)');
     });
 
     test('a strain with no rearrangement has no brackets', () => {

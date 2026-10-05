@@ -257,12 +257,18 @@ const ChromPairBox = (props: {
 
 // The untruncated label, for a hover tooltip - only set when truncating
 // actually cut something.
-const fullLabel = (allele: Allele, modeId: string): string | undefined => {
-  const full = formatAlleleLabel(allele, modeId, false);
-  return full === formatAlleleLabel(allele, modeId) ? undefined : full;
+const fullLabel = (
+  allele: Allele,
+  modeId: string,
+  partner?: Allele
+): string | undefined => {
+  const full = formatAlleleLabel(allele, modeId, false, partner);
+  return full === formatAlleleLabel(allele, modeId, true, partner)
+    ? undefined
+    : full;
 };
 
-// An empty label (e.g. a rearrangement's wild copy) still has to hold its
+// An empty label (e.g. the wild copy of a rearrangement homozygote) still has to hold its
 // line, or the rule between the two rows would shift.
 const cellText = (label: string): string => (label === '' ? '\u00A0' : label);
 
@@ -303,10 +309,19 @@ const MutationBox = (props: {
         )}
         <div
           className='text-align w-full px-2 text-center'
-          title={fullLabel(props.allelePair.top, context.alleleDisplayMode)}
+          title={fullLabel(
+            props.allelePair.top,
+            context.alleleDisplayMode,
+            props.allelePair.bot
+          )}
         >
           {cellText(
-            formatAlleleLabel(props.allelePair.top, context.alleleDisplayMode)
+            formatAlleleLabel(
+              props.allelePair.top,
+              context.alleleDisplayMode,
+              true,
+              props.allelePair.bot
+            )
           )}
         </div>
         <hr className={`border-base-content ${hiddenStyling}`} />
@@ -315,7 +330,11 @@ const MutationBox = (props: {
           title={
             context.strain.sex === Sex.Male && props.isX
               ? undefined
-              : fullLabel(props.allelePair.bot, context.alleleDisplayMode)
+              : fullLabel(
+                  props.allelePair.bot,
+                  context.alleleDisplayMode,
+                  props.allelePair.top
+                )
           }
         >
           {context.strain.sex === Sex.Male && props.isX
@@ -323,7 +342,9 @@ const MutationBox = (props: {
             : cellText(
                 formatAlleleLabel(
                   props.allelePair.bot,
-                  context.alleleDisplayMode
+                  context.alleleDisplayMode,
+                  true,
+                  props.allelePair.top
                 )
               )}
         </div>
