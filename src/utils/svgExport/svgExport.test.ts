@@ -6,6 +6,7 @@ import { Strain } from 'models/frontend/Strain/Strain';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { Allele } from 'models/frontend/Allele/Allele';
 import { Variation } from 'models/frontend/Variation/Variation';
+import { Gene } from 'models/frontend/Gene/Gene';
 import * as alleles from 'models/frontend/Allele/Allele.mock';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import { createTextRenderer } from './textToPath';
@@ -376,6 +377,79 @@ describe('buildCrossDesignSvg', () => {
         })
       );
       expect(texts).toContain('oxEx1 [GFP]');
+    });
+  });
+
+  describe("a rearrangement's region", () => {
+    const tmC5 = new Allele({
+      name: 'tmC5',
+      variation: new Variation({
+        name: 'tmC5',
+        chromosome: 'IV',
+        physLoc: 9_550_000,
+        geneticLoc: 4.31,
+        recombination: [6_600_000, 12_500_000],
+      }),
+    });
+    const unc43 = new Allele({
+      name: 'unc43',
+      gene: new Gene({
+        sysName: 'K11E8.1',
+        descName: 'unc-43',
+        chromosome: 'IV',
+        physLoc: 10_324_254,
+        geneticLoc: 4.58,
+      }),
+    });
+    const textsOf = async (strain: Strain): Promise<string[]> => {
+      const svg = await buildCrossDesignSvg(
+        [
+          {
+            id: 's',
+            type: NodeType.Strain,
+            position: { x: 0, y: 0 },
+            data: strain,
+          },
+        ],
+        [],
+        'default',
+        'gene-name',
+        'text'
+      );
+      return [
+        ...new DOMParser()
+          .parseFromString(svg, 'image/svg+xml')
+          .querySelectorAll('text'),
+      ].map((el) => el.textContent ?? '');
+    };
+
+    test('is drawn with brackets around the markers, the balancer first, and no "tmC5(+)"', async () => {
+      const texts = await textsOf(
+        new Strain({
+          allelePairs: [
+            new AllelePair({ top: unc43.toWild(), bot: unc43 }),
+            new AllelePair({ top: tmC5, bot: tmC5.toWild() }),
+          ],
+        })
+      );
+      const at = (text: string): number => texts.indexOf(text);
+      expect(at('tmC5')).toBeGreaterThan(-1);
+      expect(at('tmC5')).toBeLessThan(at('['));
+      expect(at('[')).toBeLessThan(at('unc-43(+)'));
+      expect(at('unc-43(+)')).toBeLessThan(at(']'));
+      expect(texts.some((t) => t.includes('tmC5(+)'))).toBe(false);
+      // A blank cell draws no empty <text>.
+      expect(texts).not.toContain('');
+    });
+
+    test('a strain with no rearrangement has no brackets', async () => {
+      const texts = await textsOf(
+        new Strain({
+          allelePairs: [new AllelePair({ top: unc43.toWild(), bot: unc43 })],
+        })
+      );
+      expect(texts).not.toContain('[');
+      expect(texts).not.toContain(']');
     });
   });
 

@@ -98,6 +98,34 @@ describe('formatAlleleLabel', () => {
   });
 });
 
+describe('the wild copy of a rearrangement', () => {
+  const tmC5 = new Allele({
+    name: 'tmC5',
+    variation: new Variation({
+      name: 'tmC5',
+      chromosome: 'IV',
+      recombination: [6_600_000, 12_500_000],
+    }),
+  });
+
+  test('is never shown, in any mode', () => {
+    ALLELE_DISPLAY_MODES.forEach((mode) => {
+      expect(formatAlleleLabel(tmC5.toWild(), mode.id)).toBe('');
+    });
+  });
+
+  test('the rearrangement itself still shows, and other wild copies are unchanged', () => {
+    expect(formatAlleleLabel(tmC5, 'gene-name')).toBe('tmC5');
+    expect(formatAlleleLabel(geneAllele.toWild(), 'gene-name')).toBe(
+      'unc-5(+)'
+    );
+    // A wild copy of an ordinary variation allele is not blanked.
+    expect(formatAlleleLabel(transgene.toWild(), 'gene-name')).toBe(
+      'oxIs363(+)'
+    );
+  });
+});
+
 describe('modes', () => {
   test('the default mode is the original gene(name) label, and matches getQualifiedName', () => {
     expect(DEFAULT_ALLELE_DISPLAY_MODE).toBe('gene-name');

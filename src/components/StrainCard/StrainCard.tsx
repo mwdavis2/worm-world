@@ -6,6 +6,7 @@ import { Sex } from 'models/enums';
 import { type Allele } from 'models/frontend/Allele/Allele';
 import { formatAlleleLabel } from 'models/frontend/Allele/alleleDisplay';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
+import { getChromosomeLayout } from 'models/frontend/ChromosomePair/chromosomeLayout';
 import { type ChromosomePair } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { type Strain } from 'models/frontend/Strain/Strain';
 import { memo, useContext, useMemo } from 'react';
@@ -211,16 +212,31 @@ const ChromPairBox = (props: {
   chromPair: ChromosomePair;
 }): React.JSX.Element => {
   const context = useContext(StrainCardContext);
-  const mutationBoxes = props.chromPair.allelePairs.map((allelePair, idx) => {
+  const layout = getChromosomeLayout(props.chromPair);
+  const pairItems = layout.filter((item) => item.kind === 'pair');
+  const mutationBoxes = layout.map((item, itemIdx) => {
+    // A rearrangement's region is marked with a bracket pair in the gaps
+    // between columns, level with the rule - like the ';' between chromosomes.
+    if (item.kind !== 'pair')
+      return (
+        <div
+          key={itemIdx}
+          className='flex flex-col justify-center text-4xl font-normal leading-none text-base-content'
+        >
+          {item.kind === 'open' ? '[' : ']'}
+        </div>
+      );
+    const allelePair = item.pair;
+    // The first displayed column is the phase reference, so it has no toggle.
     const toggleEnabled =
       !context.strain.isParent &&
       !context.strain.isChild &&
       !allelePair.isHomo() &&
-      idx !== 0;
+      pairItems.indexOf(item) !== 0;
     return (
       <MutationBox
         allelePair={allelePair}
-        key={idx}
+        key={itemIdx}
         toggleEnabled={toggleEnabled}
         isX={props.chromPair.isX()}
       />
@@ -245,6 +261,10 @@ const fullLabel = (allele: Allele, modeId: string): string | undefined => {
   const full = formatAlleleLabel(allele, modeId, false);
   return full === formatAlleleLabel(allele, modeId) ? undefined : full;
 };
+
+// An empty label (e.g. a rearrangement's wild copy) still has to hold its
+// line, or the rule between the two rows would shift.
+const cellText = (label: string): string => (label === '' ? '\u00A0' : label);
 
 const MutationBox = (props: {
   allelePair: AllelePair;
@@ -285,7 +305,9 @@ const MutationBox = (props: {
           className='text-align w-full px-2 text-center'
           title={fullLabel(props.allelePair.top, context.alleleDisplayMode)}
         >
-          {formatAlleleLabel(props.allelePair.top, context.alleleDisplayMode)}
+          {cellText(
+            formatAlleleLabel(props.allelePair.top, context.alleleDisplayMode)
+          )}
         </div>
         <hr className={`border-base-content ${hiddenStyling}`} />
         <div
@@ -298,9 +320,11 @@ const MutationBox = (props: {
         >
           {context.strain.sex === Sex.Male && props.isX
             ? '0'
-            : formatAlleleLabel(
-                props.allelePair.bot,
-                context.alleleDisplayMode
+            : cellText(
+                formatAlleleLabel(
+                  props.allelePair.bot,
+                  context.alleleDisplayMode
+                )
               )}
         </div>
       </div>

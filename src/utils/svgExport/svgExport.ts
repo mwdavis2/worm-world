@@ -9,6 +9,7 @@ import { NodeType, Sex } from 'models/enums';
 import { type Strain } from 'models/frontend/Strain/Strain';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { formatAlleleLabel } from 'models/frontend/Allele/alleleDisplay';
+import { getChromosomeLayout } from 'models/frontend/ChromosomePair/chromosomeLayout';
 import { minContentWidth, wrapLabel } from 'utils/svgExport/wrapLabel';
 import {
   STRAIN_NODE_WIDTH,
@@ -121,6 +122,9 @@ const isExportable = (node: Node): boolean =>
 // final position/size a concrete, independently-verifiable number instead of
 // something only knowable by mentally composing nested transforms - the
 // exact pattern that caused a real shipped left-drift bug earlier.
+// Tall enough to span both allele lines, centered on the rule.
+const BRACKET_TEXT_SIZE = 44;
+
 type LayoutItem =
   | {
       kind: 'centeredText';
@@ -170,6 +174,8 @@ interface MeasuredColumn {
   ecaLabel?: string; // set (and non-empty) only for a non-wild Eca pair
   // The label broken into lines, only when it had to wrap to fit the card.
   ecaLines?: string[];
+  // Set for a rearrangement's region mark ('[' or ']') instead of a column.
+  bracket?: string;
   topName?: string;
   botName?: string;
 }
@@ -286,8 +292,16 @@ const renderStrainCard = (
     const measured = chromPairs.map((cp) => {
       const name = cp.getChromName() ?? '?';
       const isMaleX = strain.sex === Sex.Male && cp.isX();
-      const cols = cp.allelePairs.map((ap) =>
-        measureAlleleColumn(ap, alleleDisplayMode, isMaleX, tr)
+      const bracketWidth = tr.measureWidth('[', BRACKET_TEXT_SIZE, 'normal');
+      const cols = getChromosomeLayout(cp).map(
+        (item): MeasuredColumn =>
+          item.kind === 'pair'
+            ? measureAlleleColumn(item.pair, alleleDisplayMode, isMaleX, tr)
+            : {
+                width: bracketWidth,
+                isEca: false,
+                bracket: item.kind === 'open' ? '[' : ']',
+              }
       );
       return {
         name,
@@ -360,6 +374,20 @@ const renderStrainCard = (
         m.cols.reduce((sum, c) => sum + c.width + COLUMN_GAP, 0) - COLUMN_GAP;
       let colX = boxCenterX - colsWidth / 2;
       m.cols.forEach((c) => {
+        if (c.bracket !== undefined) {
+          // The region mark sits level with the rule, like the card's.
+          layoutItems.push({
+            kind: 'centeredText',
+            text: c.bracket,
+            naturalCenterX: colX + c.width / 2,
+            naturalBaselineY: contentTop + 61,
+            naturalFontSize: BRACKET_TEXT_SIZE,
+            weight: 'normal',
+            color: colors.contentText,
+          });
+          colX += c.width + COLUMN_GAP;
+          return;
+        }
         if (c.isEca) {
           if (c.ecaLines !== undefined) {
             c.ecaLines.forEach((line, lineIdx) => {
@@ -451,6 +479,12 @@ const renderStrainCard = (
     parts.push(
       layoutItems
         .map((item) => {
+          // A blank cell (a rearrangement's wild copy) draws nothing.
+          if (
+            (item.kind === 'centeredText' || item.kind === 'leftText') &&
+            item.text === ''
+          )
+            return '';
           switch (item.kind) {
             case 'centeredText': {
               const { x, y: fy } = toFinal(

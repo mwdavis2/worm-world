@@ -5,6 +5,7 @@ import StrainCard from './StrainCard';
 import { Allele } from 'models/frontend/Allele/Allele';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { Strain } from 'models/frontend/Strain/Strain';
+import { Gene } from 'models/frontend/Gene/Gene';
 import { Variation } from 'models/frontend/Variation/Variation';
 
 const arrayAllele = new Allele({
@@ -92,6 +93,84 @@ describe('StrainCard', () => {
       const card = renderWithMode('gene-sign');
       expect(card).toHaveTextContent('unc-119(-)');
       expect(card).toHaveTextContent('unc-119(+)');
+    });
+  });
+
+  describe("a rearrangement's region", () => {
+    const tmC5 = new Allele({
+      name: 'tmC5',
+      variation: new Variation({
+        name: 'tmC5',
+        chromosome: 'IV',
+        physLoc: 9_550_000,
+        geneticLoc: 4.31,
+        recombination: [6_600_000, 12_500_000],
+      }),
+    });
+    const marker = (
+      name: string,
+      physLoc: number,
+      geneticLoc: number
+    ): Allele =>
+      new Allele({
+        name,
+        gene: new Gene({
+          sysName: `${name}-g`,
+          descName: name,
+          chromosome: 'IV',
+          physLoc,
+          geneticLoc,
+        }),
+      });
+    const early = marker('early', 8_000_000, 3.8);
+    const unc43 = marker('unc43', 10_324_254, 4.58);
+    const dpy20 = marker('dpy20', 11_696_430, 5.22);
+    const het = (m: Allele): AllelePair =>
+      new AllelePair({ top: m.toWild(), bot: m });
+
+    const balanced = new Strain({
+      allelePairs: [
+        het(unc43),
+        het(dpy20),
+        new AllelePair({ top: tmC5, bot: tmC5.toWild() }),
+      ],
+    });
+    const cardText = (strain: Strain): { text: string; card: HTMLElement } => {
+      render(<StrainCard strain={strain} id={''} />);
+      const card = screen.getByTestId('strainCard');
+      return { text: card.textContent ?? '', card };
+    };
+
+    test('shows the balancer first, the region in brackets, and never "tmC5(+)"', () => {
+      const { text } = cardText(balanced);
+      expect(text).toMatch(/tmC5.*\[.*unc43\(\+\).*dpy20\(\+\).*\]/);
+      expect(text).not.toContain('tmC5(+)');
+      expect(text.split('[').length - 1).toBe(1);
+      expect(text.split(']').length - 1).toBe(1);
+    });
+
+    test('a strain with no rearrangement has no brackets', () => {
+      const { text } = cardText(
+        new Strain({ allelePairs: [het(unc43), het(dpy20)] })
+      );
+      expect(text).not.toContain('[');
+      expect(text).not.toContain(']');
+    });
+
+    test('the balancer column is the phase reference: swap arrows go on the marker columns', () => {
+      // "early" sorts before the balancer by genetic position, but the
+      // balancer is shown first, so the three marker columns can all be swapped.
+      const { card } = cardText(
+        new Strain({
+          allelePairs: [
+            het(early),
+            het(unc43),
+            het(dpy20),
+            new AllelePair({ top: tmC5, bot: tmC5.toWild() }),
+          ],
+        })
+      );
+      expect(card.querySelectorAll('.text-primary')).toHaveLength(3);
     });
   });
 });

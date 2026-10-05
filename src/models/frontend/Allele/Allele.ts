@@ -209,6 +209,15 @@ export class Allele {
     return this.gene?.geneticLoc ?? this.variation?.geneticLoc;
   }
 
+  /**
+   * True if this allele's variation marks a rearranged region (a balancer or a
+   * translocation half) - whether this is the rearrangement itself or its wild
+   * copy, which keeps the variation.
+   */
+  public hasRearrangementRange(): boolean {
+    return this.variation?.recombination !== undefined;
+  }
+
   /** Physical position (bp) of this allele's gene or variation, if known. */
   public getPhysPosition(): number | undefined {
     return this.gene?.physLoc ?? this.variation?.physLoc;

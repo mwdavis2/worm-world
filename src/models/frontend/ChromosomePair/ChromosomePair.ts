@@ -253,9 +253,24 @@ export class ChromosomePair {
    * is never counted twice.
    */
   public getActiveSuppressors(): Array<[number, number]> {
+    return this.collectRearrangementRanges((pair) => !pair.isHomo());
+  }
+
+  /**
+   * The physical ranges (bp) marked by every rearrangement this chromosome
+   * carries, homozygous or not - what the card draws brackets around. Unlike
+   * the active suppressors (heterozygous only), a homozygous rearrangement
+   * still marks its region.
+   */
+  public getRearrangementRanges(): Array<[number, number]> {
+    return this.collectRearrangementRanges(() => true);
+  }
+
+  private collectRearrangementRanges(
+    includePair: (pair: AllelePair) => boolean
+  ): Array<[number, number]> {
     const ranges: Array<[number, number]> = [];
-    this.allelePairs.forEach((pair) => {
-      if (pair.isHomo()) return;
+    this.allelePairs.filter(includePair).forEach((pair) => {
       [pair.top, pair.bot].forEach((allele) => {
         const range = allele.variation?.recombination;
         if (range !== undefined && !allele.isWild())

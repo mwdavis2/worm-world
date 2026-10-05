@@ -66,6 +66,10 @@ export const formatAlleleLabel = (
   modeId: string,
   truncate = true
 ): string => {
+  // The wild copy of a rearrangement ("tmC5(+)") is never shown: the card
+  // marks the region itself, so its partner cell is just left blank.
+  if (allele.isWild() && allele.hasRearrangementRange()) return '';
+
   const { fields } = modeFor(modeId);
   const { prefix, name } = allele.getLabelParts();
   const withGene = fields.includes('gene') && prefix !== undefined;
