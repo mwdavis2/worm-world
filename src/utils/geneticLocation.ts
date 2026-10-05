@@ -43,7 +43,29 @@ const buildAnchorCache = async (): Promise<
     anchors.push({ physLoc: gene.physLoc, geneticLoc: gene.geneticLoc });
     map.set(gene.chromosome, anchors);
   });
-  map.forEach((anchors) => anchors.sort((a, b) => a.physLoc - b.physLoc));
+  map.forEach((anchors, chromosome) => {
+    anchors.sort((a, b) => a.physLoc - b.physLoc);
+    // Anchors sharing a physical position (a gene and its synonym, genes
+    // that overlap) would make a flanking pair zero-length, and the
+    // interpolation below divide by zero. Collapse each run to one anchor at
+    // the mean genetic position.
+    const collapsed: AnchorPoint[] = [];
+    let run: AnchorPoint[] = [];
+    const flush = (): void => {
+      if (run.length === 0) return;
+      collapsed.push({
+        physLoc: run[0].physLoc,
+        geneticLoc: run.reduce((sum, a) => sum + a.geneticLoc, 0) / run.length,
+      });
+      run = [];
+    };
+    anchors.forEach((anchor) => {
+      if (run.length > 0 && run[0].physLoc !== anchor.physLoc) flush();
+      run.push(anchor);
+    });
+    flush();
+    map.set(chromosome, collapsed);
+  });
   return map;
 };
 

@@ -64,6 +64,43 @@ describe('interpolateGeneticLoc', () => {
     expect(result).toBeCloseTo(30, 5);
   });
 
+  test('anchors that share a physical position do not cause a division by zero', async () => {
+    // A gene and its synonym sit at the same position at the start and end of
+    // the chromosome; extrapolating past either end used to give NaN/Infinity.
+    mockIPC((cmd) => {
+      if (cmd === 'get_filtered_genes') {
+        return [
+          mkGene('a', 'I', 100, 10),
+          mkGene('a (syn)', 'I', 100, 10),
+          mkGene('b', 'I', 200, 20),
+          mkGene('c', 'I', 300, 30),
+          mkGene('c (syn)', 'I', 300, 30),
+        ];
+      }
+      return [];
+    });
+
+    expect(await interpolateGeneticLoc('I', 0)).toBeCloseTo(0, 5);
+    expect(await interpolateGeneticLoc('I', 100)).toBeCloseTo(10, 5);
+    expect(await interpolateGeneticLoc('I', 300)).toBeCloseTo(30, 5);
+    expect(await interpolateGeneticLoc('I', 400)).toBeCloseTo(40, 5);
+  });
+
+  test('anchors sharing a position are averaged', async () => {
+    mockIPC((cmd) => {
+      if (cmd === 'get_filtered_genes') {
+        return [
+          mkGene('a', 'I', 100, 10),
+          mkGene('b', 'I', 100, 12),
+          mkGene('c', 'I', 200, 22),
+        ];
+      }
+      return [];
+    });
+
+    expect(await interpolateGeneticLoc('I', 100)).toBeCloseTo(11, 5);
+  });
+
   test('falls back to 50 when fewer than 2 anchors exist for the chromosome', async () => {
     mockIPC((cmd) => {
       if (cmd === 'get_filtered_genes') {
