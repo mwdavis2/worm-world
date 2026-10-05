@@ -132,14 +132,12 @@ const isVariantLethal = (allele: Allele): boolean =>
   );
 
 describe('generated translocation data', () => {
-  test('has every family, with its halves and variants', () => {
-    expect([...variants.keys()].length).toBeGreaterThanOrEqual(20);
-    ['eT1', 'nT1', 'hT2', 'szT1', 'hT3', 'mT1', 'hT1'].forEach((family) => {
-      const has = [...variants.keys()].some(
-        (label) => label === family || label.startsWith(`${family}[`)
-      );
-      expect(has, `family ${family}`).toBe(true);
-    });
+  // The bracket variants (eT1[let-500(s2165)] ...) are entered as strains with
+  // real alleles, not generated, so each family is just its plain balancer.
+  test('has every family as a plain balancer, and no bracket variants', () => {
+    expect([...variants.keys()].sort()).toEqual(
+      ['eT1', 'nT1', 'hT2', 'szT1', 'hT3', 'mT1', 'hT1'].sort()
+    );
   });
 
   const twoHalf = [...variants.entries()].filter(

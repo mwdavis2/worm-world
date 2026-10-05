@@ -27,26 +27,4 @@ mT1(III) 1 copy,1,mT1(III),,3,0,0,0,3
 mT1(III) 2 copies,1,mT1(III),,3,0,0,0,3
 hT1(V) 1 copy,1,hT1(V),,3,0,0,0,3
 hT1(V) 2 copies,1,hT1(V),,3,0,0,0,3
-unc-36,0,unc,,3,0,0,0,3
-eT1[let-?(s1799)] homozygous lethal,0,lethal,,0,1,0,0,
-eT1[let-500(s2165)] homozygous lethal,0,lethal,,0,1,0,0,
-eT1[let-?(n886)] homozygous lethal,0,lethal,,0,1,0,0,
-him-5,0,him,,3,0,0,0,3
-Vul,0,Vul,,0,0,0,0,3
-pharyngeal GFP,0,GFP(pharynx),,3,0,0,0,3
-nT1[qIs51] homozygous lethal,0,lethal,,0,1,0,0,
-unc(n754),0,unc,,3,0,0,0,3
-nT1[unc-?(n754dm) let-?] homozygous lethal,0,lethal,,0,1,0,0,
-nT1[unc-?(n754) let-? qIs50] homozygous lethal,0,lethal,,0,1,0,0,
-GFP,0,GFP,,3,0,0,0,3
-nT1[unc-?(n754) let-?(m435)] homozygous lethal,0,lethal,,0,1,0,0,
-nT1[let-?(m435)] homozygous lethal,0,lethal,,0,1,0,0,
-bli-4,0,bli,,3,0,0,0,3
-hT2[bli-4(e937) let-?(q782) qIs48] homozygous lethal,0,lethal,,0,1,0,0,
-hT2[bli-4(e937) let-?(h661)] homozygous lethal,0,lethal,,0,1,0,0,
-dpy-18,0,dpy,,3,0,0,0,3
-lon-2,0,lon,,3,0,0,0,3
-unc-29,0,unc,,3,0,0,0,3
 hT3 homozygous lethal,0,lethal,,0,1,0,0,
-dpy-10,0,dpy,,3,0,0,0,3
-sterile,0,sterile,,3,0,1,0,3

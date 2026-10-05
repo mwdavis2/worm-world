@@ -23,7 +23,7 @@ table. A heterozygous half suppresses crossovers inside its range.
 |---|---|---|---|---|
 | **eT1** | III | 8,192,365-13,783,733 | 8,192,365 | Breakpoints III:8,200,764 (in unc-36) and V:8,930,675 (Maroilley 2021). |
 |  | V | 1-8,934,697 | 8,934,697 |  |
-| **nT1** | IV | 3,618,259-17,493,829 | 3,618,259 | Chromoplexy; IV 3,618,259 is the unc-17 locus. Many V breakpoints (5.5-16.8 Mb). |
+| **nT1** | IV | 1,902,322-17,493,829 | 1,902,322 | Chromoplexy; the IV breakpoint is IN egl-18 (it causes the Vul mutation), so the range starts at egl-18 (IV 1,902,322; more recent data than the earlier unc-17 flank at 3,618,259). Many V breakpoints (5.5-16.8 Mb). |
 |  | V | 1-15,071,760 | 15,071,760 |  |
 | **hT2** | I | 1-12,508,299 | 12,508,299 | Sequenced breakpoints I:13,187,133 and III:4,822,648 / 4,989,701 (WS230). |
 |  | III | 5,107,330-13,783,801 | 5,107,330 |  |
@@ -35,33 +35,30 @@ table. A heterozygous half suppresses crossovers inside its range.
 |  | III | 3,644,375-13,783,801 | 3,644,375 |  |
 | **hT1** | V | 1-6,511,583 | 6,511,583 | I half (left end through let-80) has no known position: not entered. With no partner half, no aneuploid rows. |
 
-## Variants
+## Variants (not generated)
 
-Each variant is its own pair of half-alleles, sharing its family's two
-variations (loci):
+Only the plain balancers above are generated, one half-allele per chromosome.
+The bracket variants are **not**: each is entered as a strain holding the
+balancer plus real gene or transgene alleles on the same homolog (see
+`docs/balancer-variants.md`). Every eT1 carries `unc-36(e873)`, so each eT1
+strain includes that allele. The variants to build:
 
-- `eT1`
 - `eT1[let-?(s1799)]`
 - `eT1[let-500(s2165)]`
 - `eT1[let-?(n886)]`
 - `eT1[him-5(e1467)]`
-- `nT1`
 - `nT1[qIs51]`
 - `nT1[unc-?(n754dm) let-?]`
 - `nT1[unc-?(n754) let-? qIs50]`
 - `nT1[unc-?(n754) let-?(m435)]`
 - `nT1[let-?(m435)]`
-- `hT2`
-- `hT2[bli-4(e937)]`
 - `hT2[bli-4(e937) let-?(q782) qIs48]`
 - `hT2[bli-4(e937) qIs48]`
 - `hT2[bli-4(e937) let-?(h661)]`
 - `hT2[dpy-18(h662)]`
 - `szT1[lon-2(e678)]`
 - `szT1[lon-2(e678) unc-29(e403)]`
-- `hT3`
 - `mT1[dpy-10(e128)]`
-- `hT1`
 
 Excluded: `eT2` (a half-translocation, not a balancing pair) and `meT7` (no
 description in the CGC record).
@@ -76,10 +73,9 @@ description in the CGC record).
   numbers: (III copies, V copies) = (0,0), (1,1) or (2,2) are viable, every
   other combination is lethal. (Verified in
   `src/models/frontend/Strain/translocation.test.ts`.)
-- Variant phenotypes (a recessive marker or homozygous lethality is a
-  homozygous row, dominant GFP / Unc a heterozygous-or-homozygous row) sit on
-  the half whose chromosome carries the gene, or the first half if the gene is
-  unknown. `allele_exprs.dominance` is stored as an integer (homozygous = 0,
+- A plain balancer's own marker phenotype (hT3's homozygous lethality; nT1's
+  Vul, hT2's Bli and eT1's Unc are real alleles in the strains instead) is a homozygous or either-zygosity row on its first
+  half. `allele_exprs.dominance` is stored as an integer (homozygous = 0,
   het = 1, either = 2).
 - hT1 has only its V half entered, so it has no aneuploid rows.
 
@@ -108,5 +104,3 @@ aneuploid phenotypes and no positions).
 - hT3: X half range (smaller option)
 - mT1: III half range (smaller option)
 - hT1: I half missing; V breakpoint 7,207,631 in soap-1
-- nT1[unc-?(n754) let-? qIs50]: qIs50 GFP
-- hT2[bli-4(e937) qIs48]: homozygote viability
