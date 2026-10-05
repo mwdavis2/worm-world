@@ -367,6 +367,15 @@ describe('ChromosomePair.meiosis() with balancers', () => {
     expect(probOf(pair, ['+', 'a1', '+'])).toBeCloseTo(base * (1 - 1.4 / 2.4));
   });
 
+  test('a marker exactly on the balancer edge counts as inside it', () => {
+    const onEdge = marker('edge', RANGE[0], 3.9);
+    const pair = balanced([onEdge, inside1]);
+    // The gap from the edge marker (6.6 Mb) to inside1 (8 Mb) lies wholly in
+    // the range, so no crossover separates them.
+    expect(probOf(pair, ['edge', '+', 'tmC5'])).toBeCloseTo(0);
+    expect(probOf(pair, ['edge', 'a1', '+'])).toBeGreaterThan(0.4);
+  });
+
   test('a gap entirely outside the balanced region is unchanged', () => {
     const out1 = marker('o1', 15_000_000, 8.0);
     const out2 = marker('o2', 16_000_000, 9.0);

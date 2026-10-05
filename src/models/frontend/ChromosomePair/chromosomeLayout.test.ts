@@ -73,6 +73,25 @@ describe('getChromosomeLayout', () => {
     expect(tokens(pair)).toEqual(['tmC5/+', '[', '+/unc43', '+/dpy20', ']']);
   });
 
+  test('a marker exactly on either edge of the range is inside the brackets', () => {
+    const atStart = marker('atStart', RANGE[0], 4.2);
+    const atEnd = marker('atEnd', RANGE[1], 5.3);
+    const pair = new ChromosomePair([
+      hetOf(atStart),
+      hetOf(atEnd),
+      balancerHet(),
+    ]);
+    expect(tokens(pair)).toEqual(['tmC5/+', '[', '+/atStart', '+/atEnd', ']']);
+    // One base outside either edge is not.
+    const justBefore = marker('before', RANGE[0] - 1, 4.2);
+    const justAfter = marker('after', RANGE[1] + 1, 5.3);
+    expect(
+      tokens(
+        new ChromosomePair([hetOf(justBefore), hetOf(justAfter), balancerHet()])
+      )
+    ).toEqual(['+/before', 'tmC5/+', '+/after']);
+  });
+
   test('a homozygous balancer marks its region too', () => {
     const pair = new ChromosomePair([
       pairOf(unc43.toWild(), unc43.toWild()),
