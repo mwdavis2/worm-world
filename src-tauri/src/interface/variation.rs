@@ -275,6 +275,38 @@ mod test {
         Ok(())
     }
 
+    // Filtering and sorting on the suppressed range's two columns (the Variations
+    // table offers both); the enum used to point at a column that doesn't exist.
+    #[sqlx::test]
+    async fn test_filter_and_sort_by_suppressed_range(pool: Pool<Sqlite>) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO variations (allele_name, chromosome, recomb_suppressor_start, recomb_suppressor_end) VALUES
+             ('tmC5', 'IV', 6600000, 12500000), ('hT2', 'I', 1, 12508299), ('plain', 'II', NULL, NULL)",
+        )
+        .execute(&pool)
+        .await?;
+        let state = InnerDbState { conn_pool: pool };
+
+        let with_range = FilterGroup::<VariationFieldName> {
+            filters: vec![vec![(
+                VariationFieldName::RecombSuppressorStart,
+                Filter::NotNull,
+            )]],
+            order_by: vec![(VariationFieldName::RecombSuppressorEnd, Order::Desc)],
+            limit: None,
+            offset: None,
+        };
+        let names: Vec<String> = state
+            .get_filtered_variations(&with_range)
+            .await?
+            .into_iter()
+            .map(|v| v.allele_name)
+            .collect();
+        assert_eq!(names, vec!["hT2".to_string(), "tmC5".to_string()]);
+        assert_eq!(state.get_count_filtered_variations(&with_range).await?, 2);
+        Ok(())
+    }
+
     #[sqlx::test(fixtures("full_db"))]
     async fn test_get_filtered_variation_gen_loc_range(pool: Pool<Sqlite>) -> Result<()> {
         let state = InnerDbState { conn_pool: pool };

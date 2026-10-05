@@ -67,7 +67,8 @@ pub enum VariationFieldName {
     Chromosome,
     PhysLoc,
     GenLoc,
-    RecombSuppressor,
+    RecombSuppressorStart,
+    RecombSuppressorEnd,
     IsLocationReference,
     PercentLoss,
 }
@@ -78,7 +79,8 @@ impl FieldNameEnum for VariationFieldName {
             VariationFieldName::Chromosome => "chromosome".to_owned(),
             VariationFieldName::PhysLoc => "phys_loc".to_owned(),
             VariationFieldName::GenLoc => "gen_loc".to_owned(),
-            VariationFieldName::RecombSuppressor => "recomb_suppressor".to_owned(),
+            VariationFieldName::RecombSuppressorStart => "recomb_suppressor_start".to_owned(),
+            VariationFieldName::RecombSuppressorEnd => "recomb_suppressor_end".to_owned(),
             VariationFieldName::IsLocationReference => "is_location_reference".to_owned(),
             VariationFieldName::PercentLoss => "percent_loss".to_owned(),
         }

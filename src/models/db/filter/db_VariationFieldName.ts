@@ -5,6 +5,7 @@ export type VariationFieldName =
   | 'Chromosome'
   | 'PhysLoc'
   | 'GenLoc'
-  | 'RecombSuppressor'
+  | 'RecombSuppressorStart'
+  | 'RecombSuppressorEnd'
   | 'IsLocationReference'
   | 'PercentLoss';
