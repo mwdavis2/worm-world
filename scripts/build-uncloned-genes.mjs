@@ -21,6 +21,9 @@
 //       the existing unc-17 row, with the gene's own position. A synonym that
 //       already is a gene name is skipped (the existing record wins), as is one
 //       that two genes share (ambiguous).
+//   uncloned_gene_synonyms.csv  a synonym of an uncloned gene that has a position (above):
+//       a row keyed by the synonym itself, with the gene's position. Synonyms of
+//       uncloned genes without a position wait with them.
 //   uncloned_genes.csv      uncloned genes (a public name, no sequence name,
 //       keyed by that name) that have a position in the old WS225 genetic-map
 //       file: its cM value, and the midpoint of its interpolated physical span
@@ -94,10 +97,19 @@ const others = gunzipSync(readFileSync(OTHER_IDS))
 const useCount = new Map();
 others.forEach((r) => useCount.set(r[4], (useCount.get(r[4]) ?? 0) + 1));
 const synonyms = [];
+const unclonedSynonyms = [];
+const placedByName = new Map(placed.map((row) => [row[0], row]));
 const skipped = { uncloned: [], existing: [], ambiguous: [], noPosition: [] };
-others.forEach(([, , seqName, , synonym]) => {
-  if (seqName === '') skipped.uncloned.push(synonym);
-  else if (known.has(synonym)) skipped.existing.push(synonym);
+others.forEach(([, , seqName, publicName, synonym]) => {
+  if (seqName === '') {
+    // An uncloned gene's synonym: a row keyed by the synonym itself (an
+    // uncloned gene is keyed by its plain name), with the gene's position.
+    const gene = placedByName.get(publicName);
+    if (gene === undefined) skipped.uncloned.push(synonym);
+    else if (known.has(synonym) || placedByName.has(synonym)) skipped.existing.push(synonym);
+    else if (useCount.get(synonym) > 1) skipped.ambiguous.push(synonym);
+    else unclonedSynonyms.push([synonym, synonym, gene[2], gene[3], gene[4]]);
+  } else if (known.has(synonym)) skipped.existing.push(synonym);
   else if (useCount.get(synonym) > 1) skipped.ambiguous.push(synonym);
   else {
     const gene = bySeq.get(seqName);
@@ -141,6 +153,7 @@ const placeholders = PLACEHOLDERS.map(([key, half]) => {
 
 writeFileSync('data/wormbase/uncloned_genes.csv', toCsv(placed));
 writeFileSync('data/wormbase/gene_synonyms.csv', toCsv(synonyms));
+writeFileSync('data/wormbase/uncloned_gene_synonyms.csv', toCsv(unclonedSynonyms));
 // A placeholder now stands in for its gene (let-500), so it is no longer pending.
 const placeholderKeys = new Set(placeholders.map((row) => row[0]));
 const stillPending = pending.filter((row) => !placeholderKeys.has(row[0]));
@@ -148,6 +161,7 @@ writeFileSync('data/wormbase/genes_pending_positions.csv', toCsv(stillPending));
 writeFileSync('data/wormbase/placeholder_genes.csv', toCsv(placeholders));
 console.log(`placeholder_genes.csv: ${placeholders.length} rows`);
 console.log(`uncloned_genes.csv: ${placed.length} rows`);
+console.log(`uncloned_gene_synonyms.csv: ${unclonedSynonyms.length} rows`);
 console.log(`gene_synonyms.csv: ${synonyms.length} rows`);
 Object.entries(skipped).forEach(([why, list]) =>
   console.log(`  skipped synonyms (${why}): ${list.length}${why === 'ambiguous' ? ' - ' + [...new Set(list)].join(', ') : ''}`)
