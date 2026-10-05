@@ -14,6 +14,19 @@ export interface GeneSearchInputProps {
   ariaLabel?: string;
 }
 
+// A gene's text in the dropdown: its descriptive name, plus its key in
+// brackets when another result reads the same (the placeholder genes
+// let-?(s1799), let-?(n886) ... all have the descriptive name "let-?").
+export const optionLabel = (gene: db_Gene, results: db_Gene[]): string => {
+  const text = gene.descName ?? gene.sysName;
+  const repeated = results.some(
+    (other) =>
+      other.sysName !== gene.sysName &&
+      (other.descName ?? other.sysName) === text
+  );
+  return repeated ? `${text} [${gene.sysName}]` : text;
+};
+
 // A single-pick gene search field - forked from StrainForm.tsx's unexported
 // StrainSelect pattern (search -> dropdown -> click replaces the one value)
 // rather than reusing AlleleMultiSelect/DynamicMultiSelect, both of which
@@ -78,7 +91,7 @@ export const GeneSearchInput = (
       ) : (
         <ul className='menu dropdown-content rounded-box z-50 my-2 max-h-80 w-full overflow-auto bg-base-100 p-2 shadow'>
           {searchRes.map((gene, idx) => {
-            const optionText = gene.descName ?? gene.sysName;
+            const optionText = optionLabel(gene, searchRes);
             return (
               <li
                 key={idx}
