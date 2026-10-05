@@ -84,7 +84,7 @@ describe('StrainCard', () => {
         </EditorContext.Provider>
       );
       expect(screen.getByTestId('strainCard')).toHaveTextContent(
-        'oxEx2254 [Psnt-1::Flp, Punc-122::GAP-43::mScarlet…]'
+        'oxEx2254 [Psnt-1::Flp, Punc-122::GAP-43::mScarle…'
       );
     });
 

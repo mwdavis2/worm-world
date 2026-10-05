@@ -356,19 +356,19 @@ describe('buildCrossDesignSvg', () => {
       expect(texts.some((t) => t.includes('oxEx2254'))).toBe(true);
       // No single text element carries the whole label...
       expect(
-        texts.some((t) => t.includes('mScarlet') && t.includes('NeoR'))
+        texts.some((t) => t.includes('Psnt-') && t.includes('mScarle'))
       ).toBe(false);
       // ...but together the lines still hold all of its pieces.
       const joined = texts.join(' ');
       expect(joined).toContain('Psnt-');
-      expect(joined).toContain('mScarlet');
+      expect(joined).toContain('mScarle');
     });
 
     test('a short label stays on one line', async () => {
       const short = new Allele({
         name: 'oxEx1',
         variation: new Variation({ name: 'oxEx1', chromosome: 'Ex' }),
-        contents: 'GFP',
+        contents: '[GFP]',
       });
       const texts = await exportStrain(
         new Strain({

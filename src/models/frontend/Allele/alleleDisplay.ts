@@ -9,7 +9,8 @@ export interface AlleleDisplayMode {
   // Which pieces are shown. `gene` wraps the rest as gene(...) when the
   // allele has a gene; `name` and `sign` (- for a mutant allele, + for the
   // wild-type copy, only alongside a gene) are alternatives for the core;
-  // `contents` is appended in brackets.
+  // `contents` is appended exactly as stored (any brackets come from the
+  // contents text itself).
   fields: AlleleField[];
 }
 
@@ -70,19 +71,13 @@ export const formatAlleleLabel = (
   const withGene = fields.includes('gene') && prefix !== undefined;
 
   let core = fields.includes('sign') && withGene ? signOf(allele) : name;
-  // Contents text is often stored already wrapped in its own [brackets];
-  // strip those so the label's brackets aren't doubled.
-  const trimmed = allele.contents?.trim() ?? '';
-  const contents =
-    trimmed.startsWith('[') && trimmed.endsWith(']')
-      ? trimmed.slice(1, -1).trim()
-      : trimmed;
+  const contents = allele.contents?.trim() ?? '';
   if (fields.includes('contents') && contents !== '') {
     const shown =
       truncate && contents.length > MAX_CONTENTS_LENGTH
         ? `${contents.slice(0, MAX_CONTENTS_LENGTH - 1)}…`
         : contents;
-    core = `${core} [${shown}]`;
+    core = `${core} ${shown}`;
   }
   return withGene ? `${prefix}(${core})` : core;
 };

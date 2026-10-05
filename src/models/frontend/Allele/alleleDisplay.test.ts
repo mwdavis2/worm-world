@@ -13,13 +13,13 @@ import {
 } from './alleleDisplay';
 
 const gene = new Gene({ sysName: 'T14B4.7', descName: 'unc-5' });
+// Contents text is shown exactly as stored: any brackets are part of it.
 const geneAllele = new Allele({
   name: 'e1282',
   gene,
-  contents: 'point mutation',
+  contents: '[point mutation]',
 });
-// An extrachromosomal array whose contents are stored already wrapped in
-// brackets, as in real data.
+// An extrachromosomal array with bracketed contents, as in real data.
 const array = new Allele({
   name: 'oxEx2254',
   variation: new Variation({ name: 'oxEx2254', chromosome: 'Ex' }),
@@ -28,7 +28,7 @@ const array = new Allele({
 const transgene = new Allele({
   name: 'oxIs363',
   variation: new Variation({ name: 'oxIs363' }),
-  contents: 'Pmyo-3::GFP',
+  contents: '[Pmyo-3::GFP]',
 });
 
 describe('formatAlleleLabel', () => {
@@ -69,24 +69,26 @@ describe('formatAlleleLabel', () => {
     const long = 'x'.repeat(MAX_CONTENTS_LENGTH + 10);
     const allele = new Allele({ name: 'a1', gene, contents: long });
     const cut = formatAlleleLabel(allele, 'name-contents');
-    expect(cut).toBe(`a1 [${'x'.repeat(MAX_CONTENTS_LENGTH - 1)}…]`);
+    expect(cut).toBe(`a1 ${'x'.repeat(MAX_CONTENTS_LENGTH - 1)}…`);
     expect(formatAlleleLabel(allele, 'name-contents', false)).toBe(
-      `a1 [${long}]`
+      `a1 ${long}`
     );
   });
 
-  test('contents already wrapped in brackets is not wrapped twice, and long text is cut inside the brackets', () => {
+  test('contents is shown exactly as stored - no brackets are added or removed', () => {
+    const stored =
+      '[Psnt-1::Flp, Punc-122::GAP-43::mScarlet, cbr-unc-119(+), NeoR]';
     expect(formatAlleleLabel(array, 'name-contents', false)).toBe(
-      'oxEx2254 [Psnt-1::Flp, Punc-122::GAP-43::mScarlet, cbr-unc-119(+), NeoR]'
+      `oxEx2254 ${stored}`
     );
-    const cut = formatAlleleLabel(array, 'name-contents');
-    expect(cut).toBe(
-      `oxEx2254 [${'Psnt-1::Flp, Punc-122::GAP-43::mScarlet, cbr-unc-119(+), NeoR'.slice(
-        0,
-        MAX_CONTENTS_LENGTH - 1
-      )}…]`
+    // Cut at the limit with an ellipsis, so the closing bracket is lost.
+    expect(formatAlleleLabel(array, 'name-contents')).toBe(
+      `oxEx2254 ${stored.slice(0, MAX_CONTENTS_LENGTH - 1)}…`
     );
     expect(MAX_CONTENTS_LENGTH).toBe(40);
+
+    const unbracketed = new Allele({ name: 'a1', gene, contents: 'GFP' });
+    expect(formatAlleleLabel(unbracketed, 'name-contents')).toBe('a1 GFP');
   });
 
   test('an unknown mode falls back to the default one', () => {
