@@ -25,7 +25,12 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
         (node) => node.parentNode === props.id && node.hidden === true
       ).length
   );
-  const filterSummary = props.data.describe();
+  const hasLethalChild = useStore((state) =>
+    [...state.nodeInternals.values()].some(
+      (node) => node.parentNode === props.id && node.data?.lethal === true
+    )
+  );
+  const filterSummary = props.data.describe(hasLethalChild);
   if (filterSummary.length === 0) filterSummary.push('No filters');
   return (
     // Sized to span both the circle and the icons above/right of it, so the

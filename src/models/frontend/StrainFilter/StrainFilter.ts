@@ -78,13 +78,18 @@ export class StrainFilter implements IStrainFilter {
   /**
    * One line per filter currently in effect, for the middle node's hover
    * tooltip. Unlike isEmpty(), this lists the default viability filter
-   * ({NON_LETHAL}) too - it really is hiding lethal strains.
+   * ({NON_LETHAL}) too - it really is hiding lethal strains. When the cross
+   * has no lethal child (`hasLethalChild` false) that default hides nothing,
+   * so it is left out; a viability filter the user chose always shows.
    */
-  public describe(): string[] {
+  public describe(hasLethalChild = true): string[] {
     const list = (names: Set<string>): string => [...names].join(', ');
-    const viability = [LETHAL, NON_LETHAL].filter((group) =>
-      this.viability.has(group)
-    );
+    const isDefaultViability =
+      this.viability.size === 1 && this.viability.has(NON_LETHAL);
+    const viability =
+      isDefaultViability && !hasLethalChild
+        ? []
+        : [LETHAL, NON_LETHAL].filter((group) => this.viability.has(group));
     return [
       this.alleleNames.size > 0 && `Alleles: ${list(this.alleleNames)}`,
       this.exprPhenotypes.size > 0 &&

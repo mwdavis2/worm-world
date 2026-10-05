@@ -228,6 +228,12 @@ describe('StrainFilter', () => {
   test('describe() lists one line per filter in effect', () => {
     expect(new StrainFilter().describe()).toEqual(['Viability: Non-lethal']);
     expect(new StrainFilter({ viability: new Set() }).describe()).toEqual([]);
+    // The default hides nothing when no child is lethal
+    expect(new StrainFilter().describe(false)).toEqual([]);
+    // A viability filter the user chose always shows
+    expect(
+      new StrainFilter({ viability: new Set([LETHAL]) }).describe(false)
+    ).toEqual(['Viability: Lethal']);
     expect(
       new StrainFilter({
         alleleNames: new Set(['unc-5', 'dpy-7']),
