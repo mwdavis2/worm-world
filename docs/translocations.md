@@ -21,19 +21,20 @@ table. A heterozygous half suppresses crossovers inside its range.
 
 | Family | Chr | Suppressed range | Position (boundary) | Notes |
 |---|---|---|---|---|
-| **eT1** | III | 8,192,365-13,783,733 | 8,192,365 | Breakpoints III:8,200,764 (in unc-36) and V:8,930,675 (Maroilley 2021). |
-|  | V | 1-8,934,697 | 8,934,697 |  |
-| **nT1** | IV | 1,902,322-17,493,829 | 1,902,322 | Chromoplexy. The IV breakpoint is within about 800 bp upstream of a potential egl-18 transcriptional start site (PubMed 14975731, https://pubmed.ncbi.nlm.nih.gov/14975731/), disrupting egl-18/elt-6 function in the vulva (the Vul phenotype). egl-18 mutations do not complement nT1 for the vulval defect, so genetically the breakpoint is an allele of egl-18 - within the functional interval of the gene though outside its coding region (hence egl-18(nT1vul)); the range starts at egl-18 (IV 1,902,322), replacing the earlier unc-17 flank at 3,618,259. Many V breakpoints (5.5-16.8 Mb). |
-|  | V | 1-15,071,760 | 15,071,760 |  |
-| **hT2** | I | 1-13,187,133 | 13,187,133 | Ranges are the sequenced breakpoints (PMC8662349): I:13,187,133 and III:4,989,701, where III-right joins hT2(I); the other III breakpoint, 4,822,648, ends hT2(III)'s III-left piece before a short complex rearrangement. They fall between the balanced/unbalanced marker pairs unc-101/unc-59 (I) and dpy-17/unc-93 (III); the earlier ranges used the balanced markers unc-101 (I:12,508,299) and dpy-17 (III:5,107,330). |
-|  | III | 4,989,701-13,783,801 | 4,989,701 |  |
-| **szT1** | I | 1-7,422,785 | 7,422,785 | Sequenced breakpoints I:7,631,470 and X:2,314,605 plus an inversion to 2,597,434; the paper questions the X balancing. |
-|  | X | 2,144,605-17,718,942 | 2,144,605 |  |
-| **hT3** | I | 1-5,245,743 | 5,245,743 | Not sequenced. X: right end to between dpy-7 and unc-3 (smaller option taken). |
+| **eT1** | III | 8,200,764-13,783,733 | 8,200,764 | Sequenced breakpoints III:8,200,764 (in unc-36) and V:8,930,675 (Maroilley 2021); they match the classical limits (unc-36 and a flank 4 kb from the V breakpoint). |
+|  | V | 1-8,930,675 | 8,930,675 |  |
+| **nT1** | IV | 1,901,208-17,493,829 | 1,901,208 | Chromoplexy (Maroilley 2021). The IV edge is the left-most IV breakpoint, 1,901,208, about 1 kb upstream of egl-18 (PubMed 14975731, https://pubmed.ncbi.nlm.nih.gov/14975731/): it disrupts egl-18/elt-6 function in the vulva (the Vul phenotype). egl-18 mutations do not complement nT1 for the vulval defect, so genetically the breakpoint is an allele of egl-18 - within the functional interval of the gene though outside its coding region (hence egl-18(nT1vul)). The V edge is the right-most V breakpoint, 16,832,779, which puts unc-76 (V 15.07 Mb), the classical limit, inside it. Replaces the earlier flanks unc-17 (IV 3,618,259) and unc-76. |
+|  | V | 1-16,832,779 | 16,832,779 |  |
+| **hT2** | I | 1-13,187,133 | 13,187,133 | Sequenced breakpoints (PMC8662349): I:13,187,133 (right-most I breakpoint) and III:4,822,648 (left-most III breakpoint; the other, 4,989,701, is where III-right joins hT2(I)). They fall between the balanced/unbalanced marker pairs unc-101/unc-59 (I) and dpy-17/unc-93 (III). |
+|  | III | 4,822,648-13,783,801 | 4,822,648 |  |
+| **szT1** | I | 1-7,631,470 | 7,631,470 | Sequenced breakpoints I:7,631,470 and X:2,314,605 (Maroilley 2021; the X inversion to 2,597,434 is ignored). The X junction is near dpy-3, the classical left edge. The paper does not corroborate that szT1 balances X from the right end (the sequenced strain may be a derivative), so the right end of the X range is kept from the classical description. |
+|  | X | 2,314,605-17,718,942 | 2,314,605 |  |
+| **hT3** | I | 1-5,245,743 | 5,245,743 | Not sequenced (Maroilley 2021 could not resolve it). X: right end to between dpy-7 and unc-3 (smaller option taken). |
 |  | X | 14,773,538-17,718,942 | 14,773,538 |  |
-| **mT1** | II | 6,710,149-15,279,421 | 6,710,149 | III: right end to between daf-2 and unc-93 (smaller option taken); II breakpoint 6,296,872. |
-|  | III | 3,644,375-13,783,801 | 3,644,375 |  |
-| **hT1** | V | 1-6,511,583 | 6,511,583 | I half (left end through let-80) has no known position: not entered. With no partner half, no aneuploid rows. |
+| **mT1** | II | 6,296,872-15,279,421 | 6,296,872 | Sequenced breakpoints II:6,296,872 and III:3,635,354 (Maroilley 2021): the II edge is about 400 kb beyond dpy-10 (II:6,710,149), the III edge 9 kb from unc-93, between daf-2 and unc-93 as described. |
+|  | III | 3,635,354-13,783,801 | 3,635,354 |  |
+| **hT1** | I | 1-8,409,987 | 8,409,987 | Sequenced breakpoints I:8,409,987 (in lin-28) and V:7,207,631 (in soap-1) (Maroilley 2021): the I edge was previously unknown (through let-80, no position), the V edge is 0.7 Mb beyond dpy-11 (V:6,511,583). The sequenced strain may be a derivative with a free duplication. |
+|  | V | 1-7,207,631 | 7,207,631 |  |
 
 ## Variants (not generated)
 
@@ -76,7 +77,6 @@ description in the CGC record).
   Vul, hT2's Bli and eT1's Unc are real alleles in the strains instead) is a homozygous or either-zygosity row on its first
   half. `allele_exprs.dominance` is stored as an integer (homozygous = 0,
   het = 1, either = 2).
-- hT1 has only its V half entered, so it has no aneuploid rows.
 
 ## Importing
 
@@ -99,7 +99,5 @@ aneuploid phenotypes and no positions).
 
 ## Needs confirming
 
-- szT1: X half range
+- szT1: X half range: right end not corroborated by sequencing
 - hT3: X half range (smaller option)
-- mT1: III half range (smaller option)
-- hT1: I half missing; V breakpoint 7,207,631 in soap-1

@@ -1,10 +1,10 @@
 sysName,descName,chromosome,physLoc,geneticLoc
-let-500,let-500,III,8192365,-0.37
-let-?(s1799),let-?,III,8192365,-0.37
-let-?(n886),let-?,III,8192365,-0.37
-let-?(m435),let-?,IV,1902322,-13.35
-unc-?(n754dm),unc-?,IV,1902322,-13.35
-let-?(nT1_1),let-?,IV,1902322,-13.35
-let-?(nT1_2),let-?,IV,1902322,-13.35
+let-500,let-500,III,8200764,-0.37
+let-?(s1799),let-?,III,8200764,-0.37
+let-?(n886),let-?,III,8200764,-0.37
+let-?(m435),let-?,IV,1901208,-13.55
+unc-?(n754dm),unc-?,IV,1901208,-13.55
+let-?(nT1_1),let-?,IV,1901208,-13.55
+let-?(nT1_2),let-?,IV,1901208,-13.55
 let-?(q782),let-?,I,13187133,17.23
 let-?(h661),let-?,I,13187133,17.23

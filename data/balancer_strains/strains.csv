@@ -20,4 +20,4 @@ szT1[lon-2(e678) unc-29(e403)],szT1(I) unc-29(e403) I; szT1(X) lon-2(e678) X.,sz
 mT1,mT1(II) II; mT1(III) III.,mT1 translocation balancer homozygous.
 mT1[dpy-10(e128)],mT1(II) dpy-10(e128) II; mT1(III) III.,mT1 translocation balancer homozygous with dpy-10(e128).
 hT3,hT3(I)/+ I; hT3(X)/+ X.,hT3 translocation balancer heterozygous over wild type (the homozygote is lethal).
-hT1,hT1(V) V.,hT1 translocation balancer homozygous.
+hT1,hT1(I) I; hT1(V) V.,hT1 translocation balancer homozygous.

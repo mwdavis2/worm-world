@@ -48,5 +48,11 @@ mT1(III),mT1(III) 1 copy,1,1
 mT1(III),mT1(III) 2 copies,1,0
 mT1(III),translocation aneuploid (het),0,1
 mT1(III),translocation aneuploid (hom),0,0
+hT1(I),hT1(I) 1 copy,1,1
+hT1(I),hT1(I) 2 copies,1,0
+hT1(I),translocation aneuploid (het),0,1
+hT1(I),translocation aneuploid (hom),0,0
 hT1(V),hT1(V) 1 copy,1,1
 hT1(V),hT1(V) 2 copies,1,0
+hT1(V),translocation aneuploid (het),0,1
+hT1(V),translocation aneuploid (hom),0,0

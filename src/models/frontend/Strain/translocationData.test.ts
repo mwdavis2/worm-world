@@ -163,14 +163,6 @@ describe('generated translocation data', () => {
     }
   );
 
-  test('hT1 has only its V half and no aneuploid rows (documented limit)', () => {
-    const halves = variants.get('hT1') ?? [];
-    expect(halves.map((half) => half.name)).toEqual(['hT1(V)']);
-    [1, 2].forEach((copies) => {
-      expect(withCopies(halves, [copies]).isLethal()).toBe(false);
-    });
-  });
-
   test('every half sits at the boundary of its suppressed range, inside the chromosome', () => {
     variations.forEach((variation) => {
       const [start, end] = variation.recombination ?? [0, 0];
