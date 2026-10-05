@@ -50,6 +50,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(toast, 'success').mockReturnValue(0);
   vi.spyOn(toast, 'error').mockReturnValue(0);
+  vi.spyOn(toast, 'warning').mockReturnValue(0);
 });
 
 describe('page size', () => {
@@ -170,5 +171,46 @@ describe('edit row', () => {
       expect(updateRow).toHaveBeenCalledWith({ name: 'a', extra: 'kept' });
     });
     expect(toast.success).toHaveBeenCalledWith('Saved changes');
+  });
+});
+
+describe('delete row', () => {
+  const confirmYes = (): void => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  };
+  // The trash icon in the first data row's last cell.
+  const deleteFirstRow = async (): Promise<void> => {
+    const cell = (await screen.findByText('a')).closest('tr')?.lastElementChild;
+    if (cell === null || cell === undefined) throw new Error('no delete cell');
+    await userEvent.click(cell);
+  };
+
+  test('says so when the delete removed nothing', async () => {
+    confirmYes();
+    // The count never changes, as when the delete matched no row.
+    const deleteRecord = vi.fn(async () => {});
+    renderTable({ deleteRecord });
+    await deleteFirstRow();
+    await waitFor(() => {
+      expect(toast.warning).toHaveBeenCalledWith(
+        'Nothing was deleted: no row in the database matched this one'
+      );
+    });
+    expect(deleteRecord).toHaveBeenCalledTimes(1);
+  });
+
+  test('stays quiet when a row was really deleted', async () => {
+    confirmYes();
+    let count = 120;
+    const getCountFilteredRecords = vi.fn(async () => count);
+    const deleteRecord = vi.fn(async () => {
+      count -= 1;
+    });
+    renderTable({ deleteRecord, getCountFilteredRecords });
+    await deleteFirstRow();
+    await waitFor(() => {
+      expect(deleteRecord).toHaveBeenCalledTimes(1);
+    });
+    expect(toast.warning).not.toHaveBeenCalled();
   });
 });

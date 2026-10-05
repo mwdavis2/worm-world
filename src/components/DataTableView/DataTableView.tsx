@@ -131,14 +131,21 @@ const DataTableView = <T, K>(
   };
 
   const deleteRecord = async (record: T): Promise<void> => {
-    await props
-      .deleteRecord(record)
-      .then(() => {
-        refresh();
-      })
-      .catch((e) => {
-        toast.error(`Unable to delete record: ${getErrorMessage(e)}`);
-      });
+    const wholeTable: FilterGroup<K> = { filters: [], orderBy: [] };
+    try {
+      const before = await props.getCountFilteredRecords(wholeTable);
+      await props.deleteRecord(record);
+      const after = await props.getCountFilteredRecords(wholeTable);
+      // The delete reports success even when nothing matched the row, so say
+      // so rather than leaving it looking like it worked.
+      if (after >= before)
+        toast.warning(
+          'Nothing was deleted: no row in the database matched this one'
+        );
+      refresh();
+    } catch (e) {
+      toast.error(`Unable to delete record: ${getErrorMessage(e)}`);
+    }
   };
 
   const importData = async (): Promise<void> => {

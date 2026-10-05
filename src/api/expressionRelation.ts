@@ -57,6 +57,9 @@ export const deleteFilteredExpressionRelations = async (
 export const deleteExpressionRelation = async (
   exprRel: db_ExpressionRelation
 ): Promise<void> => {
+  // A relationship has either an altering phenotype or an altering condition,
+  // so some of these columns are NULL - which must be matched with a NULL
+  // test, not "= ''" (that matches nothing, silently deleting no rows).
   const filter: FilterGroup<ExpressionRelationFieldName> = {
     filters: [
       [['AlleleName', { Equal: exprRel.alleleName }]],
@@ -70,16 +73,27 @@ export const deleteExpressionRelation = async (
       [
         [
           'AlteringPhenotypeName',
-          { Equal: exprRel.alteringPhenotypeName ?? '' },
+          exprRel.alteringPhenotypeName === null
+            ? 'Null'
+            : { Equal: exprRel.alteringPhenotypeName },
         ],
       ],
       [
         [
           'AlteringPhenotypeWild',
-          getDbBoolean(exprRel.expressingPhenotypeWild),
+          exprRel.alteringPhenotypeWild === null
+            ? 'Null'
+            : getDbBoolean(exprRel.alteringPhenotypeWild),
         ],
       ],
-      [['AlteringCondition', { Equal: exprRel.alteringCondition ?? '' }]],
+      [
+        [
+          'AlteringCondition',
+          exprRel.alteringCondition === null
+            ? 'Null'
+            : { Equal: exprRel.alteringCondition },
+        ],
+      ],
     ],
     orderBy: [],
   };

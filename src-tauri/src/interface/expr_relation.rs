@@ -662,6 +662,63 @@ oxIs644,YFP(pharynx),0,Flp,1,,0"
         Ok(())
     }
 
+    // Deleting a relationship whose altering phenotype columns are NULL (it is
+    // altered by a condition): the row must be matched with NULL tests.
+    #[sqlx::test]
+    async fn test_delete_relation_with_null_columns(pool: Pool<Sqlite>) -> Result<()> {
+        for sql in [
+            "INSERT INTO alleles (name) VALUES ('a1')",
+            "INSERT INTO phenotypes (name, wild, short_name) VALUES ('p', 0, 'p')",
+            "INSERT INTO conditions (name) VALUES ('25C')",
+            "INSERT INTO allele_exprs (allele_name, expressing_phenotype_name, expressing_phenotype_wild, dominance) VALUES ('a1', 'p', 0, 1)",
+            "INSERT INTO expr_relations (allele_name, expressing_phenotype_name, expressing_phenotype_wild, altering_condition, is_suppressing) VALUES ('a1', 'p', 0, '25C', 0)",
+        ] {
+            sqlx::query(sql).execute(&pool).await?;
+        }
+        let state = InnerDbState { conn_pool: pool };
+
+        let matches_the_row =
+            |name_filter: Filter, wild_filter: Filter| FilterGroup::<ExpressionRelationFieldName> {
+                filters: vec![
+                    vec![(
+                        ExpressionRelationFieldName::AlleleName,
+                        Filter::Equal("a1".to_string()),
+                    )],
+                    vec![(
+                        ExpressionRelationFieldName::AlteringPhenotypeName,
+                        name_filter,
+                    )],
+                    vec![(
+                        ExpressionRelationFieldName::AlteringPhenotypeWild,
+                        wild_filter,
+                    )],
+                    vec![(
+                        ExpressionRelationFieldName::AlteringCondition,
+                        Filter::Equal("25C".to_string()),
+                    )],
+                ],
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+
+        // Matching the empty phenotype columns as '' finds nothing...
+        state
+            .delete_filtered_expr_relations(&matches_the_row(
+                Filter::Equal(String::new()),
+                Filter::False,
+            ))
+            .await?;
+        assert_eq!(state.get_expr_relations().await?.len(), 1);
+
+        // ...a NULL test finds the row.
+        state
+            .delete_filtered_expr_relations(&matches_the_row(Filter::Null, Filter::Null))
+            .await?;
+        assert_eq!(state.get_expr_relations().await?.len(), 0);
+        Ok(())
+    }
+
     #[sqlx::test(fixtures("full_db"))]
     async fn test_delete_filtered_expr_relations(pool: Pool<Sqlite>) -> Result<()> {
         let state = InnerDbState { conn_pool: pool };
