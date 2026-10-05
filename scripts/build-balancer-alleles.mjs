@@ -20,7 +20,9 @@
 // their balancer's balanced range (nT1(IV), nT1(IV) and hT2(I)); each expresses one dominant "1 or 2 copies" GFP phenotype, no brighter
 // with two copies, and has no relation.
 //
-// Not generated: the n754 alleles (a separate piece of work).
+// n754dm (one allele - "dm" is a qualifier, there is no separate n754) is a
+// semidominant lesion of an unknown unc gene: one copy gives Unc(n754dm), two
+// copies are lethal and male sterile (the Let phenotype's flags). No relations.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const OUT_DIR = 'data/balancer_alleles';
@@ -49,6 +51,7 @@ const LETHALS = [
   ['nT1_2', 'let-?(nT1_2)'],
 ];
 const LETHAL_PHENOTYPE = 'Let';
+const N754_PHENOTYPE = 'Unc(n754dm)';
 const GFP_PHENOTYPE = 'Pharyngeal+embryo+intestine::GFP';
 const GFP_DOMINANCE = 2; // stored form of zygosity '1or2'
 // [allele, the balancer half whose range it sits in the middle of]
@@ -189,6 +192,15 @@ TRANSGENES.forEach(([name, half]) => {
     dominance: GFP_DOMINANCE,
   });
 });
+
+// n754dm: 1 copy -> Unc(n754dm), 2 copies -> Let. No relations.
+addPhenotype(N754_PHENOTYPE, 0, { lethal: 0 });
+alleles.push({ name: 'n754dm', contents: '', sysGeneName: 'unc-?(n754dm)', variationName: '' });
+check(geneKeys.has('unc-?(n754dm)'), 'allele n754dm: gene unc-?(n754dm) is not in the placeholder genes');
+alleleExprs.push(
+  { alleleName: 'n754dm', expressingPhenotypeName: N754_PHENOTYPE, expressingPhenotypeWild: 0, dominance: 1 },
+  { alleleName: 'n754dm', expressingPhenotypeName: LETHAL_PHENOTYPE, expressingPhenotypeWild: 0, dominance: 0 }
+);
 
 const names = new Set();
 alleles.forEach((a) => {

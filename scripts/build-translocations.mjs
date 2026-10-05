@@ -118,7 +118,7 @@ const PHENOTYPES = {
   'dpy-10': { short: 'dpy' },
   'lon-2': { short: 'lon' },
   'unc-29': { short: 'unc' },
-  'unc(n754)': { short: 'unc' },
+  'unc(n754dm)': { short: 'unc' },
   Vul: { short: 'Vul', maleMating: 0 },
   sterile: { short: 'sterile', femaleSterile: 1 },
   'pharyngeal GFP': { short: 'GFP(pharynx)' },
@@ -159,21 +159,21 @@ const VARIANTS = [
   {
     family: 'nT1',
     name: 'unc-?(n754dm) let-?',
-    rows: [{ pheno: 'unc(n754)', zyg: '1or2' }, LETHAL],
+    rows: [{ pheno: 'unc(n754dm)', zyg: '1or2' }, LETHAL],
   },
   {
     family: 'nT1',
-    name: 'unc-?(n754) let-? qIs50',
+    name: 'unc-?(n754dm) let-? qIs50',
     rows: [
-      { pheno: 'unc(n754)', zyg: '1or2' },
+      { pheno: 'unc(n754dm)', zyg: '1or2' },
       LETHAL,
       { pheno: 'GFP', zyg: '1or2', verify: 'qIs50 GFP' },
     ],
   },
   {
     family: 'nT1',
-    name: 'unc-?(n754) let-?(m435)',
-    rows: [{ pheno: 'unc(n754)', zyg: '1or2' }, LETHAL],
+    name: 'unc-?(n754dm) let-?(m435)',
+    rows: [{ pheno: 'unc(n754dm)', zyg: '1or2' }, LETHAL],
   },
   { family: 'nT1', name: 'let-?(m435)', rows: [LETHAL] },
   // hT2

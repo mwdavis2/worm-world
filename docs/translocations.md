@@ -49,8 +49,8 @@ strain includes that allele. The variants to build:
 - `eT1[him-5(e1467)]`
 - `nT1[qIs51]`
 - `nT1[unc-?(n754dm) let-?]`
-- `nT1[unc-?(n754) let-? qIs50]`
-- `nT1[unc-?(n754) let-?(m435)]`
+- `nT1[unc-?(n754dm) let-? qIs50]`
+- `nT1[unc-?(n754dm) let-?(m435)]`
 - `nT1[let-?(m435)]`
 - `hT2[bli-4(e937) let-?(q782) qIs48]`
 - `hT2[bli-4(e937) qIs48]`

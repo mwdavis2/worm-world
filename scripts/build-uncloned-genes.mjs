@@ -122,10 +122,9 @@ const PLACEHOLDERS = [
   ['let-?(n886)', 'eT1(III)'],
   ['let-?(m435)', 'nT1(IV)'],
   ['unc-?(n754dm)', 'nT1(IV)'],
-  ['unc-?(n754)', 'nT1(IV)'],
   // Two nT1 variants carry a let-? with no allele name; each gets its own
   // numbered key, in the variants' order (nT1[unc-?(n754dm) let-?], then
-  // nT1[unc-?(n754) let-? qIs50]).
+  // nT1[unc-?(n754dm) let-? qIs50]).
   ['let-?(nT1_1)', 'nT1(IV)'],
   ['let-?(nT1_2)', 'nT1(IV)'],
   ['let-?(q782)', 'hT2(I)'],
