@@ -25,8 +25,8 @@ table. A heterozygous half suppresses crossovers inside its range.
 |  | V | 1-8,934,697 | 8,934,697 |  |
 | **nT1** | IV | 1,902,322-17,493,829 | 1,902,322 | Chromoplexy; the IV breakpoint is IN egl-18 (it causes the Vul mutation), so the range starts at egl-18 (IV 1,902,322; more recent data than the earlier unc-17 flank at 3,618,259). Many V breakpoints (5.5-16.8 Mb). |
 |  | V | 1-15,071,760 | 15,071,760 |  |
-| **hT2** | I | 1-12,508,299 | 12,508,299 | Sequenced breakpoints I:13,187,133 and III:4,822,648 / 4,989,701 (WS230). |
-|  | III | 5,107,330-13,783,801 | 5,107,330 |  |
+| **hT2** | I | 1-13,187,133 | 13,187,133 | Ranges are the sequenced breakpoints (PMC8662349): I:13,187,133 and III:4,989,701, where III-right joins hT2(I); the other III breakpoint, 4,822,648, ends hT2(III)'s III-left piece before a short complex rearrangement. They fall between the balanced/unbalanced marker pairs unc-101/unc-59 (I) and dpy-17/unc-93 (III); the earlier ranges used the balanced markers unc-101 (I:12,508,299) and dpy-17 (III:5,107,330). |
+|  | III | 4,989,701-13,783,801 | 4,989,701 |  |
 | **szT1** | I | 1-7,422,785 | 7,422,785 | Sequenced breakpoints I:7,631,470 and X:2,314,605 plus an inversion to 2,597,434; the paper questions the X balancing. |
 |  | X | 2,144,605-17,718,942 | 2,144,605 |  |
 | **hT3** | I | 1-5,245,743 | 5,245,743 | Not sequenced. X: right end to between dpy-7 and unc-3 (smaller option taken). |

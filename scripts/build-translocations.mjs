@@ -65,10 +65,10 @@ const FAMILIES = [
   {
     name: 'hT2',
     halves: [
-      { chr: 'I', range: [1, 12_508_299] },
-      { chr: 'III', range: [5_107_330, 13_783_801] },
+      { chr: 'I', range: [1, 13_187_133] },
+      { chr: 'III', range: [4_989_701, 13_783_801] },
     ],
-    note: 'Sequenced breakpoints I:13,187,133 and III:4,822,648 / 4,989,701 (WS230).',
+    note: 'Ranges are the sequenced breakpoints (PMC8662349): I:13,187,133 and III:4,989,701, where III-right joins hT2(I); the other III breakpoint, 4,822,648, ends hT2(III)\'s III-left piece before a short complex rearrangement. They fall between the balanced/unbalanced marker pairs unc-101/unc-59 (I) and dpy-17/unc-93 (III); the earlier ranges used the balanced markers unc-101 (I:12,508,299) and dpy-17 (III:5,107,330).',
   },
   {
     name: 'szT1',
