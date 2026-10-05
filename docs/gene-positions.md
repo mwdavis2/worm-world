@@ -35,13 +35,16 @@ physical coordinate.
   ±35 kb). Treat it as a position on the genetic map, not a coordinate.
 - **Placeholder genes** (`data/wormbase/placeholder_genes.csv`, 10 rows) stand
   in for the unknown genes of translocation-balancer variants, such as
-  `let-?(s1799)` or `let-500(s2165)`. Which half of the balancer carries the
+  `let-?(s1799)`, and the named-but-uncloned `let-500`. Which half of the balancer carries the
   gene is not known, so each is placed arbitrarily on the first half, at the
   junction of that half's suppressed range. Real positions can replace these
-  if they become known.
-- **Genes with no data** (`data/wormbase/genes_pending_positions.csv`, 673
+  if they become known. For the unknown `let-?` and `unc-?` genes the key
+  carries the allele only to stay unique (`let-?(s1799)`); the descriptive name
+  is the gene (`let-?`), so the allele reads `let-?(s1799)` on a card.
+  `let-500` is a real named gene, so it is keyed by its plain name.
+- **Genes with no data** (`data/wormbase/genes_pending_positions.csv`, 672
   rows) have no position in any of the files, so they are not imported. That
-  covers 636 uncloned genes and 37 live sequence names missing from the table
+  covers 635 uncloned genes and 37 live sequence names missing from the table
   (tRNA, rRNA and similar). They need a position source before they can be
   used.
 

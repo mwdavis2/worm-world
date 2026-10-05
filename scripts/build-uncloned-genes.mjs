@@ -12,8 +12,8 @@
 // (sysName,descName,chromosome,physLoc,geneticLoc):
 //
 //   placeholder_genes.csv    one stand-in gene per unknown-gene allele used by
-//       the translocation variants (let-?(s1799), let-500(s2165), ...), keyed
-//       by the allele. Which half the gene is on is unknown, so each sits at
+//       the translocation variants (let-?(s1799), let-?(m435), ...) and let-500, keyed
+//       by the allele (the descriptive name is just the gene: let-?). Which half the gene is on is unknown, so each sits at
 //       the junction of its balancer's first half (data/translocations/
 //       variations.csv).
 //   gene_synonyms.csv       a second row for each gene-style other name (e.g.
@@ -114,7 +114,10 @@ const variations = new Map(
 );
 // unknown-gene allele -> the balancer family whose first half hosts it
 const PLACEHOLDERS = [
-  ['let-500(s2165)', 'eT1(III)'], // let-500 is uncloned: no position of its own
+  // let-500 is a real, named gene that is uncloned (no position of its own), so
+  // it is keyed by its plain name: s2165 is just its allele. Edit this row if a
+  // real position turns up.
+  ['let-500', 'eT1(III)'],
   ['let-?(s1799)', 'eT1(III)'],
   ['let-?(n886)', 'eT1(III)'],
   ['let-?(m435)', 'nT1(IV)'],
@@ -131,12 +134,18 @@ const PLACEHOLDERS = [
 const placeholders = PLACEHOLDERS.map(([key, half]) => {
   const pos = variations.get(half);
   if (pos === undefined) throw new Error(`no variation ${half} for ${key}`);
-  return [key, key, ...pos];
+  // The key carries the allele only to be unique; the descriptive name is the
+  // gene itself, so an allele's label reads let-?(s1799), not let-?(s1799)(s1799).
+  const geneName = key.replace(/\(.*\)$/, '');
+  return [key, geneName, ...pos];
 });
 
 writeFileSync('data/wormbase/uncloned_genes.csv', toCsv(placed));
 writeFileSync('data/wormbase/gene_synonyms.csv', toCsv(synonyms));
-writeFileSync('data/wormbase/genes_pending_positions.csv', toCsv(pending));
+// A placeholder now stands in for its gene (let-500), so it is no longer pending.
+const placeholderKeys = new Set(placeholders.map((row) => row[0]));
+const stillPending = pending.filter((row) => !placeholderKeys.has(row[0]));
+writeFileSync('data/wormbase/genes_pending_positions.csv', toCsv(stillPending));
 writeFileSync('data/wormbase/placeholder_genes.csv', toCsv(placeholders));
 console.log(`placeholder_genes.csv: ${placeholders.length} rows`);
 console.log(`uncloned_genes.csv: ${placed.length} rows`);
@@ -144,5 +153,5 @@ console.log(`gene_synonyms.csv: ${synonyms.length} rows`);
 Object.entries(skipped).forEach(([why, list]) =>
   console.log(`  skipped synonyms (${why}): ${list.length}${why === 'ambiguous' ? ' - ' + [...new Set(list)].join(', ') : ''}`)
 );
-console.log(`genes_pending_positions.csv: ${pending.length} rows (not for import)`);
+console.log(`genes_pending_positions.csv: ${stillPending.length} rows (not for import)`);
 console.log(`uncloned names skipped (already in table): ${skippedUncloned.join(', ') || 'none'}`);
