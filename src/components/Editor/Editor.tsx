@@ -8,6 +8,7 @@ import {
   useContextMenuState,
 } from 'components/ContextMenu/ContextMenu';
 import {
+  LETHAL,
   StrainFilter,
   type StrainFilterUpdate,
 } from 'models/frontend/StrainFilter/StrainFilter';
@@ -46,9 +47,22 @@ import { ImLoop2 as SelfIcon } from 'react-icons/im';
 import { TbArrowsCross as CrossIcon } from 'react-icons/tb';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { writeText } from '@tauri-apps/api/clipboard';
-import { MdContentCopy as CopyIcon } from 'react-icons/md';
-import { serializeNotation } from 'models/frontend/Notation/notationText';
+import { readText, writeText } from '@tauri-apps/api/clipboard';
+import {
+  MdContentCopy as CopyIcon,
+  MdContentPaste as PasteIcon,
+} from 'react-icons/md';
+import {
+  collectAlleleNames,
+  looksLikeNotation,
+  parseNotation,
+  serializeNotation,
+} from 'models/frontend/Notation/notationText';
+import {
+  decodeNotation,
+  type CrossResult,
+} from 'models/frontend/Notation/decodeNotation';
+import { resolveAlleles } from 'models/frontend/Notation/resolveAlleles';
 import {
   ancestryToNotation,
   walkAncestry,
@@ -403,6 +417,30 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     useContextMenuState(['react-flow__pane'], props.testing);
   const flowRef = useRef<HTMLDivElement>(null);
 
+  // The right-click menu offers to paste only when the clipboard holds notation
+  // (valid, or at least parseable): read it each time the menu opens.
+  const [pasteText, setPasteText] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (!showRightClickMenu) {
+      setPasteText(undefined);
+      return;
+    }
+    let cancelled = false;
+    readText()
+      .then((text) => {
+        if (!cancelled)
+          setPasteText(
+            text !== null && looksLikeNotation(text) ? text : undefined
+          );
+      })
+      .catch(() => {
+        if (!cancelled) setPasteText(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showRightClickMenu, rightClickXPos, rightClickYPos]);
+
   const isValidNodeRemoveChange = (
     nodeRemoveChange: NodeRemoveChange,
     nodeRemoveChanges: NodeRemoveChange[]
@@ -707,15 +745,11 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     closeDrawer();
   };
 
-  const selfCross = async (parentNodeId: string): Promise<void> => {
-    const parentNode: Node<Strain> = reactFlowInstance.getNode(
-      parentNodeId
-    ) as Node<Strain>;
-    if (parentNode === undefined || parentNode.type !== NodeType.Strain) {
-      console.error('Cannot self-cross a node that is undefined/not a strain');
-      return;
-    }
-
+  // Performs a self-cross without touching the canvas: returns the nodes and
+  // edges it creates (parent first) for the caller to commit.
+  const performSelfCross = async (
+    parentNode: Node<Strain>
+  ): Promise<CrossResult> => {
     parentNode.data = new Strain({ ...parentNode.data, isParent: true });
     const selfNode: Node<StrainFilter> = {
       id: props.crossDesign.createId(),
@@ -745,15 +779,32 @@ const Editor = (props: EditorProps): React.JSX.Element => {
         hidden: node.hidden,
       };
     });
-    setNodes((nodes) => addToArray(nodes, parentNode, selfNode, ...childNodes));
-    setEdges((edges) => [...edges, parentToSelf, ...childEdges]);
+    return {
+      nodes: [parentNode, selfNode, ...childNodes],
+      edges: [parentToSelf, ...childEdges],
+      childNodes,
+    };
   };
 
-  const matedCross = async (
+  const selfCross = async (parentNodeId: string): Promise<void> => {
+    const parentNode: Node<Strain> = reactFlowInstance.getNode(
+      parentNodeId
+    ) as Node<Strain>;
+    if (parentNode === undefined || parentNode.type !== NodeType.Strain) {
+      console.error('Cannot self-cross a node that is undefined/not a strain');
+      return;
+    }
+    const result = await performSelfCross(parentNode);
+    setNodes((nodes) => addToArray(nodes, ...result.nodes));
+    setEdges((edges) => [...edges, ...result.edges]);
+  };
+
+  // Performs a mated cross without touching the canvas (see performSelfCross).
+  const performMatedCross = async (
     hermNode: Node<Strain>,
     maleNode: Node<Strain>,
     fromHerm = true
-  ): Promise<void> => {
+  ): Promise<CrossResult> => {
     // Mark as parents
     maleNode.data = new Strain({ ...maleNode.data, isParent: true });
     hermNode.data = new Strain({ ...hermNode.data, isParent: true });
@@ -815,10 +866,21 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       };
     });
 
-    setNodes((nodes) =>
-      addToArray(nodes, hermNode, maleNode, xNode, ...childNodes)
-    );
-    setEdges((edges) => [...edges, edge1, edge2, ...childEdges]);
+    return {
+      nodes: [hermNode, maleNode, xNode, ...childNodes],
+      edges: [edge1, edge2, ...childEdges],
+      childNodes,
+    };
+  };
+
+  const matedCross = async (
+    hermNode: Node<Strain>,
+    maleNode: Node<Strain>,
+    fromHerm = true
+  ): Promise<void> => {
+    const result = await performMatedCross(hermNode, maleNode, fromHerm);
+    setNodes((nodes) => addToArray(nodes, ...result.nodes));
+    setEdges((edges) => [...edges, ...result.edges]);
   };
 
   /** Create a collection of strain nodes to represent children of a cross, from child strain options */
@@ -841,6 +903,55 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       } satisfies Node<Strain>;
     });
     return childNodes;
+  };
+
+  // Makes a decoded cross's chosen child visible even if the default filters
+  // (lethal, low probability) hid it, and re-lays out its visible siblings.
+  const revealChild = (result: CrossResult, index: number): void => {
+    const child = result.childNodes[index];
+    const middleNode = result.nodes.find(
+      (node) => node.id === child.parentNode
+    );
+    child.hidden = false;
+    result.edges.forEach((edge) => {
+      if (edge.target === child.id) edge.hidden = false;
+    });
+    if (middleNode?.data instanceof StrainFilter) {
+      middleNode.data.hiddenNodes.delete(child.id);
+      // A lethal child is hidden by the viability filter; showing it needs
+      // lethal strains in the filter too.
+      if (child.data.lethal === true) middleNode.data.viability.add(LETHAL);
+      repositionVisibleChildren(middleNode, result.childNodes);
+    }
+    CrossDesign.applyFilteredProbabilities(result.childNodes);
+  };
+
+  // Rebuilds the crosses a notation describes, at the last right-click.
+  const pasteNotation = async (text: string): Promise<void> => {
+    try {
+      const tree = parseNotation(text);
+      const alleles = await resolveAlleles(collectAlleleNames(tree));
+      const origin = getNodePositionFromLastClick();
+      let lineages = 0;
+      const result = await decodeNotation(tree, alleles, {
+        createId: () => props.crossDesign.createId(),
+        selfCross: performSelfCross,
+        matedCross: performMatedCross,
+        placeRoot: (node) => {
+          // Each separate lineage gets its own band below the last
+          node.position = { x: origin.x, y: origin.y + lineages * 700 };
+          lineages++;
+        },
+        revealChild,
+      });
+      setNodes((nodes) => addToArray(nodes, ...result.nodes));
+      setEdges((edges) => [...edges, ...result.edges]);
+      toast.success('Pasted the notation');
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Could not paste the notation'
+      );
+    }
   };
 
   /**
@@ -983,6 +1094,18 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                   <p>Add Strain</p>
                 </button>
               </li>
+              {pasteText !== undefined && (
+                <li
+                  onClick={() => {
+                    pasteNotation(pasteText).catch(console.error);
+                  }}
+                >
+                  <button className='flex flex-row' name='paste-notation'>
+                    <PasteIcon className='text-xl text-base-content' />
+                    <p>Paste Notation</p>
+                  </button>
+                </li>
+              )}
               <li
                 onClick={() => {
                   setDrawerState({ type: DrawerType.AddNote, isOpen: true });

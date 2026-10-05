@@ -6,6 +6,7 @@ import * as crossDesigns from 'models/frontend/CrossDesign/CrossDesign.mock';
 import { BrowserRouter } from 'react-router-dom';
 import { ReactFlowProvider } from 'reactflow';
 import { vi } from 'vitest';
+import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 
 const Wrapper = ({
   children,
@@ -109,6 +110,47 @@ describe('Editor', () => {
     await waitFor(() => {
       const notes = screen.getAllByTestId('noteNode');
       expect(notes).toHaveLength(2);
+    });
+  });
+
+  describe('paste notation', () => {
+    // The right-click menu is open in testing mode. Its paste item appears only
+    // when the clipboard holds notation.
+    const withClipboard = (text: string | null): void => {
+      mockIPC((cmd, args) => {
+        const message = (args as { message?: { cmd?: string } }).message;
+        if (cmd === 'tauri' && message?.cmd === 'readText') return text;
+        return [];
+      });
+    };
+
+    afterEach(() => {
+      clearMocks();
+    });
+
+    test('is offered when the clipboard holds notation', async () => {
+      withClipboard('{{a/+ +/+}{b/0}{a/+ +/+}}');
+      renderComponent(crossDesigns.simpleCrossDesign);
+      expect(
+        await screen.findByRole('button', { name: /paste notation/i })
+      ).toBeDefined();
+    });
+
+    test.each([
+      ['ordinary text', 'hello there'],
+      ['a genotype string', 'unc-36(e873) eT1(III)/+ + III; eT1(V)/+ V.'],
+      ['an empty clipboard', null],
+    ])('is not offered for %s', async (_label, text) => {
+      withClipboard(text);
+      renderComponent(crossDesigns.simpleCrossDesign);
+      // Let the clipboard read finish, then check the item never appeared
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /add note/i })).toBeDefined();
+      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(
+        screen.queryByRole('button', { name: /paste notation/i })
+      ).toBeNull();
     });
   });
 });

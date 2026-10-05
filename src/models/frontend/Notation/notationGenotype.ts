@@ -150,26 +150,37 @@ const withFlippedX = (strain: Strain): Strain => {
  * - a male target (hemizygous X) matches a child whose autosomes match and
  *   whose X has one homolog carrying exactly the target's X alleles; that
  *   homolog is put on top and the child is made a male, as `toggleSex()` does.
- * The first match wins. Returns undefined when no child fits.
+ * The first match wins. Returns the child's index and the strain to use for it
+ * (the child itself, or its male version), or undefined when no child fits.
  */
-export const findMatchingChild = (
+export const matchChild = (
   children: Strain[],
   target: Strain
-): Strain | undefined => {
-  if (target.sex !== Sex.Male)
-    return children.find((child) => child.equals(target));
+): { index: number; strain: Strain } | undefined => {
+  if (target.sex !== Sex.Male) {
+    const index = children.findIndex((child) => child.equals(target));
+    return index === -1 ? undefined : { index, strain: children[index] };
+  }
 
   const wantedX = nonWildNames(
     target.chromPairMap.get('X')?.allelePairs.map((pair) => pair.top) ?? []
   );
   const targetRest = withoutX(target);
-  for (const child of children) {
+  for (let index = 0; index < children.length; index++) {
+    const child = children[index];
     if (!withoutX(child).equals(targetRest)) continue;
     const x = child.chromPairMap.get('X');
     const top = nonWildNames(x?.getTop() ?? []);
     const bot = nonWildNames(x?.getBot() ?? []);
-    if (sameNames(top, wantedX)) return child.toggleSex();
-    if (sameNames(bot, wantedX)) return withFlippedX(child).toggleSex();
+    if (sameNames(top, wantedX)) return { index, strain: child.toggleSex() };
+    if (sameNames(bot, wantedX))
+      return { index, strain: withFlippedX(child).toggleSex() };
   }
   return undefined;
 };
+
+/** The strain `matchChild` picks (see there), or undefined. */
+export const findMatchingChild = (
+  children: Strain[],
+  target: Strain
+): Strain | undefined => matchChild(children, target)?.strain;
