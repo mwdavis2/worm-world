@@ -4,6 +4,7 @@ pub mod bulk;
 pub mod condition;
 pub mod cross_design;
 pub mod expr_relation;
+pub mod folder_import;
 pub mod gene;
 pub mod mock;
 pub mod phenotype;

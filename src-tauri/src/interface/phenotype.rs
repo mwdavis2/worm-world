@@ -196,6 +196,21 @@ impl InnerDbState {
     }
 
     pub async fn insert_phenotypes(&self, bulk: Bulk<PhenotypeDb>) -> Result<(), DbError> {
+        let mut conn = self
+            .conn_pool
+            .acquire()
+            .await
+            .map_err(|e| DbError::BulkInsert(e.to_string()))?;
+        Self::insert_phenotypes_on(&mut conn, bulk).await.map(|_| ())
+    }
+
+    /// Inserts on the given connection (so a caller can wrap several tables in
+    /// one transaction); returns how many rows were actually added.
+    pub(crate) async fn insert_phenotypes_on(
+        conn: &mut sqlx::SqliteConnection,
+        bulk: Bulk<PhenotypeDb>,
+    ) -> Result<u64, DbError> {
+        let mut inserted = 0u64;
         if !bulk.errors.is_empty() {
             return Err(DbError::BulkInsert(format!(
                 "Found {} invalid row(s); first error: {}",
@@ -228,15 +243,15 @@ impl InnerDbState {
                     .push_bind(item.maturation_days);
             });
 
-            match qb.build().execute(&self.conn_pool).await {
-                Ok(_) => {}
+            match qb.build().execute(&mut *conn).await {
+                Ok(result) => inserted += result.rows_affected(),
                 Err(e) => {
                     eprint!("Bulk Insert error: {e}");
                     return Err(DbError::BulkInsert(e.to_string()));
                 }
             }
         }
-        Ok(())
+        Ok(inserted)
     }
 
     pub async fn delete_filtered_phenotypes(

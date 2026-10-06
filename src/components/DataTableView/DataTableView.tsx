@@ -2,12 +2,14 @@ import { open } from '@tauri-apps/api/dialog';
 import { type Field } from 'components/ColumnFilter/ColumnFilter';
 import DataImportForm from 'components/DataInputForm/DataInputForm';
 import { Table, type ColumnDefinitionType } from 'components/Table/Table';
+import { importFolder } from 'api/folderImport';
 import { type FilterGroup } from 'models/db/filter/FilterGroup';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FaEdit as EditIcon } from 'react-icons/fa';
 import { getErrorMessage } from 'utils/getErrorMessage';
 import { getPreferences, setPreferences } from 'utils/preferences';
+import { summarizeFolderImport } from 'utils/summarizeFolderImport';
 
 interface DataTableProps<T, K> {
   title: string;
@@ -176,6 +178,28 @@ const DataTableView = <T, K>(
     }
   };
 
+  // Imports every table found in a folder in one transaction (all or nothing).
+  const importFolderData = async (): Promise<void> => {
+    if (importInProgress) {
+      toast.error('An import is already in progress');
+      return;
+    }
+    importInProgress = true;
+    try {
+      const folder = (await open({ directory: true })) as string | null;
+      if (folder === null) return;
+      const report = await importFolder(folder);
+      refresh();
+      toast.success(summarizeFolderImport(report), {
+        style: { whiteSpace: 'pre-line' },
+      });
+    } catch (e) {
+      toast.error('Nothing was imported: ' + getErrorMessage(e));
+    } finally {
+      importInProgress = false;
+    }
+  };
+
   // `overrides` lets a caller apply a new page/page size right away, before
   // the state set alongside it has been rendered.
   const applyFilters = (
@@ -325,6 +349,15 @@ const DataTableView = <T, K>(
             }}
           >
             Import
+          </button>
+          <button
+            className='btn'
+            title='Import every table file in a folder (genes.csv, alleles.csv, ...) in one step; nothing is imported if any file has a problem'
+            onClick={() => {
+              importFolderData().catch(console.error);
+            }}
+          >
+            Import folder
           </button>
           {props.clearTable !== undefined && (
             <button

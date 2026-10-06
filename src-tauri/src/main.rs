@@ -14,7 +14,7 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 
 mod interface;
-use interface::{bulk::Bulk, DbError, InnerDbState};
+use interface::{bulk::Bulk, folder_import::TableImport, DbError, InnerDbState};
 
 mod models;
 use models::{
@@ -78,6 +78,7 @@ async fn main() {
             get_count_filtered_genes,
             insert_gene,
             insert_genes_from_file,
+            import_folder,
             delete_filtered_genes,
             // conditions
             get_conditions,
@@ -273,6 +274,17 @@ async fn insert_genes_from_file(
         Ok(bulk) => state_guard.insert_genes(bulk).await,
         Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
     }
+}
+
+/// Imports every table file found in a folder, in one transaction (see
+/// `interface::folder_import`).
+#[tauri::command]
+async fn import_folder(
+    state: tauri::State<'_, DbState>,
+    path: String,
+) -> Result<Vec<TableImport>, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.import_folder(Path::new(&path)).await
 }
 
 #[tauri::command]
