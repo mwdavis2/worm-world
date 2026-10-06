@@ -1,3 +1,4 @@
 alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd,isLocationReference,percentLoss
 oxIs12,X,15100705,21.9459,,,false,
-oxIs363,IV,,,,,false,
+oxIs363,IV,4237767,0.001,,,false,
+qyEx127,Ex,,,,,false,

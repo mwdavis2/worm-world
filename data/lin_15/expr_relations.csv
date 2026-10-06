@@ -4,6 +4,7 @@ n765ts,Lin-15,0,,,25C,0
 ed3,Unc-119,0,Unc-119,1,,1
 ed4,Unc-119,0,Unc-119,1,,1
 ed9,Unc-119,0,Unc-119,1,,1
+oxIs644,Peft-3::citrine::NLS,0,Flp,1,,0
 e61,Dpy-5,0,Dpy-5,1,,1
 e187,Rol-6,0,Rol-6,1,,1
 e1820,Lon-1,0,Lon-1,1,,1
@@ -15,3 +16,19 @@ e1562,Vab-7,0,Vab-7,1,,1
 e928,Unc-31,0,Unc-31,1,,1
 e1368ts,Daf-2,0,Daf-2,1,,1
 e1368ts,Daf-2,0,,,25C,0
+e53,Unc-5,0,Unc-5,1,,1
+ox171,Unc-5,0,Unc-5,1,,1
+e66,Unc-22,0,Unc-22,1,,1
+e1282,Dpy-20,0,Dpy-20,1,,1
+e1282,Dpy-20,0,,,25C,0
+ox819,Unc-119,0,Unc-119,1,,1
+md299,Unc-18,0,Unc-18,1,,1
+e1166sd,Dpy-4(weak),0,Dpy-4,1,,1
+e1166sd,Dpy-4(strong),0,Dpy-4,1,,1
+ox496,Dpy-13,0,Dpy-13,1,,1
+ox496,NeomycinR,1,NeomycinR,0,,1
+ox496,NeomycinR,1,,,Neomycin,0
+ox496,NeomycinR,0,,,Neomycin,0
+oxEx2254,NeomycinR,1,NeomycinR,0,,1
+oxEx2254,NeomycinR,1,,,Neomycin,0
+oxEx2254,NeomycinR,0,,,Neomycin,0

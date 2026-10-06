@@ -1,7 +1,24 @@
 name,genotype,description
 EG1306,oxIs12 lin-15(n765ts) X.,oxIs12 lin-15(n765ts) homozygous.
+EG5071,unc-119(ed3) III; oxIs363 IV.,unc-119(ed3) oxIs363 homozygous.
+EG9934,oxIs644 IV; lin-15(n765ts) X.,oxIs644 lin-15(n765ts) homozygous.
 EG1000,dpy-5(e61) I; rol-6(e187) II; lon-1(e1820) III.,dpy-5(e61) rol-6(e187) lon-1(e1820) homozygous.
 EG1020,bli-6(sc16) IV; dpy-11(e224) V; lon-2(e678) X.,bli-6(sc16) dpy-11(e224) lon-2(e678) homozygous.
 154,unc-73(e936) I; sma-3(e491) III; bli-6(sc16) IV.,unc-73(e936) sma-3(e491) bli-6(sc16) homozygous.
 155,unc-73(e936) I; dpy-11(e224) V; lon-2(e678) X.,unc-73(e936) dpy-11(e224) lon-2(e678) homozygous.
 DA438,bli-4(e937) I; rol-6(e187) II; daf-2(e1368ts) vab-7(e1562) III; unc-31(e928) IV; dpy-11(e224) V; lon-2(e678) X.,bli-4(e937) rol-6(e187) daf-2(e1368ts) vab-7(e1562) unc-31(e928) dpy-11(e224) lon-2(e678) homozygous.
+NK785,unc-119(ed4) III; qyEx127/+ Ex.,unc-119(ed4) homozygous with qyEx127 on one homolog.
+EG3123,unc-119(ed9) III.,unc-119(ed9) homozygous.
+CB3988,nT1(IV) egl-18(nT1vul) +/+ + tra-3(e1107) IV; nT1(V)/+ V.,tra-3(e1107) over nT1(IV) egl-18(nT1vul) nT1(V).
+CB2223,unc-5(e53) dpy-20(e1282) IV.,unc-5(e53) dpy-20(e1282) homozygous.
+EG10401,unc-5(ox171) dpy-4(e1166sd) IV.,unc-5(ox171) dpy-4(e1166sd) homozygous.
+EG10402,dpy-9(e12) unc-5(ox171) IV.,dpy-9(e12) unc-5(ox171) homozygous.
+EG10403,dpy-13(ox496) unc-5(ox171) IV.,dpy-13(ox496) unc-5(ox171) homozygous.
+EG10404,unc-22(e66) dpy-4(e1166sd) IV.,unc-22(e66) dpy-4(e1166sd) homozygous.
+EG10405,dpy-9(e12) unc-22(e66) IV.,dpy-9(e12) unc-22(e66) homozygous.
+EG10406,dpy-13(ox496) unc-22(e66) IV.,dpy-13(ox496) unc-22(e66) homozygous.
+EG10105,unc-119(ed3) III; oxIs644 IV; oxEx2254/+ Ex.,unc-119(ed3) oxIs644 homozygous with oxEx2254 on one homolog.
+EG10114,kin-4(ox1059) IV.,kin-4(ox1059) homozygous.
+EG9965,oxSi1168 II; unc-119(ox819) F53A2.9(oxTi1127) III.,oxSi1168 unc-119(ox819) F53A2.9(oxTi1127) homozygous.
+EG7841,oxTi302 I; unc-119(ed3) III.,oxTi302 unc-119(ed3) homozygous.
+EG7764,oxTi75 II; unc-18(md299) X.,oxTi75 unc-18(md299) homozygous.

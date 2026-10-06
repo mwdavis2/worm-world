@@ -630,7 +630,7 @@ mod tests {
             .unwrap();
         state
             .insert_variations(bulk_from(
-                b"alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd,isLocationReference,percentLoss\noxIs644,X,,,,,false,\n"
+                b"alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd,isLocationReference,percentLoss\noxIs644,IV,,0,,,false,\noxTi302,I,10166156,,,,false,\noxTi75,II,5448561,,,,false,\noxSi1168,II,8420158,,,,false,\noxEx2254,Ex,,,,,false,\n"
                     .as_slice(),
             ))
             .await
@@ -647,9 +647,11 @@ mod tests {
             )))
             .await
             .unwrap();
+        // e1107, e12 and oxIs644 exist only in the live database
         state
             .insert_alleles(bulk_from(
-                b"name,contents,sysGeneName,variationName\noxIs644,,,oxIs644\n".as_slice(),
+                b"name,contents,sysGeneName,variationName\noxIs644,,,oxIs644\ne1107,,LLC1.1,\ne12,,T21D12.2,\nox1059,,C10C6.1,\noxTi302,,,oxTi302\noxTi75,,,oxTi75\noxSi1168,,,oxSi1168\noxEx2254,,,oxEx2254\n"
+                    .as_slice(),
             ))
             .await
             .unwrap();
@@ -662,6 +664,38 @@ mod tests {
         state
             .insert_expr_relations(bulk_from(include_bytes!(
                 "../../../data/balancer_alleles/expr_relations.csv"
+            )))
+            .await
+            .unwrap();
+
+        // the nT1 translocation, used by CB3988
+        state
+            .insert_variations(bulk_from(include_bytes!(
+                "../../../data/translocations/variations.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_phenotypes(bulk_from(include_bytes!(
+                "../../../data/translocations/phenotypes.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_alleles(bulk_from(include_bytes!(
+                "../../../data/translocations/alleles.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_allele_exprs(bulk_from(include_bytes!(
+                "../../../data/translocations/allele_exprs.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_expr_relations(bulk_from(include_bytes!(
+                "../../../data/translocations/expr_relations.csv"
             )))
             .await
             .unwrap();
@@ -708,6 +742,30 @@ mod tests {
             )))
             .await
             .unwrap();
+
+        // Importing the relations again must not duplicate them (the primary
+        // key has nullable columns, so a unique index has to catch it).
+        let relations_before: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM expr_relations")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        state
+            .insert_expr_relations(bulk_from(include_bytes!(
+                "../../../data/lin_15/expr_relations.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_expr_relations(bulk_from(include_bytes!(
+                "../../../data/balancer_alleles/expr_relations.csv"
+            )))
+            .await
+            .unwrap();
+        let relations_after: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM expr_relations")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(relations_before, relations_after, "re-import duplicated relations");
 
         // Every row of a table nothing else writes to must import, and the
         // generated keys must be unique.
