@@ -10,6 +10,7 @@ import {
   AlleleExpression,
   dominanceToZygosity,
 } from 'models/frontend/AlleleExpression/AlleleExpression';
+import { Condition } from 'models/frontend/Condition/Condition';
 import { Gene } from 'models/frontend/Gene/Gene';
 import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
 import { Strain } from 'models/frontend/Strain/Strain';
@@ -32,7 +33,10 @@ const dir = (file: string): Row[] =>
   readCsv(`data/inversion_balancers/${file}`);
 
 const genes = new Map<string, Gene>(
-  readCsv('src-tauri/seed/genes.csv').map((row) => [
+  [
+    ...readCsv('src-tauri/seed/genes.csv'),
+    ...readCsv('data/wormbase/uncloned_genes.csv'),
+  ].map((row) => [
     row.sysName,
     new Gene({
       sysName: row.sysName,
@@ -99,6 +103,18 @@ const alleles = new Map<string, Allele>(
               expr.expressingPhenotypeWild
             ),
             requiredPhenotypes: [],
+            requiredConditions: relationRows
+              .filter(
+                (rel) =>
+                  rel.allele_name === row.name &&
+                  rel.expressing_phenotype_name ===
+                    expr.expressingPhenotypeName &&
+                  rel.expressing_phenotype_wild ===
+                    expr.expressingPhenotypeWild &&
+                  rel.altering_condition !== '' &&
+                  rel.is_suppressing === '0'
+              )
+              .map((rel) => new Condition({ name: rel.altering_condition })),
             suppressingPhenotypes: relationRows
               .filter(
                 (rel) =>
@@ -107,6 +123,7 @@ const alleles = new Map<string, Allele>(
                     expr.expressingPhenotypeName &&
                   rel.expressing_phenotype_wild ===
                     expr.expressingPhenotypeWild &&
+                  rel.altering_phenotype_name !== '' &&
                   rel.is_suppressing === '1'
               )
               .map((rel) =>
@@ -115,7 +132,6 @@ const alleles = new Map<string, Allele>(
                   rel.altering_phenotype_wild
                 )
               ),
-            requiredConditions: [],
             suppressingConditions: [],
             dominance: dominanceToZygosity(Number(expr.dominance)),
           })
@@ -135,11 +151,22 @@ const alleles = new Map<string, Allele>(
   })
 );
 
+// dpy-10(e128) is an existing allele, not generated with the others.
+alleles.set(
+  'e128',
+  new Allele({
+    name: 'e128',
+    gene: genes.get('T14B4.7'),
+    alleleExpressions: [],
+  })
+);
+
 const strainRows = dir('strains.csv');
 const strainAlleleRows = dir('strain_alleles.csv');
 
-// A strain as stored: a pair on both homologs when isOnBot, else top only.
-const buildStrain = (name: string): Strain =>
+// A strain as stored: an allele on both homologs, on the top only, or on the
+// bottom only. `forceHomozygous` builds the homozygous version of any strain.
+const buildStrain = (name: string, forceHomozygous = false): Strain =>
   new Strain({
     name,
     allelePairs: strainAlleleRows
@@ -148,10 +175,16 @@ const buildStrain = (name: string): Strain =>
         const allele = alleles.get(row.alleleName);
         if (allele === undefined)
           throw new Error(`${name}: missing allele ${row.alleleName}`);
-        expect(row.isOnTop).toBe('true');
-        return row.isOnBot === 'true' ? allele.toHomo() : allele.toTopHet();
+        if (
+          forceHomozygous ||
+          (row.isOnTop === 'true' && row.isOnBot === 'true')
+        )
+          return allele.toHomo();
+        return row.isOnTop === 'true' ? allele.toTopHet() : allele.toBotHet();
       }),
   });
+
+const dejimaStrains = strainRows.filter((row) => /^FX\d+$/.test(row.name));
 
 const TABLE_1: Array<[string, string, string]> = [
   ['tmC20', 'F53G12.8', 'sre-23'],
@@ -198,10 +231,98 @@ describe('inversion balancer ranges', () => {
   );
 });
 
+describe('the classical balancers', () => {
+  test.each([['sC4', 'unc-76', 'rol-9']])(
+    '%s covers the region from %s to %s',
+    (balancer, left, right) => {
+      const [l, r] = [
+        geneByName(left).physLoc ?? 0,
+        geneByName(right).physLoc ?? 0,
+      ];
+      expect(variations.get(balancer)?.recombination).toEqual([
+        Math.min(l, r),
+        Math.max(l, r),
+      ]);
+    }
+  );
+
+  test.each([
+    ['sC1', [323_321, 4_641_137]],
+    ['mnC1', [4_904_692, 14_909_258]],
+    ['qC1', [1_286_123, 13_737_951]],
+  ])('%s covers its sequenced breakpoints', (balancer, range) => {
+    expect(variations.get(balancer)?.recombination).toEqual(range);
+  });
+
+  test('the balancer alleles are named as the strains write them', () => {
+    expect(alleles.get('sC4(s2172)')?.variation?.name).toBe('sC4');
+    expect(alleles.get('sC1(s2023)')?.variation?.name).toBe('sC1');
+  });
+
+  test('sC4(s2172) is homozygous lethal on its own, sC1(s2023) is not', () => {
+    const lethalAs = (name: string): boolean =>
+      new Strain({
+        allelePairs: [alleles.get(name)?.toHomo() as never],
+      }).isLethal();
+    expect(lethalAs('sC4(s2172)')).toBe(true);
+    expect(lethalAs('sC1(s2023)')).toBe(false);
+  });
+
+  test('CGC51 is homozygous and the other three are balancer-over-partner heterozygotes', () => {
+    const rowsOf = (name: string): Row[] =>
+      strainAlleleRows.filter((row) => row.strainName === name);
+    rowsOf('CGC51').forEach((row) => {
+      expect([row.isOnTop, row.isOnBot]).toEqual(['true', 'true']);
+    });
+    ['BC4586', 'CGC43', 'BG99'].forEach((name) => {
+      const onTop = rowsOf(name).filter((row) => row.isOnTop === 'true');
+      const onBot = rowsOf(name).filter((row) => row.isOnBot === 'true');
+      expect(onTop.length, name).toBeGreaterThan(0);
+      expect(onBot.length, name).toBeGreaterThan(0);
+      // nothing is on both homologs
+      expect(rowsOf(name).some((row) => row.isOnTop === row.isOnBot)).toBe(
+        false
+      );
+    });
+  });
+
+  test('the partner alleles are on the other homolog from the balancer', () => {
+    const side = (strain: string, allele: string): string => {
+      const row = strainAlleleRows.find(
+        (r) => r.strainName === strain && r.alleleName === allele
+      );
+      return row?.isOnTop === 'true' ? 'top' : 'bottom';
+    };
+    expect(side('BC4586', 'sC4(s2172)')).toBe('top');
+    expect(side('BC4586', 'e428')).toBe('top');
+    expect(side('BC4586', 'e911')).toBe('bottom');
+    expect(side('BC4586', 'sc148')).toBe('bottom');
+    expect(side('CGC43', 'mnC1')).toBe('top');
+    expect(side('CGC43', 'e120')).toBe('bottom');
+    expect(side('BG99', 'qC1')).toBe('top');
+    expect(side('BG99', 'q267')).toBe('bottom');
+  });
+
+  test('the transgenes carry their marker and neomycin resistance', () => {
+    ['umnIs32', 'umnIs41'].forEach((name) => {
+      const phenotypeNames = (alleles.get(name)?.alleleExpressions ?? []).map(
+        (expr) => expr.expressingPhenotype.name
+      );
+      expect(phenotypeNames).toContain('NeomycinR');
+      expect(phenotypeNames.some((p) => p.startsWith('Pmyo-2::'))).toBe(true);
+    });
+    expect(
+      alleles
+        .get('umnIs41')
+        ?.alleleExpressions.map((e) => e.expressingPhenotype.name)
+    ).toContain('Pmyo-2::mKate2');
+  });
+});
+
 describe('generated inversion balancer strains', () => {
-  test('there are 25 strains, each with its balancer and a Pmyo-2 marker', () => {
-    expect(strainRows).toHaveLength(25);
-    strainRows.forEach((row) => {
+  test('there are 25 Dejima strains, each with its balancer and a Pmyo-2 marker', () => {
+    expect(dejimaStrains).toHaveLength(25);
+    dejimaStrains.forEach((row) => {
       const strain = buildStrain(row.name);
       const names = strain.getNonWildAlleles().map((allele) => allele.name);
       expect(

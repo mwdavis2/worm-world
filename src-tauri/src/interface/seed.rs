@@ -476,6 +476,13 @@ mod tests {
             conn_pool: pool.clone(),
         };
         state.seed_defaults().await.unwrap();
+        // rol-9 is one of the uncloned genes
+        state
+            .insert_genes(bulk_from(include_bytes!(
+                "../../../data/wormbase/uncloned_genes.csv"
+            )))
+            .await
+            .unwrap();
         state
             .insert_variations(bulk_from(include_bytes!(
                 "../../../data/inversion_balancers/variations.csv"
@@ -510,6 +517,13 @@ mod tests {
             .insert_strains(bulk_from(include_bytes!(
                 "../../../data/inversion_balancers/strains.csv"
             )))
+            .await
+            .unwrap();
+        // dpy-10(e128) already exists in the database; the strains use it
+        state
+            .insert_alleles(bulk_from(
+                b"name,contents,sysGeneName,variationName\ne128,,T14B4.7,\n".as_slice(),
+            ))
             .await
             .unwrap();
         state
@@ -566,7 +580,9 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap();
-            assert_eq!(count as usize, rows, "{table}: every row should import");
+            // e128 was added by hand to the alleles
+            let expected = rows + usize::from(table == "alleles");
+            assert_eq!(count as usize, expected, "{table}: every row should import");
         }
         for (what, query) in [
             (

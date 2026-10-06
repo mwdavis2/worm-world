@@ -45,3 +45,35 @@ stored genotype text is checked against `Strain.toString` by
 Not included: the plain balancers, the deletion-only variants (no Pmyo-2),
 `tmC1` (not one of the 13), the older `tmIn` inversions and the marker-only
 strains.
+
+## Four more classical balancers
+
+`sC4`, `sC1`, `mnC1` and `qC1` (the paper's other inversions) come with four
+strains and their own alleles, in the same files:
+
+| Strain | Genotype |
+|---|---|
+| BC4586 | `unc-76(e911) rol-9(sc148)/sC4(s2172) [dpy-21(e428)] V` |
+| CGC43 | `unc-4(e120)/mnC1 [dpy-10(e128) unc-52(e444) umnIs32] II` |
+| CGC51 | `sC1(s2023) [dpy-1(s2170) umnIs41] III` (homozygous) |
+| BG99 | `laf-1(q267)/qC1 [dpy-19(e1259) glp-1(q339)] III` |
+
+- **Ranges** (a single range each): `mnC1` II:4,904,692-14,909,258 and `sC1`
+  III:323,321-4,641,137 (Maroilley 2021); `qC1` III:1,286,123-13,737,951 (Edgley
+  2021, WS282); `sC4` from the position of `unc-76` to that of `rol-9` on V (its
+  breakpoints were not available; the paper describes a large deletion with a
+  chromosome fusion).
+- **Balancer alleles** are named `sC4(s2172)` and `sC1(s2023)`; `mnC1` and
+  `qC1` are plain. `sC4(s2172)` is homozygous lethal on its own (a built-in
+  recessive `Let`); `sC1(s2023)` is not.
+- **The strains are explicit**: the balancer and its cis alleles on the top
+  homolog and the partner's alleles on the bottom (BC4586, CGC43, BG99); CGC51
+  has everything on both homologs.
+- **Gene alleles** are recessive class-5 with capitalized phenotypes rescued by
+  the wild type (`Unc-76`, `Rol-9`, `Dpy-21`, `Unc-52`, `Dpy-1`, `Unc-4`,
+  `Dpy-19`); `laf-1(q267)` is `Let`; `glp-1(q339)` is `Glp-1` with the
+  female-sterile flag. `dpy-10(e128)` is the existing allele `e128`.
+- **`umnIs32` and `umnIs41`** are integrated transgenes (Pmyo-2::GFP and
+  Pmyo-2::mKate2) with neomycin resistance, written as the New Allele dialog
+  writes a drug-resistance marker. They sit just past the middle of their
+  balancer's range, whose own position is the middle.

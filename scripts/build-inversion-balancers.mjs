@@ -18,7 +18,9 @@
 //   recessive class-5 phenotype rescued by the wild type.
 // - A breakpoint inside a gene that gives a visible phenotype in Table 2 is a
 //   real allele of that gene, named tmCXmec / tmCXunc / tmCXlon.
-// - Strains are homozygous unless the homozygote would be lethal (none is).
+// - The Dejima strains are homozygous. Four more classical balancers (sC4, sC1,
+//   mnC1, qC1) come with their own strains, most of them balancer-over-partner
+//   heterozygotes with the partner's alleles on the bottom homolog.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const OUT_DIR = 'data/inversion_balancers';
@@ -98,6 +100,49 @@ const DELETIONS = [
 // phenotype (which rescues the Unc of the deletion) and intestinal GFP.
 const ARRAY = { allele: 'tmEx4950', rescues: 'unc-9', marker: 'Pvha-6::gfp' };
 
+// Four classical balancers with strains (not in Dejima's toolkit). Ranges: the
+// sequenced breakpoints where known (mnC1 and sC1: Maroilley 2021; qC1:
+// Edgley 2021, WS282), and for sC4 the positions of unc-76 and rol-9. A bound
+// is a position or a gene name. [variation, chromosome, [left, right], the
+// balancer allele, its built-in homozygous lethality]
+const CLASSICAL = [
+  ['sC4', 'V', ['unc-76', 'rol-9'], 'sC4(s2172)', true],
+  ['sC1', 'III', [323_321, 4_641_137], 'sC1(s2023)', false],
+  ['mnC1', 'II', [4_904_692, 14_909_258], 'mnC1', false],
+  ['qC1', 'III', [1_286_123, 13_737_951], 'qC1', false],
+];
+// Gene alleles of those strains: [allele, gene, kind] - 'lof' is a visible
+// recessive class-5 phenotype rescued by the wild type, 'let' a recessive
+// lethal, 'sterile' a recessive sterile
+const CLASSICAL_ALLELES = [
+  ['e911', 'unc-76', 'lof'],
+  ['sc148', 'rol-9', 'lof'],
+  ['e428', 'dpy-21', 'lof'],
+  ['e444', 'unc-52', 'lof'],
+  ['s2170', 'dpy-1', 'lof'],
+  ['e120', 'unc-4', 'lof'],
+  ['e1259', 'dpy-19', 'lof'],
+  ['q267', 'laf-1', 'let'],
+  ['q339', 'glp-1', 'sterile'],
+];
+// Integrated Pmyo-2 transgenes carrying neomycin resistance, placed just past
+// the middle of their balancer's range (the balancer itself is at the middle):
+// [allele, chromosome, balancer, marker]
+const TRANSGENES = [
+  ['umnIs32', 'II', 'mnC1', 'Pmyo-2::GFP'],
+  ['umnIs41', 'III', 'sC1', 'Pmyo-2::mKate2'],
+];
+// dpy-10(e128) is the existing allele e128 (not generated here)
+const EXISTING = { e128: 'dpy-10' };
+// [strain, alleles on the balancer's homolog, alleles on the other homolog,
+// homozygous]. A homozygous strain has everything on both homologs.
+const CLASSICAL_STRAINS = [
+  ['BC4586', ['sC4(s2172)', 'e428'], ['e911', 'sc148'], false],
+  ['CGC43', ['mnC1', 'e128', 'e444', 'umnIs32'], ['e120'], false],
+  ['CGC51', ['sC1(s2023)', 's2170', 'umnIs41'], [], true],
+  ['BG99', ['qC1', 'e1259', 'q339'], ['q267'], false],
+];
+
 // Table 2: [strain, balancer, extra alleles]
 const STRAINS = [
   ['FX30134', 'tmC3', ['tmIs1228']],
@@ -140,13 +185,17 @@ const check = (condition, message) => {
 };
 
 // ------------------------------------------------------------------- genes
-const geneRows = parseCsv('src-tauri/seed/genes.csv').map(([sys, desc, chr, phys, gen]) => ({
+const toGene = ([sys, desc, chr, phys, gen]) => ({
   sys,
   desc: desc === '' ? sys : desc,
   chr,
   phys: Number(phys),
   gen: Number(gen),
-}));
+});
+// The shipped genes anchor the cM interpolation (as everywhere else); the
+// uncloned genes (rol-9) can be looked up by name but are not anchors.
+const seedGeneRows = parseCsv('src-tauri/seed/genes.csv').map(toGene);
+const geneRows = [...seedGeneRows, ...parseCsv('data/wormbase/uncloned_genes.csv').map(toGene)];
 const geneNamed = (name) => {
   const hits = geneRows.filter((g) => g.sys === name || g.desc === name);
   const unique = [...new Map(hits.map((g) => [g.sys, g])).values()];
@@ -157,7 +206,7 @@ const geneNamed = (name) => {
 // Genetic position (cM) at a physical position, interpolated between the
 // nearest genes on the chromosome (anchors sharing a position are averaged).
 const anchorsByChr = new Map();
-geneRows.forEach((g) => {
+seedGeneRows.forEach((g) => {
   if (Number.isNaN(g.phys) || Number.isNaN(g.gen)) return;
   const byPos = anchorsByChr.get(g.chr) ?? new Map();
   byPos.set(g.phys, [...(byPos.get(g.phys) ?? []), g.gen]);
@@ -193,7 +242,7 @@ const exprRelations = [];
 // allele name -> { label, chr, gen } for the genotype text
 const info = new Map();
 
-const addPhenotype = (name, wild, lethal = '') => {
+const addPhenotype = (name, wild, lethal = '', flags = {}) => {
   const key = `${name}|${wild}`;
   if (phenotypes.has(key)) return;
   phenotypes.set(key, {
@@ -201,9 +250,9 @@ const addPhenotype = (name, wild, lethal = '') => {
     wild,
     short_name: name,
     description: '',
-    male_mating: '',
+    male_mating: flags.maleMating ?? '',
     lethal,
-    female_sterile: '',
+    female_sterile: flags.femaleSterile ?? '',
     arrested: '',
     maturation_days: '',
   });
@@ -218,9 +267,9 @@ const addExpr = (allele, phenotype, wild, dominance) =>
 
 // A recessive class-5 loss of function of `gene`, rescued by the wild type:
 // the capitalized phenotype, its wild-type counterpart row, and the relation.
-const addLossOfFunction = (allele, gene) => {
+const addLossOfFunction = (allele, gene, flags = {}) => {
   const rescuer = capitalize(gene.desc);
-  addPhenotype(rescuer, 0, 0);
+  addPhenotype(rescuer, 0, 0, flags);
   addPhenotype(rescuer, 1);
   addExpr(allele, rescuer, 0, LOF_DOMINANCE);
   exprRelations.push({
@@ -242,12 +291,7 @@ const addGeneAllele = (allele, geneName) => {
 };
 
 const rangeOf = new Map(); // balancer -> [start, end]
-BALANCERS.forEach(([name, chr, left, right]) => {
-  const l = geneNamed(left);
-  const r = geneNamed(right);
-  check(l.chr === chr && r.chr === chr, `${name}: ${left}/${right} are not both on ${chr}`);
-  const start = Math.min(l.phys, r.phys);
-  const end = Math.max(l.phys, r.phys);
+const addBalancer = (name, chr, start, end, alleleName = name) => {
   const middle = Math.round((start + end) / 2);
   rangeOf.set(name, [start, end]);
   variations.push({
@@ -260,8 +304,14 @@ BALANCERS.forEach(([name, chr, left, right]) => {
     isLocationReference: 'false',
     percentLoss: '',
   });
-  alleles.push({ name, contents: '', sysGeneName: '', variationName: name });
-  info.set(name, { label: name, chr, gen: round2(geneticAt(chr, middle)) });
+  alleles.push({ name: alleleName, contents: '', sysGeneName: '', variationName: name });
+  info.set(alleleName, { label: alleleName, chr, gen: round2(geneticAt(chr, middle)) });
+};
+BALANCERS.forEach(([name, chr, left, right]) => {
+  const l = geneNamed(left);
+  const r = geneNamed(right);
+  check(l.chr === chr && r.chr === chr, `${name}: ${left}/${right} are not both on ${chr}`);
+  addBalancer(name, chr, Math.min(l.phys, r.phys), Math.max(l.phys, r.phys));
 });
 
 BREAKPOINTS.forEach(([allele, balancer, geneName]) => {
@@ -302,6 +352,75 @@ const rescued = capitalize(geneNamed(ARRAY.rescues).desc);
 check(phenotypes.has(`${rescued}|1`), `${ARRAY.allele}: no wild-type ${rescued} phenotype to express`);
 addExpr(ARRAY.allele, rescued, 1, DOMINANT_DOMINANCE);
 
+// ------------------------------------------------- the four classical balancers
+CLASSICAL.forEach(([name, chr, [left, right], alleleName, lethal]) => {
+  const bound = (b) => (typeof b === 'number' ? b : geneNamed(b).phys);
+  addBalancer(name, chr, Math.min(bound(left), bound(right)), Math.max(bound(left), bound(right)), alleleName);
+  // sC4(s2172) is homozygous lethal on its own: a built-in recessive Let
+  if (lethal) {
+    addPhenotype('Let', 0, 1, { maleMating: 0 });
+    addExpr(alleleName, 'Let', 0, 0);
+  }
+});
+
+CLASSICAL_ALLELES.forEach(([allele, geneName, kind]) => {
+  const gene = addGeneAllele(allele, geneName);
+  if (kind === 'lof') addLossOfFunction(allele, gene);
+  else if (kind === 'sterile') addLossOfFunction(allele, gene, { femaleSterile: 1 });
+  else {
+    addPhenotype('Let', 0, 1, { maleMating: 0 });
+    addExpr(allele, 'Let', 0, LOF_DOMINANCE);
+  }
+});
+Object.entries(EXISTING).forEach(([allele, geneName]) => {
+  const gene = geneNamed(geneName);
+  info.set(allele, { label: `${gene.desc}(${allele})`, chr: gene.chr, gen: gene.gen });
+});
+
+// Resistance to a drug, as the New Allele dialog's Basic tab writes it (and as
+// oxEx8 has it): resistant (non-wild) with 1 or 2 copies when the drug is
+// present; the wild type (0 copies) is lethal on the drug unless resistant.
+const addDrugResistance = (allele, drug) => {
+  const resistance = `${drug}R`;
+  addPhenotype(resistance, 0, 0);
+  addPhenotype(resistance, 1, 1);
+  addExpr(allele, resistance, 0, DOMINANT_DOMINANCE);
+  addExpr(allele, resistance, 1, 3); // stored form of '0' copies
+  const relation = (expressingWild, altering, isSuppressing) =>
+    exprRelations.push({
+      allele_name: allele,
+      expressing_phenotype_name: resistance,
+      expressing_phenotype_wild: expressingWild,
+      altering_phenotype_name: altering.phenotype ? resistance : '',
+      altering_phenotype_wild: altering.phenotype ? 0 : '',
+      altering_condition: altering.phenotype ? '' : drug,
+      is_suppressing: isSuppressing,
+    });
+  relation(1, { phenotype: true }, 1);
+  relation(1, { phenotype: false }, 0);
+  relation(0, { phenotype: false }, 0);
+};
+TRANSGENES.forEach(([allele, chr, balancer, marker]) => {
+  const [start, end] = rangeOf.get(balancer);
+  const phys = Math.round((start + end) / 2) + 1;
+  const gen = round2(geneticAt(chr, phys));
+  variations.push({
+    alleleName: allele,
+    chromosome: chr,
+    physLoc: phys,
+    geneticLoc: gen,
+    recombSuppressorStart: '',
+    recombSuppressorEnd: '',
+    isLocationReference: 'false',
+    percentLoss: '',
+  });
+  alleles.push({ name: allele, contents: '', sysGeneName: '', variationName: allele });
+  info.set(allele, { label: allele, chr, gen });
+  addPhenotype(marker, 0, 0);
+  addExpr(allele, marker, 0, DOMINANT_DOMINANCE);
+  addDrugResistance(allele, 'Neomycin');
+});
+
 // Every marker gene should lie inside its balancer's range
 STRAINS.forEach(([strain, balancer, extras]) => {
   const [start, end] = rangeOf.get(balancer) ?? [0, 0];
@@ -313,14 +432,17 @@ STRAINS.forEach(([strain, balancer, extras]) => {
 });
 
 // ------------------------------------------------------------------ strains
-// Genotype text as Strain.toString builds it: chromosomes in order, each
-// "<alleles>[/<wild partners>] <chromosome>", alleles sorted by genetic
-// position with the same comparator as AllelePair.sort. A strain here is
-// homozygous (nothing is lethal); an extrachromosomal array is "array/+ Ex".
-const genotypeOf = (names) => {
+// Genotype text as Strain.toString builds it: chromosomes in order, each a
+// list of allele pairs sorted by genetic position with the same comparator as
+// AllelePair.sort. A chromosome whose pairs are all homozygous is
+// "<alleles> <chromosome>"; otherwise "<top alleles>/<bottom alleles>
+// <chromosome>" with + for a wild copy, flipped so the first top is not wild.
+// An extrachromosomal array is "array/+ Ex". `members` are
+// { name, onTop, onBot }.
+const genotypeOf = (members) => {
   const byChr = new Map();
-  names.forEach((name) => {
-    const item = info.get(name);
+  members.forEach((member) => {
+    const item = { ...info.get(member.name), onTop: member.onTop, onBot: member.onBot };
     byChr.set(item.chr, [...(byChr.get(item.chr) ?? []), item]);
   });
   const parts = CHROMOSOME_ORDER.filter((chr) => byChr.has(chr)).map((chr) => {
@@ -330,28 +452,53 @@ const genotypeOf = (names) => {
       return `${items.map((i) => i.label).join(' ')}/${items.map(() => '+').join(' ')} Ex`;
     }
     items.sort((a, b) => (a.gen < b.gen ? -1 : 1));
-    return `${items.map((i) => i.label).join(' ')} ${chr}`;
+    let pairs = items.map((i) => ({ top: i.onTop ? i.label : '+', bot: i.onBot ? i.label : '+' }));
+    if (pairs.every((pair) => pair.top === pair.bot)) return `${pairs.map((pair) => pair.top).join(' ')} ${chr}`;
+    if (pairs[0].top === '+') pairs = pairs.map((pair) => ({ top: pair.bot, bot: pair.top }));
+    return `${pairs.map((pair) => pair.top).join(' ')}/${pairs.map((pair) => pair.bot).join(' ')} ${chr}`;
   });
   return `${parts.join('; ')}.`;
 };
 
 const strains = [];
 const strainAlleles = [];
+const addStrain = (name, description, members) => {
+  members.forEach((member) => check(info.has(member.name), `${name}: allele ${member.name} is not defined`));
+  strains.push({ name, genotype: genotypeOf(members), description });
+  members.forEach((member) =>
+    strainAlleles.push({
+      strainName: name,
+      alleleName: member.name,
+      isOnTop: String(member.onTop),
+      isOnBot: String(member.onBot),
+    })
+  );
+};
+
 STRAINS.forEach(([name, balancer, extras]) => {
   const built = BREAKPOINTS.filter(([, b]) => b === balancer).map(([allele]) => allele);
   const all = [balancer, ...built, ...extras];
-  all.forEach((allele) => check(info.has(allele), `${name}: allele ${allele} is not defined`));
   const insertion = extras.filter((a) => insertionOf.has(a)).map((a) => info.get(a).label);
-  strains.push({
+  // A homozygous pair is on both homologs; an array has only its top copy.
+  addStrain(
     name,
-    genotype: genotypeOf(all),
-    description: `${balancer} inversion balancer homozygous${insertion.length > 0 ? ` with ${insertion.join(' ')}` : ''} (Dejima 2018).`,
-  });
-  all.forEach((allele) => {
-    // A homozygous pair is on both homologs; an array has only its top copy.
-    const isArray = allele === ARRAY.allele;
-    strainAlleles.push({ strainName: name, alleleName: allele, isOnTop: 'true', isOnBot: isArray ? 'false' : 'true' });
-  });
+    `${balancer} inversion balancer homozygous${insertion.length > 0 ? ` with ${insertion.join(' ')}` : ''} (Dejima 2018).`,
+    all.map((allele) => ({ name: allele, onTop: true, onBot: allele !== ARRAY.allele }))
+  );
+});
+
+CLASSICAL_STRAINS.forEach(([name, onBalancer, onPartner, homozygous]) => {
+  const labels = (alleles_) => alleles_.map((a) => info.get(a)?.label ?? a).join(' ');
+  addStrain(
+    name,
+    homozygous
+      ? `${labels(onBalancer)} homozygous.`
+      : `${labels(onBalancer)} over ${labels(onPartner)}.`,
+    [
+      ...onBalancer.map((allele) => ({ name: allele, onTop: true, onBot: homozygous })),
+      ...onPartner.map((allele) => ({ name: allele, onTop: false, onBot: true })),
+    ]
+  );
 });
 check(new Set(strains.map((s) => s.name)).size === strains.length, 'duplicate strain names');
 check(new Set(alleles.map((a) => a.name)).size === alleles.length, 'duplicate allele names');

@@ -24,3 +24,7 @@ FX30208,unc-75(tmIs1239) tmC27 I.,tmC27 inversion balancer homozygous with unc-7
 FX30259,lig-4(tm750) unc-49(tmIs1259) tmC29 III.,tmC29 inversion balancer homozygous with unc-49(tmIs1259) (Dejima 2018).
 FX30218,lon-2(tmC30lon) tmC30 ubc-17(tmIs1247) mec-10(tmC30mec) X.,tmC30 inversion balancer homozygous with ubc-17(tmIs1247) (Dejima 2018).
 FX30236,lon-2(tmC30lon) tmC30 ubc-17(tmIs1243) mec-10(tmC30mec) X.,tmC30 inversion balancer homozygous with ubc-17(tmIs1243) (Dejima 2018).
+BC4586,unc-76(e911) + + rol-9(sc148)/+ sC4(s2172) dpy-21(e428) + V.,sC4(s2172) dpy-21(e428) over unc-76(e911) rol-9(sc148).
+CGC43,dpy-10(e128) + mnC1 umnIs32 unc-52(e444)/+ unc-4(e120) + + + II.,mnC1 dpy-10(e128) unc-52(e444) umnIs32 over unc-4(e120).
+CGC51,dpy-1(s2170) sC1(s2023) umnIs41 III.,sC1(s2023) dpy-1(s2170) umnIs41 homozygous.
+BG99,laf-1(q267) + + +/+ qC1 dpy-19(e1259) glp-1(q339) III.,qC1 dpy-19(e1259) glp-1(q339) over laf-1(q267).
