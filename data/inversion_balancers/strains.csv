@@ -1,0 +1,26 @@
+name,genotype,description
+FX30134,unc-23(tmC3unc) tmC3 egl-9(tmIs1228) lon-3(tmC3lon) V.,tmC3 inversion balancer homozygous with egl-9(tmIs1228) (Dejima 2018).
+FX30135,unc-23(tmC3unc) tmC3 egl-9(tmIs1230) lon-3(tmC3lon) V.,tmC3 inversion balancer homozygous with egl-9(tmIs1230) (Dejima 2018).
+FX30140,tmC5 mec-3(tmC5mec) F36H1.3(tmIs1220) unc-31(tmC5unc) IV.,tmC5 inversion balancer homozygous with F36H1.3(tmIs1220) (Dejima 2018).
+FX19668,tmC6 dpy-2(tmIs1189) II.,tmC6 inversion balancer homozygous with dpy-2(tmIs1189) (Dejima 2018).
+FX30138,tmC6 dpy-2(tmIs1208) II.,tmC6 inversion balancer homozygous with dpy-2(tmIs1208) (Dejima 2018).
+FX30234,mec-3(tmC9mec) kdin-1(tmIs1221) unc-31(tmC9unc) tmC9 IV.,tmC9 inversion balancer homozygous with kdin-1(tmIs1221) (Dejima 2018).
+FX30152,unc-23(tmC12unc) egl-9(tmIs1194) tmC12 lon-3(tmC12lon) V.,tmC12 inversion balancer homozygous with egl-9(tmIs1194) (Dejima 2018).
+FX30153,unc-23(tmC12unc) egl-9(tmIs1197) tmC12 lon-3(tmC12lon) V.,tmC12 inversion balancer homozygous with egl-9(tmIs1197) (Dejima 2018).
+FX30233,unc-60(tmIs1210) tmC16 V.,tmC16 inversion balancer homozygous with unc-60(tmIs1210) (Dejima 2018).
+FX30161,unc-60(tmIs1237) tmC16 V.,tmC16 inversion balancer homozygous with unc-60(tmIs1237) (Dejima 2018).
+FX30167,dpy-5(tmIs1200) tmC18 I.,tmC18 inversion balancer homozygous with dpy-5(tmIs1200) (Dejima 2018).
+FX30168,dpy-5(tmIs1236) tmC18 I.,tmC18 inversion balancer homozygous with dpy-5(tmIs1236) (Dejima 2018).
+FX30177,tmC20 unc-14(tmIs1219) I.,tmC20 inversion balancer homozygous with unc-14(tmIs1219) (Dejima 2018).
+FX30179,tmC20 dpy-5(tm9715) unc-14(tmIs1219) I.,tmC20 inversion balancer homozygous with unc-14(tmIs1219) (Dejima 2018).
+FX30240,mec-10(tmC24mec) tmC24 F23D12.4(tmIs1240) X.,tmC24 inversion balancer homozygous with F23D12.4(tmIs1240) (Dejima 2018).
+FX30123,mec-10(tmC24mec) tmC24 F23D12.4(tmIs1233) X.,tmC24 inversion balancer homozygous with F23D12.4(tmIs1233) (Dejima 2018).
+FX30194,mec-10(tmC24mec) tmC24 unc-9(tm9719) F23D12.4(tmIs1240) X.,tmC24 inversion balancer homozygous with F23D12.4(tmIs1240) (Dejima 2018).
+FX30252,mec-10(tmC24mec) tmC24 unc-9(tm9719) F23D12.4(tmIs1240) X; tmEx4950/+ Ex.,tmC24 inversion balancer homozygous with F23D12.4(tmIs1240) (Dejima 2018).
+FX30186,mec-10(tmC24mec) tmC24 unc-9(tm9718) F23D12.4(tmIs1233) X.,tmC24 inversion balancer homozygous with F23D12.4(tmIs1233) (Dejima 2018).
+FX30253,mec-10(tmC24mec) tmC24 unc-9(tm9718) F23D12.4(tmIs1233) X; tmEx4950/+ Ex.,tmC24 inversion balancer homozygous with F23D12.4(tmIs1233) (Dejima 2018).
+FX30203,tmC25 unc-5(tmIs1241) IV.,tmC25 inversion balancer homozygous with unc-5(tmIs1241) (Dejima 2018).
+FX30208,unc-75(tmIs1239) tmC27 I.,tmC27 inversion balancer homozygous with unc-75(tmIs1239) (Dejima 2018).
+FX30259,lig-4(tm750) unc-49(tmIs1259) tmC29 III.,tmC29 inversion balancer homozygous with unc-49(tmIs1259) (Dejima 2018).
+FX30218,lon-2(tmC30lon) tmC30 ubc-17(tmIs1247) mec-10(tmC30mec) X.,tmC30 inversion balancer homozygous with ubc-17(tmIs1247) (Dejima 2018).
+FX30236,lon-2(tmC30lon) tmC30 ubc-17(tmIs1243) mec-10(tmC30mec) X.,tmC30 inversion balancer homozygous with ubc-17(tmIs1243) (Dejima 2018).
