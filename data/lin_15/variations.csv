@@ -1,0 +1,3 @@
+alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd,isLocationReference,percentLoss
+oxIs12,X,,,,,false,
+oxIs363,IV,,,,,false,

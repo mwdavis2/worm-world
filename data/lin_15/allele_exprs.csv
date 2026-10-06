@@ -1,0 +1,10 @@
+alleleName,expressingPhenotypeName,expressingPhenotypeWild,dominance
+n765,Lin-15,0,4
+ed3,Unc-119,0,4
+ed4,Unc-119,0,4
+ed9,Unc-119,0,4
+oxIs12,Punc-47::GFP,0,2
+oxIs12,Lin-15,1,2
+oxIs363,Punc-122::GFP,0,2
+oxIs363,Unc-119,1,2
+oxIs644,Lin-15,1,2

@@ -1,0 +1,6 @@
+allele_name,expressing_phenotype_name,expressing_phenotype_wild,altering_phenotype_name,altering_phenotype_wild,altering_condition,is_suppressing
+n765,Lin-15,0,Lin-15,1,,1
+n765,Lin-15,0,,,25C,0
+ed3,Unc-119,0,Unc-119,1,,1
+ed4,Unc-119,0,Unc-119,1,,1
+ed9,Unc-119,0,Unc-119,1,,1
