@@ -607,6 +607,194 @@ mod tests {
         }
     }
 
+    // The CSVs written by scripts/build-lin-15.mjs, imported on top of the
+    // balancer alleles they reuse (lon-2(e678), bli-4(e937)) and a stand-in for
+    // oxIs644, which exists only in the live database.
+    #[sqlx::test]
+    async fn generated_lin_15_csvs_import_cleanly(pool: Pool<Sqlite>) {
+        let state = InnerDbState {
+            conn_pool: pool.clone(),
+        };
+        state.seed_defaults().await.unwrap();
+        state
+            .insert_genes(bulk_from(include_bytes!(
+                "../../../data/wormbase/placeholder_genes.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_variations(bulk_from(include_bytes!(
+                "../../../data/balancer_alleles/variations.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_variations(bulk_from(
+                b"alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd,isLocationReference,percentLoss\noxIs644,X,,,,,false,\n"
+                    .as_slice(),
+            ))
+            .await
+            .unwrap();
+        state
+            .insert_phenotypes(bulk_from(include_bytes!(
+                "../../../data/balancer_alleles/phenotypes.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_alleles(bulk_from(include_bytes!(
+                "../../../data/balancer_alleles/alleles.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_alleles(bulk_from(
+                b"name,contents,sysGeneName,variationName\noxIs644,,,oxIs644\n".as_slice(),
+            ))
+            .await
+            .unwrap();
+        state
+            .insert_allele_exprs(bulk_from(include_bytes!(
+                "../../../data/balancer_alleles/allele_exprs.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_expr_relations(bulk_from(include_bytes!(
+                "../../../data/balancer_alleles/expr_relations.csv"
+            )))
+            .await
+            .unwrap();
+
+        state
+            .insert_variations(bulk_from(include_bytes!(
+                "../../../data/lin_15/variations.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_phenotypes(bulk_from(include_bytes!(
+                "../../../data/lin_15/phenotypes.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_alleles(bulk_from(include_bytes!(
+                "../../../data/lin_15/alleles.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_allele_exprs(bulk_from(include_bytes!(
+                "../../../data/lin_15/allele_exprs.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_expr_relations(bulk_from(include_bytes!(
+                "../../../data/lin_15/expr_relations.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_strains(bulk_from(include_bytes!(
+                "../../../data/lin_15/strains.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_strain_alleles(bulk_from(include_bytes!(
+                "../../../data/lin_15/strain_alleles.csv"
+            )))
+            .await
+            .unwrap();
+
+        // Every row of a table nothing else writes to must import, and the
+        // generated keys must be unique.
+        for (table, csv_bytes, key_columns) in [
+            (
+                "strains",
+                &include_bytes!("../../../data/lin_15/strains.csv")[..],
+                1,
+            ),
+            (
+                "strain_alleles",
+                &include_bytes!("../../../data/lin_15/strain_alleles.csv")[..],
+                2,
+            ),
+            (
+                "variations",
+                &include_bytes!("../../../data/lin_15/variations.csv")[..],
+                1,
+            ),
+            (
+                "phenotypes",
+                &include_bytes!("../../../data/lin_15/phenotypes.csv")[..],
+                2,
+            ),
+            (
+                "alleles",
+                &include_bytes!("../../../data/lin_15/alleles.csv")[..],
+                1,
+            ),
+            (
+                "allele_exprs",
+                &include_bytes!("../../../data/lin_15/allele_exprs.csv")[..],
+                3,
+            ),
+            (
+                "expr_relations",
+                &include_bytes!("../../../data/lin_15/expr_relations.csv")[..],
+                6,
+            ),
+        ] {
+            let rows = Reader::from_reader(csv_bytes).records().count();
+            assert_eq!(
+                rows,
+                distinct_keys(csv_bytes, key_columns),
+                "{table}: duplicate keys"
+            );
+            let count: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table}"))
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+            if table == "strains" || table == "strain_alleles" {
+                assert_eq!(count as usize, rows, "{table}: every row should import");
+            } else {
+                assert!(count as usize >= rows, "{table}: every row should import");
+            }
+        }
+        for (what, query) in [
+            (
+                "alleles whose gene does not exist",
+                "SELECT COUNT(*) FROM alleles WHERE systematic_gene_name IS NOT NULL AND systematic_gene_name NOT IN (SELECT systematic_name FROM genes)",
+            ),
+            (
+                "alleles whose variation does not exist",
+                "SELECT COUNT(*) FROM alleles WHERE variation_name IS NOT NULL AND variation_name NOT IN (SELECT allele_name FROM variations)",
+            ),
+            (
+                "strain_alleles whose allele does not exist",
+                "SELECT COUNT(*) FROM strain_alleles WHERE allele_name NOT IN (SELECT name FROM alleles)",
+            ),
+            (
+                "strain_alleles whose strain does not exist",
+                "SELECT COUNT(*) FROM strain_alleles WHERE strain_name NOT IN (SELECT name FROM strains)",
+            ),
+            (
+                "allele_exprs whose phenotype does not exist",
+                "SELECT COUNT(*) FROM allele_exprs e WHERE NOT EXISTS (SELECT 1 FROM phenotypes p WHERE p.name = e.expressing_phenotype_name AND p.wild = e.expressing_phenotype_wild)",
+            ),
+            (
+                "expr_relations whose condition does not exist",
+                "SELECT COUNT(*) FROM expr_relations WHERE altering_condition IS NOT NULL AND altering_condition NOT IN (SELECT name FROM conditions)",
+            ),
+        ] {
+            let orphans: i64 = sqlx::query_scalar(query).fetch_one(&pool).await.unwrap();
+            assert_eq!(orphans, 0, "{what}");
+        }
+    }
+
     #[sqlx::test]
     async fn ships_genes(pool: Pool<Sqlite>) {
         let state = InnerDbState {
