@@ -1,0 +1,5 @@
+# Minimum macOS version for the compiled binary. Keep in sync with
+# `bundle.macOS.minimumSystemVersion` in tauri.conf.json (which sets the
+# app's LSMinimumSystemVersion); 11.0 is also the first macOS to run arm64.
+[env]
+MACOSX_DEPLOYMENT_TARGET = "11.0"
