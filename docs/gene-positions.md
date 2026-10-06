@@ -42,11 +42,27 @@ physical coordinate.
   carries the allele only to stay unique (`let-?(s1799)`); the descriptive name
   is the gene (`let-?`), so the allele reads `let-?(s1799)` on a card.
   `let-500` is a real named gene, so it is keyed by its plain name.
-- **Genes with no data** (`data/wormbase/genes_pending_positions.csv`, 672
+- **Genes with no data** (`data/wormbase/genes_pending_positions.csv`, 671
   rows) have no position in any of the files, so they are not imported. That
-  covers 635 uncloned genes and 37 live sequence names missing from the table
+  covers 634 uncloned genes and 37 live sequence names missing from the table
   (tRNA, rRNA and similar). They need a position source before they can be
   used.
+
+## A gene that is two genes: `lin-15`
+
+Several classical alleles (the `lin-15(n765)` kind) affect `lin-15A` and
+`lin-15B` together. Those two genes are separate rows in the table, and an
+allele can point at only one gene, so the gene table also has a combined row:
+
+| Key | Name | Position |
+|---|---|---|
+| `ZK678.1&ZK662.4` | `lin-15` | X:15,731,968, 22.9459 cM |
+
+The key joins the two systematic names with `&`, and the position is that of
+`lin-15A` (`lin-15B` is 5.8 kb to its left, so either would do). An allele of
+both genes is an allele of `lin-15`; an allele of one is an allele of `lin-15A`
+or `lin-15B`. The WormBase list's own uncloned `lin-15` (no position) is
+therefore not imported.
 
 ## Synonyms
 
