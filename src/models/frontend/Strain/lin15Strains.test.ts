@@ -111,6 +111,7 @@ const phenotypes = new Map<string, Phenotype>(
       shortName: row.short_name,
       wild: row.wild === '1',
       lethal: row.lethal === '1',
+      femaleSterile: row.female_sterile === '1',
     }),
   ])
 );
@@ -330,6 +331,33 @@ describe('the second batch of strains', () => {
       'nT1(IV) egl-18(nT1vul) +/+ + tra-3(e1107) IV; nT1(V)/+ V.'
     );
     expect(strain.isLethal()).toBe(false);
+  });
+});
+
+describe('the alleles that had no phenotype', () => {
+  test.each([
+    ['e138', 'Unc-24'],
+    ['n498', 'Unc-43'],
+    ['hd43', 'Fbl-1'],
+    ['e1415', 'Dpy-20'],
+  ])('%s is a recessive %s: shown when homozygous, not when heterozygous', (allele, phenotype) => {
+    const homo = new Strain({
+      allelePairs: [alleles.get(allele)?.toHomo() as never],
+    });
+    const het = new Strain({
+      allelePairs: [alleles.get(allele)?.toTopHet() as never],
+    });
+    expect(nonWildNames(homo, [])).toContain(phenotype);
+    expect(nonWildNames(het, [])).not.toContain(phenotype);
+  });
+
+  test('hd43 is female sterile and e1415 (unlike e1282) is not temperature sensitive', () => {
+    expect(phenotypeOf('Fbl-1', '0').femaleSterile).toBe(true);
+    const only = (allele: string): Strain =>
+      new Strain({ allelePairs: [alleles.get(allele)?.toHomo() as never] });
+    expect(nonWildNames(only('e1415'), [])).toContain('Dpy-20');
+    expect(nonWildNames(only('e1282'), [])).not.toContain('Dpy-20');
+    expect(nonWildNames(only('e1282'), ['25C'])).toContain('Dpy-20');
   });
 });
 

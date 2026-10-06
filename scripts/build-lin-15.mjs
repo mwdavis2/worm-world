@@ -53,6 +53,11 @@ const MARKER_ALLELES = [
   ['e1282', 'dpy-20', '25C'], // already in the database without a phenotype
   ['ox819', 'unc-119'],
   ['md299', 'unc-18'],
+  // already in the database without a phenotype (BT14 uses e138 and hd43)
+  ['e138', 'unc-24'],
+  ['n498', 'unc-43'],
+  ['hd43', 'fbl-1', '', { femaleSterile: 1 }],
+  ['e1415', 'dpy-20'], // not temperature sensitive, unlike e1282
 ];
 // Alleles that already exist (data/balancer_alleles, data/translocations or the
 // live database): only their genotype label and map position are needed here.
@@ -165,14 +170,14 @@ const variations = NEW_RESCUES.map(([name, chromosome]) => ({
   isLocationReference: 'false',
   percentLoss: '',
 }));
-const phenotype = (name, wild, lethal) => ({
+const phenotype = (name, wild, lethal, flags = {}) => ({
   name,
   wild,
   short_name: name,
   description: '',
   male_mating: '',
   lethal,
-  female_sterile: '',
+  female_sterile: flags.femaleSterile ?? '',
   arrested: '',
   maturation_days: '',
 });
@@ -258,11 +263,11 @@ info.set('oxIs12', { label: 'oxIs12', chr: 'X', gen: OXIS12_CM });
 // oxIs644 is on IV at 0 cM (its variation row already exists in the database)
 info.set('oxIs644', { label: 'oxIs644', chr: 'IV', gen: 0 });
 info.set('oxIs363', { label: 'oxIs363', chr: 'IV', gen: POSITIONS.oxIs363[2] });
-MARKER_ALLELES.forEach(([allele, geneName, condition]) => {
+MARKER_ALLELES.forEach(([allele, geneName, condition, flags = {}]) => {
   const gene = geneNamed(geneName);
   const phenotypeName = capitalize(gene.desc);
   alleles.push({ name: allele, contents: '', sysGeneName: gene.sys, variationName: '' });
-  phenotypes.push(phenotype(phenotypeName, 0, 0), phenotype(phenotypeName, 1, ''));
+  phenotypes.push(phenotype(phenotypeName, 0, 0, flags), phenotype(phenotypeName, 1, ''));
   alleleExprs.push({ alleleName: allele, expressingPhenotypeName: phenotypeName, expressingPhenotypeWild: 0, dominance: LOF_DOMINANCE });
   exprRelations.push({
     allele_name: allele,
