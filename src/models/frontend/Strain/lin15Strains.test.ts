@@ -337,7 +337,6 @@ describe('the second batch of strains', () => {
 describe('the alleles that had no phenotype', () => {
   test.each([
     ['e138', 'Unc-24'],
-    ['n498', 'Unc-43'],
     ['hd43', 'Fbl-1'],
     ['e1415', 'Dpy-20'],
   ])('%s is a recessive %s: shown when homozygous, not when heterozygous', (allele, phenotype) => {
@@ -349,6 +348,18 @@ describe('the alleles that had no phenotype', () => {
     });
     expect(nonWildNames(homo, [])).toContain(phenotype);
     expect(nonWildNames(het, [])).not.toContain(phenotype);
+  });
+
+  test('n498 is semidominant: weak at one copy, strong at two', () => {
+    const copies = (strain: Strain): string[] => nonWildNames(strain, []);
+    const one = new Strain({
+      allelePairs: [alleles.get('n498')?.toTopHet() as never],
+    });
+    const two = new Strain({
+      allelePairs: [alleles.get('n498')?.toHomo() as never],
+    });
+    expect(copies(one)).toEqual(['Unc-43_paralyzed(weak)']);
+    expect(copies(two)).toEqual(['Unc-43_paralyzed']);
   });
 
   test('hd43 is female sterile and e1415 (unlike e1282) is not temperature sensitive', () => {

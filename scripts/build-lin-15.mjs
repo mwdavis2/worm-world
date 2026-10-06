@@ -55,7 +55,6 @@ const MARKER_ALLELES = [
   ['md299', 'unc-18'],
   // already in the database without a phenotype (BT14 uses e138 and hd43)
   ['e138', 'unc-24'],
-  ['n498', 'unc-43'],
   ['hd43', 'fbl-1', '', { femaleSterile: 1 }],
   ['e1415', 'dpy-20'], // not temperature sensitive, unlike e1282
 ];
@@ -316,26 +315,30 @@ EXISTING.forEach(([allele, geneName]) => {
   info.set('nT1vul', { label: 'egl-18(nT1vul)', chr: 'IV', gen: egl18.gen });
 }
 
-// dpy-4(e1166sd) is semidominant: one copy gives Dpy-4(weak), two give
-// Dpy-4(strong); the wild-type Dpy-4 rescues both.
-{
-  const gene = geneNamed('dpy-4');
-  alleles.push({ name: 'e1166sd', contents: '', sysGeneName: gene.sys, variationName: '' });
-  phenotypes.push(phenotype('Dpy-4(weak)', 0, 0), phenotype('Dpy-4(strong)', 0, 0), phenotype('Dpy-4', 1, ''));
-  [['Dpy-4(weak)', 1], ['Dpy-4(strong)', 0]].forEach(([name, dominance]) => {
-    alleleExprs.push({ alleleName: 'e1166sd', expressingPhenotypeName: name, expressingPhenotypeWild: 0, dominance });
+// Semidominant alleles: one copy gives the weak phenotype, two give the strong
+// one, and the wild-type phenotype rescues both.
+// [allele, gene, weak phenotype, strong phenotype, wild phenotype]
+[
+  ['e1166sd', 'dpy-4', 'Dpy-4(weak)', 'Dpy-4(strong)', 'Dpy-4'],
+  ['n498', 'unc-43', 'Unc-43_paralyzed(weak)', 'Unc-43_paralyzed', 'Unc-43'],
+].forEach(([allele, geneName, weak, strong, wild]) => {
+  const gene = geneNamed(geneName);
+  alleles.push({ name: allele, contents: '', sysGeneName: gene.sys, variationName: '' });
+  phenotypes.push(phenotype(weak, 0, 0), phenotype(strong, 0, 0), phenotype(wild, 1, ''));
+  [[weak, 1], [strong, 0]].forEach(([name, dominance]) => {
+    alleleExprs.push({ alleleName: allele, expressingPhenotypeName: name, expressingPhenotypeWild: 0, dominance });
     exprRelations.push({
-      allele_name: 'e1166sd',
+      allele_name: allele,
       expressing_phenotype_name: name,
       expressing_phenotype_wild: 0,
-      altering_phenotype_name: 'Dpy-4',
+      altering_phenotype_name: wild,
       altering_phenotype_wild: 1,
       altering_condition: '',
       is_suppressing: 1,
     });
   });
-  info.set('e1166sd', { label: 'dpy-4(e1166sd)', chr: gene.chr, gen: gene.gen });
-}
+  info.set(allele, { label: `${gene.desc}(${allele})`, chr: gene.chr, gen: gene.gen });
+});
 
 // Neomycin resistance in the drug-resistance pattern (see
 // build-inversion-balancers.mjs): resistant needs the drug; without the wild
