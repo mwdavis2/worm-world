@@ -1,1 +1,114 @@
 allele_name,expressing_phenotype_name,expressing_phenotype_wild,altering_phenotype_name,altering_phenotype_wild,altering_condition,is_suppressing
+e1107,Tra-3,0,tra-3,1,,1
+e12,Dpy-9,0,dpy-9,1,,1
+eT1(III),"translocation aneuploid (het)",0,"eT1(V) 1 copy",1,,1
+eT1(III),"translocation aneuploid (hom)",0,"eT1(V) 2 copies",1,,1
+eT1(V),"translocation aneuploid (het)",0,"eT1(III) 1 copy",1,,1
+eT1(V),"translocation aneuploid (hom)",0,"eT1(III) 2 copies",1,,1
+nT1(IV),"translocation aneuploid (het)",0,"nT1(V) 1 copy",1,,1
+nT1(IV),"translocation aneuploid (hom)",0,"nT1(V) 2 copies",1,,1
+nT1(V),"translocation aneuploid (het)",0,"nT1(IV) 1 copy",1,,1
+nT1(V),"translocation aneuploid (hom)",0,"nT1(IV) 2 copies",1,,1
+hT2(I),"translocation aneuploid (het)",0,"hT2(III) 1 copy",1,,1
+hT2(I),"translocation aneuploid (hom)",0,"hT2(III) 2 copies",1,,1
+hT2(III),"translocation aneuploid (het)",0,"hT2(I) 1 copy",1,,1
+hT2(III),"translocation aneuploid (hom)",0,"hT2(I) 2 copies",1,,1
+szT1(I),"translocation aneuploid (het)",0,"szT1(X) 1 copy",1,,1
+szT1(I),"translocation aneuploid (hom)",0,"szT1(X) 2 copies",1,,1
+szT1(X),"translocation aneuploid (het)",0,"szT1(I) 1 copy",1,,1
+szT1(X),"translocation aneuploid (hom)",0,"szT1(I) 2 copies",1,,1
+hT3(I),"translocation aneuploid (het)",0,"hT3(X) 1 copy",1,,1
+hT3(I),"translocation aneuploid (hom)",0,"hT3(X) 2 copies",1,,1
+hT3(X),"translocation aneuploid (het)",0,"hT3(I) 1 copy",1,,1
+hT3(X),"translocation aneuploid (hom)",0,"hT3(I) 2 copies",1,,1
+mT1(II),"translocation aneuploid (het)",0,"mT1(III) 1 copy",1,,1
+mT1(II),"translocation aneuploid (hom)",0,"mT1(III) 2 copies",1,,1
+mT1(III),"translocation aneuploid (het)",0,"mT1(II) 1 copy",1,,1
+mT1(III),"translocation aneuploid (hom)",0,"mT1(II) 2 copies",1,,1
+e873,Unc-36,0,Unc-36,1,,1
+nT1vul,Egl-18(Vul),0,Egl-18,1,,1
+e937,Bli-4,0,Bli-4,1,,1
+e1467,Him-5,0,Him-5,1,,1
+h662,Dpy-18,0,Dpy-18,1,,1
+e678,Lon-2,0,Lon-2,1,,1
+e403,Unc-29,0,Unc-29,1,,1
+tmC5mec,Mec-3,0,Mec-3,1,,1
+tmC5unc,Unc-31,0,Unc-31,1,,1
+tmC9mec,Mec-3,0,Mec-3,1,,1
+tmC9unc,Unc-31,0,Unc-31,1,,1
+tmC3lon,Lon-3,0,Lon-3,1,,1
+tmC3unc,Unc-23,0,Unc-23,1,,1
+tmC12lon,Lon-3,0,Lon-3,1,,1
+tmC12unc,Unc-23,0,Unc-23,1,,1
+tmC30lon,Lon-2,0,Lon-2,1,,1
+tmC30mec,Mec-10,0,Mec-10,1,,1
+tmC24mec,Mec-10,0,Mec-10,1,,1
+tmIs1189,Dpy-2,0,Dpy-2,1,,1
+tmIs1208,Dpy-2,0,Dpy-2,1,,1
+tmIs1210,Unc-60,0,Unc-60,1,,1
+tmIs1237,Unc-60,0,Unc-60,1,,1
+tmIs1200,Dpy-5,0,Dpy-5,1,,1
+tmIs1236,Dpy-5,0,Dpy-5,1,,1
+tmIs1241,Unc-5,0,Unc-5,1,,1
+tmIs1239,Unc-75,0,Unc-75,1,,1
+tmIs1259,Unc-49,0,Unc-49,1,,1
+tm9715,Dpy-5,0,Dpy-5,1,,1
+tm9719,Unc-9,0,Unc-9,1,,1
+tm9718,Unc-9,0,Unc-9,1,,1
+e911,Unc-76,0,Unc-76,1,,1
+sc148,Rol-9,0,Rol-9,1,,1
+e428,Dpy-21,0,Dpy-21,1,,1
+e444,Unc-52,0,Unc-52,1,,1
+s2170,Dpy-1,0,Dpy-1,1,,1
+e120,Unc-4,0,Unc-4,1,,1
+e1259,Dpy-19,0,Dpy-19,1,,1
+q339,Glp-1,0,Glp-1,1,,1
+umnIs32,NeomycinR,1,NeomycinR,0,,1
+umnIs32,NeomycinR,1,,,Neomycin,0
+umnIs32,NeomycinR,0,,,Neomycin,0
+umnIs41,NeomycinR,1,NeomycinR,0,,1
+umnIs41,NeomycinR,1,,,Neomycin,0
+umnIs41,NeomycinR,0,,,Neomycin,0
+hT1(I),"translocation aneuploid (het)",0,"hT1(V) 1 copy",1,,1
+hT1(I),"translocation aneuploid (hom)",0,"hT1(V) 2 copies",1,,1
+hT1(V),"translocation aneuploid (het)",0,"hT1(I) 1 copy",1,,1
+hT1(V),"translocation aneuploid (hom)",0,"hT1(I) 2 copies",1,,1
+n765ts,Lin-15,0,Lin-15,1,,1
+n765ts,Lin-15,0,,,25C,0
+ed3,Unc-119,0,Unc-119,1,,1
+ed4,Unc-119,0,Unc-119,1,,1
+ed9,Unc-119,0,Unc-119,1,,1
+e61,Dpy-5,0,Dpy-5,1,,1
+e187,Rol-6,0,Rol-6,1,,1
+e1820,Lon-1,0,Lon-1,1,,1
+sc16,Bli-6,0,Bli-6,1,,1
+e224,Dpy-11,0,Dpy-11,1,,1
+e936,Unc-73,0,Unc-73,1,,1
+e491,Sma-3,0,Sma-3,1,,1
+e1562,Vab-7,0,Vab-7,1,,1
+e928,Unc-31,0,Unc-31,1,,1
+e1368ts,Daf-2,0,Daf-2,1,,1
+e1368ts,Daf-2,0,,,25C,0
+e128,Dpy-10,0,Dpy-10,1,,1
+oxIs644,Peft-3::citrine::NLS,0,Flp,1,,0
+e53,Unc-5,0,Unc-5,1,,1
+ox171,Unc-5,0,Unc-5,1,,1
+e66,Unc-22,0,Unc-22,1,,1
+e1282,Dpy-20,0,Dpy-20,1,,1
+e1282,Dpy-20,0,,,25C,0
+ox819,Unc-119,0,Unc-119,1,,1
+md299,Unc-18,0,Unc-18,1,,1
+e1166sd,Dpy-4(weak),0,Dpy-4,1,,1
+e1166sd,Dpy-4(strong),0,Dpy-4,1,,1
+ox496,Dpy-13,0,Dpy-13,1,,1
+ox496,NeomycinR,1,NeomycinR,0,,1
+ox496,NeomycinR,1,,,Neomycin,0
+ox496,NeomycinR,0,,,Neomycin,0
+oxEx2254,NeomycinR,1,NeomycinR,0,,1
+oxEx2254,NeomycinR,1,,,Neomycin,0
+oxEx2254,NeomycinR,0,,,Neomycin,0
+e138,Unc-24,0,Unc-24,1,,1
+hd43,Fbl-1,0,Fbl-1,1,,1
+e1415,Dpy-20,0,Dpy-20,1,,1
+n498,Unc-43_paralyzed(weak),0,Unc-43,1,,1
+n498,Unc-43_paralyzed,0,Unc-43,1,,1

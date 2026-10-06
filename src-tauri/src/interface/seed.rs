@@ -5,7 +5,8 @@
 //! button reads), embedded in the binary. Every importable table has a file
 //! there: a header-only file ships nothing for that table, so shipping more
 //! demo data is just replacing a CSV - no code change. The files are produced
-//! from a curated database by `scripts/export-seed.sh`.
+//! from a database by `scripts/export-seed.sh` (a curated scratch database) or
+//! `node scripts/export-seed.mjs <copy of worm.sqlite>` (a working database).
 
 use super::{bulk::Bulk, DbError, InnerDbState};
 use csv::Reader;
@@ -36,13 +37,20 @@ pub fn remove_database_files(database_file: &Path) {
 }
 
 impl InnerDbState {
-    /// Loads the shipped default data. Meant for a freshly migrated, empty
-    /// database. Parents are inserted before the tables that reference them.
-    pub async fn seed_defaults(&self) -> Result<(), DbError> {
+    /// Loads just the genes and conditions: the reference tables everything
+    /// else points at. Tests that import their own rows into the other tables
+    /// start from this, so the shipped rows do not get in the way.
+    pub async fn seed_reference_data(&self) -> Result<(), DbError> {
         self.insert_genes(bulk_from(include_bytes!("../../seed/genes.csv")))
             .await?;
         self.insert_conditions(bulk_from(include_bytes!("../../seed/conditions.csv")))
-            .await?;
+            .await
+    }
+
+    /// Loads the shipped default data. Meant for a freshly migrated, empty
+    /// database. Parents are inserted before the tables that reference them.
+    pub async fn seed_defaults(&self) -> Result<(), DbError> {
+        self.seed_reference_data().await?;
         self.insert_phenotypes(bulk_from(include_bytes!("../../seed/phenotypes.csv")))
             .await?;
         self.insert_variations(bulk_from(include_bytes!("../../seed/variations.csv")))
@@ -236,7 +244,7 @@ mod tests {
         let state = InnerDbState {
             conn_pool: pool.clone(),
         };
-        state.seed_defaults().await.unwrap();
+        state.seed_reference_data().await.unwrap();
         state
             .insert_genes(bulk_from(include_bytes!(
                 "../../../data/wormbase/placeholder_genes.csv"
@@ -341,7 +349,7 @@ mod tests {
         let state = InnerDbState {
             conn_pool: pool.clone(),
         };
-        state.seed_defaults().await.unwrap();
+        state.seed_reference_data().await.unwrap();
         state
             .insert_genes(bulk_from(include_bytes!(
                 "../../../data/wormbase/placeholder_genes.csv"
@@ -475,7 +483,7 @@ mod tests {
         let state = InnerDbState {
             conn_pool: pool.clone(),
         };
-        state.seed_defaults().await.unwrap();
+        state.seed_reference_data().await.unwrap();
         // rol-9 is one of the uncloned genes
         state
             .insert_genes(bulk_from(include_bytes!(
@@ -615,7 +623,7 @@ mod tests {
         let state = InnerDbState {
             conn_pool: pool.clone(),
         };
-        state.seed_defaults().await.unwrap();
+        state.seed_reference_data().await.unwrap();
         state
             .insert_genes(bulk_from(include_bytes!(
                 "../../../data/wormbase/placeholder_genes.csv"
@@ -851,6 +859,86 @@ mod tests {
             let orphans: i64 = sqlx::query_scalar(query).fetch_one(&pool).await.unwrap();
             assert_eq!(orphans, 0, "{what}");
         }
+    }
+
+    // The shipped demo data (phenotypes, variations, alleles, strains, ...) must
+    // seed into a blank database with every reference resolved.
+    #[sqlx::test]
+    async fn the_seeded_demo_data_has_no_dangling_references(pool: Pool<Sqlite>) {
+        let state = InnerDbState {
+            conn_pool: pool.clone(),
+        };
+        state.seed_defaults().await.unwrap();
+
+        for (what, query) in [
+            (
+                "alleles whose gene does not exist",
+                "SELECT COUNT(*) FROM alleles WHERE systematic_gene_name IS NOT NULL AND systematic_gene_name NOT IN (SELECT systematic_name FROM genes)",
+            ),
+            (
+                "alleles whose variation does not exist",
+                "SELECT COUNT(*) FROM alleles WHERE variation_name IS NOT NULL AND variation_name NOT IN (SELECT allele_name FROM variations)",
+            ),
+            (
+                "alleles with neither a gene nor a variation",
+                "SELECT COUNT(*) FROM alleles WHERE systematic_gene_name IS NULL AND variation_name IS NULL",
+            ),
+            (
+                "allele_exprs whose allele does not exist",
+                "SELECT COUNT(*) FROM allele_exprs WHERE allele_name NOT IN (SELECT name FROM alleles)",
+            ),
+            (
+                "allele_exprs whose phenotype does not exist",
+                "SELECT COUNT(*) FROM allele_exprs e WHERE NOT EXISTS (SELECT 1 FROM phenotypes p WHERE p.name = e.expressing_phenotype_name AND p.wild = e.expressing_phenotype_wild)",
+            ),
+            (
+                "expr_relations whose expression does not exist",
+                "SELECT COUNT(*) FROM expr_relations r WHERE NOT EXISTS (SELECT 1 FROM allele_exprs e WHERE e.allele_name = r.allele_name AND e.expressing_phenotype_name = r.expressing_phenotype_name AND e.expressing_phenotype_wild = r.expressing_phenotype_wild)",
+            ),
+            (
+                "expr_relations whose altering phenotype does not exist",
+                "SELECT COUNT(*) FROM expr_relations r WHERE r.altering_phenotype_name IS NOT NULL AND NOT EXISTS (SELECT 1 FROM phenotypes p WHERE p.name = r.altering_phenotype_name AND p.wild = r.altering_phenotype_wild)",
+            ),
+            (
+                "expr_relations whose condition does not exist",
+                "SELECT COUNT(*) FROM expr_relations WHERE altering_condition IS NOT NULL AND altering_condition NOT IN (SELECT name FROM conditions)",
+            ),
+            (
+                "strain_alleles whose allele does not exist",
+                "SELECT COUNT(*) FROM strain_alleles WHERE allele_name NOT IN (SELECT name FROM alleles)",
+            ),
+            (
+                "strain_alleles whose strain does not exist",
+                "SELECT COUNT(*) FROM strain_alleles WHERE strain_name NOT IN (SELECT name FROM strains)",
+            ),
+            (
+                "strains with no alleles (other than wild type N2)",
+                "SELECT COUNT(*) FROM strains WHERE name != 'N2' AND name NOT IN (SELECT strain_name FROM strain_alleles)",
+            ),
+        ] {
+            let orphans: i64 = sqlx::query_scalar(query).fetch_one(&pool).await.unwrap();
+            assert_eq!(orphans, 0, "{what}");
+        }
+
+        // a few rows that must have shipped
+        for (what, query) in [
+            ("the mIn1 strain", "SELECT COUNT(*) FROM strains WHERE name = 'mIn1[dpy-10(e128) mIs14]'"),
+            ("the nT1 translocation", "SELECT COUNT(*) FROM variations WHERE allele_name = 'nT1(IV)'"),
+            ("a temperature-sensitive allele needing 25C", "SELECT COUNT(*) FROM expr_relations WHERE allele_name = 'n765ts' AND altering_condition = '25C'"),
+            ("dpy-10(e128)'s Dpy-10 phenotype", "SELECT COUNT(*) FROM allele_exprs WHERE allele_name = 'e128' AND expressing_phenotype_name = 'Dpy-10'"),
+        ] {
+            let found: i64 = sqlx::query_scalar(query).fetch_one(&pool).await.unwrap();
+            assert!(found > 0, "{what} should ship");
+        }
+        let relations: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM expr_relations")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let distinct: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM (SELECT 1 FROM expr_relations GROUP BY allele_name, expressing_phenotype_name, expressing_phenotype_wild, COALESCE(altering_phenotype_name, ''), COALESCE(altering_phenotype_wild, -1), COALESCE(altering_condition, ''), is_suppressing)")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(relations, distinct, "the shipped relations hold duplicates");
     }
 
     #[sqlx::test]

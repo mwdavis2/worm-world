@@ -153,7 +153,7 @@ mod tests {
         let state = InnerDbState {
             conn_pool: pool.clone(),
         };
-        state.seed_defaults().await.unwrap();
+        state.seed_reference_data().await.unwrap();
         state
     }
 

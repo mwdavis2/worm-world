@@ -1,1 +1,155 @@
 name,wild,short_name,description,male_mating,lethal,female_sterile,arrested,maturation_days
+Flp,1,Flp(+),,3,0,0,0,3.0
+YFP(pharynx),0,YFP(pharynx),,3,0,0,0,3.0
+mCherry,0,mCherry,,3,0,0,0,3.0
+mScarlet(coel),0,mScarlet(coel),,3,0,0,0,3.0
+TetracyclineR,1,TetracyclineR,,,1,,,
+TetracyclineR,0,TetracyclineR,,,0,,,
+HygromycinR,1,HygromycinR,,,1,,,
+HygromycinR,0,HygromycinR,,,0,,,
+NeomycinR,1,NeomycinR,,,1,,,
+NeomycinR,0,NeomycinR,,,0,,,
+Tra-3,0,Tra-3,,,0,,,
+tra-3,1,tra-3,,,,,,
+Dpy-9,0,Dpy-9,,,0,,,
+dpy-9,1,dpy-9,,,,,,
+"translocation aneuploid (het)",0,aneuploid,,0,1,0,0,
+"translocation aneuploid (hom)",0,aneuploid,,0,1,0,0,
+"eT1(III) 1 copy",1,eT1(III),,3,0,0,0,3.0
+"eT1(III) 2 copies",1,eT1(III),,3,0,0,0,3.0
+"eT1(V) 1 copy",1,eT1(V),,3,0,0,0,3.0
+"eT1(V) 2 copies",1,eT1(V),,3,0,0,0,3.0
+"nT1(IV) 1 copy",1,nT1(IV),,3,0,0,0,3.0
+"nT1(IV) 2 copies",1,nT1(IV),,3,0,0,0,3.0
+"nT1(V) 1 copy",1,nT1(V),,3,0,0,0,3.0
+"nT1(V) 2 copies",1,nT1(V),,3,0,0,0,3.0
+"hT2(I) 1 copy",1,hT2(I),,3,0,0,0,3.0
+"hT2(I) 2 copies",1,hT2(I),,3,0,0,0,3.0
+"hT2(III) 1 copy",1,hT2(III),,3,0,0,0,3.0
+"hT2(III) 2 copies",1,hT2(III),,3,0,0,0,3.0
+"szT1(I) 1 copy",1,szT1(I),,3,0,0,0,3.0
+"szT1(I) 2 copies",1,szT1(I),,3,0,0,0,3.0
+"szT1(X) 1 copy",1,szT1(X),,3,0,0,0,3.0
+"szT1(X) 2 copies",1,szT1(X),,3,0,0,0,3.0
+"hT3(I) 1 copy",1,hT3(I),,3,0,0,0,3.0
+"hT3(I) 2 copies",1,hT3(I),,3,0,0,0,3.0
+"hT3(X) 1 copy",1,hT3(X),,3,0,0,0,3.0
+"hT3(X) 2 copies",1,hT3(X),,3,0,0,0,3.0
+"mT1(II) 1 copy",1,mT1(II),,3,0,0,0,3.0
+"mT1(II) 2 copies",1,mT1(II),,3,0,0,0,3.0
+"mT1(III) 1 copy",1,mT1(III),,3,0,0,0,3.0
+"mT1(III) 2 copies",1,mT1(III),,3,0,0,0,3.0
+"hT1(V) 1 copy",1,hT1(V),,3,0,0,0,3.0
+"hT1(V) 2 copies",1,hT1(V),,3,0,0,0,3.0
+"hT3 homozygous lethal",0,lethal,,0,1,0,0,
+Unc-36,0,Unc-36,,,0,,,
+Unc-36,1,Unc-36,,,,,,
+Egl-18(Vul),0,Egl-18(Vul),,,0,,,
+Egl-18,1,Egl-18,,,,,,
+Bli-4,0,Bli-4,,,0,,,
+Bli-4,1,Bli-4,,,,,,
+Him-5,0,Him-5,,,0,,,
+Him-5,1,Him-5,,,,,,
+Dpy-18,0,Dpy-18,,,0,,,
+Dpy-18,1,Dpy-18,,,,,,
+Lon-2,0,Lon-2,,,0,,,
+Lon-2,1,Lon-2,,,,,,
+Unc-29,0,Unc-29,,,0,,,
+Unc-29,1,Unc-29,,,,,,
+Let,0,Let,,0,1,,,
+Pharyngeal+embryo+intestine::GFP,0,Pharyngeal+embryo+intestine::GFP,,,0,,,
+Unc(n754dm),0,Unc(n754dm),,,0,,,
+Mec-3,0,Mec-3,,,0,,,
+Mec-3,1,Mec-3,,,,,,
+Unc-31,0,Unc-31,,,0,,,
+Unc-31,1,Unc-31,,,,,,
+Lon-3,0,Lon-3,,,0,,,
+Lon-3,1,Lon-3,,,,,,
+Unc-23,0,Unc-23,,,0,,,
+Unc-23,1,Unc-23,,,,,,
+Mec-10,0,Mec-10,,,0,,,
+Mec-10,1,Mec-10,,,,,,
+Pmyo-2::Venus,0,Pmyo-2::Venus,,,0,,,
+Pmyo-2::mCherry,0,Pmyo-2::mCherry,,,0,,,
+Dpy-2,0,Dpy-2,,,0,,,
+Dpy-2,1,Dpy-2,,,,,,
+Unc-60,0,Unc-60,,,0,,,
+Unc-60,1,Unc-60,,,,,,
+Dpy-5,0,Dpy-5,,,0,,,
+Dpy-5,1,Dpy-5,,,,,,
+Unc-5,0,Unc-5,,,0,,,
+Unc-5,1,Unc-5,,,,,,
+Unc-75,0,Unc-75,,,0,,,
+Unc-75,1,Unc-75,,,,,,
+Pmyo-2::GFP,0,Pmyo-2::GFP,,,0,,,
+Unc-49,0,Unc-49,,,0,,,
+Unc-49,1,Unc-49,,,,,,
+Unc-9,0,Unc-9,,,0,,,
+Unc-9,1,Unc-9,,,,,,
+Pvha-6::gfp,0,Pvha-6::gfp,,,0,,,
+Unc-76,0,Unc-76,,,0,,,
+Unc-76,1,Unc-76,,,,,,
+Rol-9,0,Rol-9,,,0,,,
+Rol-9,1,Rol-9,,,,,,
+Dpy-21,0,Dpy-21,,,0,,,
+Dpy-21,1,Dpy-21,,,,,,
+Unc-52,0,Unc-52,,,0,,,
+Unc-52,1,Unc-52,,,,,,
+Dpy-1,0,Dpy-1,,,0,,,
+Dpy-1,1,Dpy-1,,,,,,
+Unc-4,0,Unc-4,,,0,,,
+Unc-4,1,Unc-4,,,,,,
+Dpy-19,0,Dpy-19,,,0,,,
+Dpy-19,1,Dpy-19,,,,,,
+Glp-1,0,Glp-1,,,0,1,,
+Glp-1,1,Glp-1,,,,,,
+Pmyo-2::mKate2,0,Pmyo-2::mKate2,,,0,,,
+"hT1(I) 1 copy",1,hT1(I),,3,0,0,0,3.0
+"hT1(I) 2 copies",1,hT1(I),,3,0,0,0,3.0
+Lin-15,0,Lin-15,,,0,,,
+Lin-15,1,Lin-15,,,,,,
+Unc-119,0,Unc-119,,,0,,,
+Unc-119,1,Unc-119,,,,,,
+Punc-47::GFP,0,Punc-47::GFP,,,0,,,
+Punc-122::GFP,0,Punc-122::GFP,,,0,,,
+Rol-6,0,Rol-6,,,0,,,
+Rol-6,1,Rol-6,,,,,,
+Lon-1,0,Lon-1,,,0,,,
+Lon-1,1,Lon-1,,,,,,
+Bli-6,0,Bli-6,,,0,,,
+Bli-6,1,Bli-6,,,,,,
+Dpy-11,0,Dpy-11,,,0,,,
+Dpy-11,1,Dpy-11,,,,,,
+Unc-73,0,Unc-73,,,0,,,
+Unc-73,1,Unc-73,,,,,,
+Sma-3,0,Sma-3,,,0,,,
+Sma-3,1,Sma-3,,,,,,
+Vab-7,0,Vab-7,,,0,,,
+Vab-7,1,Vab-7,,,,,,
+Daf-2,0,Daf-2,,,0,,,
+Daf-2,1,Daf-2,,,,,,
+Dpy-10,0,Dpy-10,,,0,,,
+Dpy-10,1,Dpy-10,,,,,,
+Peft-3::citrine::NLS,0,Peft-3::citrine::NLS,,,0,,,
+Peft-3::GFP::H2B,0,Peft-3::GFP::H2B,,,0,,,
+Pmyo-2::nls-CyOFP,0,Pmyo-2::nls-CyOFP,,,0,,,
+Unc-22,0,Unc-22,,,0,,,
+Unc-22,1,Unc-22,,,,,,
+Dpy-20,0,Dpy-20,,,0,,,
+Dpy-20,1,Dpy-20,,,,,,
+Unc-18,0,Unc-18,,,0,,,
+Unc-18,1,Unc-18,,,,,,
+Dpy-4(weak),0,Dpy-4(weak),,,0,,,
+Dpy-4(strong),0,Dpy-4(strong),,,0,,,
+Dpy-4,1,Dpy-4,,,,,,
+Dpy-13,0,Dpy-13,,,0,,,
+Dpy-13,1,Dpy-13,,,,,,
+Pced-5::GFP,0,Pced-5::GFP,,,0,,,
+Unc-24,0,Unc-24,,,0,,,
+Unc-24,1,Unc-24,,,,,,
+Unc-43,1,Unc-43,,,,,,
+Fbl-1,0,Fbl-1,,,0,1,,
+Fbl-1,1,Fbl-1,,,,,,
+Unc-43_paralyzed(weak),0,Unc-43_paralyzed(weak),,,0,,,
+Unc-43_paralyzed,0,Unc-43_paralyzed,,,0,,,
+Pmyo-2::GFP(weak),0,Pmyo-2::GFP(weak),,,0,,,

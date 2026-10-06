@@ -1,1 +1,241 @@
 strainName,alleleName,isOnTop,isOnBot
+CB128,e128,true,true
+BT14,e138,true,true
+BT14,e1282,true,false
+BT14,hd43,true,false
+eT1,eT1(III),true,true
+eT1,eT1(V),true,true
+eT1,e873,true,true
+eT1[let-?(s1799)],eT1(III),true,false
+eT1[let-?(s1799)],eT1(V),true,false
+eT1[let-?(s1799)],e873,true,false
+eT1[let-?(s1799)],s1799,true,false
+eT1[let-500(s2165)],eT1(III),true,false
+eT1[let-500(s2165)],eT1(V),true,false
+eT1[let-500(s2165)],e873,true,false
+eT1[let-500(s2165)],s2165,true,false
+eT1[let-?(n886)],eT1(III),true,false
+eT1[let-?(n886)],eT1(V),true,false
+eT1[let-?(n886)],e873,true,false
+eT1[let-?(n886)],n886,true,false
+eT1[him-5(e1467)],eT1(III),true,true
+eT1[him-5(e1467)],eT1(V),true,true
+eT1[him-5(e1467)],e873,true,true
+eT1[him-5(e1467)],e1467,true,true
+nT1,nT1(IV),true,true
+nT1,nT1(V),true,true
+nT1,nT1vul,true,true
+nT1[qIs51],nT1(IV),true,true
+nT1[qIs51],nT1(V),true,true
+nT1[qIs51],nT1vul,true,true
+nT1[qIs51],qIs51,true,true
+"nT1[unc-?(n754dm) let-?]",nT1(IV),true,false
+"nT1[unc-?(n754dm) let-?]",nT1(V),true,false
+"nT1[unc-?(n754dm) let-?]",nT1vul,true,false
+"nT1[unc-?(n754dm) let-?]",n754dm,true,false
+"nT1[unc-?(n754dm) let-?]",nT1_1,true,false
+"nT1[unc-?(n754dm) let-? qIs50]",nT1(IV),true,false
+"nT1[unc-?(n754dm) let-? qIs50]",nT1(V),true,false
+"nT1[unc-?(n754dm) let-? qIs50]",nT1vul,true,false
+"nT1[unc-?(n754dm) let-? qIs50]",n754dm,true,false
+"nT1[unc-?(n754dm) let-? qIs50]",nT1_2,true,false
+"nT1[unc-?(n754dm) let-? qIs50]",qIs50,true,false
+"nT1[unc-?(n754dm) let-?(m435)]",nT1(IV),true,false
+"nT1[unc-?(n754dm) let-?(m435)]",nT1(V),true,false
+"nT1[unc-?(n754dm) let-?(m435)]",nT1vul,true,false
+"nT1[unc-?(n754dm) let-?(m435)]",n754dm,true,false
+"nT1[unc-?(n754dm) let-?(m435)]",m435,true,false
+nT1[let-?(m435)],nT1(IV),true,false
+nT1[let-?(m435)],nT1(V),true,false
+nT1[let-?(m435)],nT1vul,true,false
+nT1[let-?(m435)],m435,true,false
+hT2,hT2(I),true,true
+hT2,hT2(III),true,true
+hT2,e937,true,true
+"hT2[bli-4(e937) let-?(q782) qIs48]",hT2(I),true,false
+"hT2[bli-4(e937) let-?(q782) qIs48]",hT2(III),true,false
+"hT2[bli-4(e937) let-?(q782) qIs48]",e937,true,false
+"hT2[bli-4(e937) let-?(q782) qIs48]",q782,true,false
+"hT2[bli-4(e937) let-?(q782) qIs48]",qIs48,true,false
+"hT2[bli-4(e937) let-?(h661)]",hT2(I),true,false
+"hT2[bli-4(e937) let-?(h661)]",hT2(III),true,false
+"hT2[bli-4(e937) let-?(h661)]",e937,true,false
+"hT2[bli-4(e937) let-?(h661)]",h661,true,false
+hT2[dpy-18(h662)],hT2(I),true,true
+hT2[dpy-18(h662)],hT2(III),true,true
+hT2[dpy-18(h662)],e937,true,true
+hT2[dpy-18(h662)],h662,true,true
+szT1,szT1(I),true,true
+szT1,szT1(X),true,true
+szT1[lon-2(e678)],szT1(I),true,true
+szT1[lon-2(e678)],szT1(X),true,true
+szT1[lon-2(e678)],e678,true,true
+"szT1[lon-2(e678) unc-29(e403)]",szT1(I),true,true
+"szT1[lon-2(e678) unc-29(e403)]",szT1(X),true,true
+"szT1[lon-2(e678) unc-29(e403)]",e678,true,true
+"szT1[lon-2(e678) unc-29(e403)]",e403,true,true
+mT1,mT1(II),true,true
+mT1,mT1(III),true,true
+mT1[dpy-10(e128)],mT1(II),true,true
+mT1[dpy-10(e128)],mT1(III),true,true
+mT1[dpy-10(e128)],e128,true,true
+hT3,hT3(I),true,false
+hT3,hT3(X),true,false
+FX30134,tmC3,true,true
+FX30134,tmC3lon,true,true
+FX30134,tmC3unc,true,true
+FX30134,tmIs1228,true,true
+FX30135,tmC3,true,true
+FX30135,tmC3lon,true,true
+FX30135,tmC3unc,true,true
+FX30135,tmIs1230,true,true
+FX30140,tmC5,true,true
+FX30140,tmC5mec,true,true
+FX30140,tmC5unc,true,true
+FX30140,tmIs1220,true,true
+FX19668,tmC6,true,true
+FX19668,tmIs1189,true,true
+FX30138,tmC6,true,true
+FX30138,tmIs1208,true,true
+FX30234,tmC9,true,true
+FX30234,tmC9mec,true,true
+FX30234,tmC9unc,true,true
+FX30234,tmIs1221,true,true
+FX30152,tmC12,true,true
+FX30152,tmC12lon,true,true
+FX30152,tmC12unc,true,true
+FX30152,tmIs1194,true,true
+FX30153,tmC12,true,true
+FX30153,tmC12lon,true,true
+FX30153,tmC12unc,true,true
+FX30153,tmIs1197,true,true
+FX30233,tmC16,true,true
+FX30233,tmIs1210,true,true
+FX30161,tmC16,true,true
+FX30161,tmIs1237,true,true
+FX30167,tmC18,true,true
+FX30167,tmIs1200,true,true
+FX30168,tmC18,true,true
+FX30168,tmIs1236,true,true
+FX30177,tmC20,true,true
+FX30177,tmIs1219,true,true
+FX30179,tmC20,true,true
+FX30179,tmIs1219,true,true
+FX30179,tm9715,true,true
+FX30240,tmC24,true,true
+FX30240,tmC24mec,true,true
+FX30240,tmIs1240,true,true
+FX30123,tmC24,true,true
+FX30123,tmC24mec,true,true
+FX30123,tmIs1233,true,true
+FX30194,tmC24,true,true
+FX30194,tmC24mec,true,true
+FX30194,tmIs1240,true,true
+FX30194,tm9719,true,true
+FX30252,tmC24,true,true
+FX30252,tmC24mec,true,true
+FX30252,tmIs1240,true,true
+FX30252,tm9719,true,true
+FX30252,tmEx4950,true,false
+FX30186,tmC24,true,true
+FX30186,tmC24mec,true,true
+FX30186,tmIs1233,true,true
+FX30186,tm9718,true,true
+FX30253,tmC24,true,true
+FX30253,tmC24mec,true,true
+FX30253,tmIs1233,true,true
+FX30253,tm9718,true,true
+FX30253,tmEx4950,true,false
+FX30203,tmC25,true,true
+FX30203,tmIs1241,true,true
+FX30208,tmC27,true,true
+FX30208,tmIs1239,true,true
+FX30259,tmC29,true,true
+FX30259,tmIs1259,true,true
+FX30259,tm750,true,true
+FX30218,tmC30,true,true
+FX30218,tmC30lon,true,true
+FX30218,tmC30mec,true,true
+FX30218,tmIs1247,true,true
+FX30236,tmC30,true,true
+FX30236,tmC30lon,true,true
+FX30236,tmC30mec,true,true
+FX30236,tmIs1243,true,true
+BC4586,sC4(s2172),true,false
+BC4586,e428,true,false
+BC4586,e911,false,true
+BC4586,sc148,false,true
+CGC43,mnC1,true,false
+CGC43,e128,true,false
+CGC43,e444,true,false
+CGC43,umnIs32,true,false
+CGC43,e120,false,true
+CGC51,sC1(s2023),true,true
+CGC51,s2170,true,true
+CGC51,umnIs41,true,true
+BG99,qC1,true,false
+BG99,e1259,true,false
+BG99,q339,true,false
+BG99,q267,false,true
+hT1,hT1(I),true,true
+hT1,hT1(V),true,true
+EG1306,oxIs12,true,true
+EG1306,n765ts,true,true
+EG1000,e61,true,true
+EG1000,e187,true,true
+EG1000,e1820,true,true
+EG1020,sc16,true,true
+EG1020,e224,true,true
+EG1020,e678,true,true
+154,e936,true,true
+154,e491,true,true
+154,sc16,true,true
+155,e936,true,true
+155,e224,true,true
+155,e678,true,true
+DA438,e937,true,true
+DA438,e187,true,true
+DA438,e1368ts,true,true
+DA438,e1562,true,true
+DA438,e928,true,true
+DA438,e224,true,true
+DA438,e678,true,true
+EG5071,ed3,true,true
+EG5071,oxIs363,true,true
+EG9934,oxIs644,true,true
+EG9934,n765ts,true,true
+NK785,ed4,true,true
+NK785,qyEx127,true,false
+EG3123,ed9,true,true
+CB3988,e1107,true,false
+CB3988,nT1(IV),false,true
+CB3988,nT1vul,false,true
+CB3988,nT1(V),false,true
+CB2223,e53,true,true
+CB2223,e1282,true,true
+EG10401,ox171,true,true
+EG10401,e1166sd,true,true
+EG10402,e12,true,true
+EG10402,ox171,true,true
+EG10403,ox496,true,true
+EG10403,ox171,true,true
+EG10404,e66,true,true
+EG10404,e1166sd,true,true
+EG10405,e12,true,true
+EG10405,e66,true,true
+EG10406,ox496,true,true
+EG10406,e66,true,true
+EG10105,ed3,true,true
+EG10105,oxIs644,true,true
+EG10105,oxEx2254,true,false
+EG10114,ox1059,true,true
+EG9965,oxSi1168,true,true
+EG9965,ox819,true,true
+EG9965,oxTi1127,true,true
+EG7841,oxTi302,true,true
+EG7841,ed3,true,true
+EG7764,oxTi75,true,true
+EG7764,md299,true,true
+"mIn1[dpy-10(e128) mIs14]",e128,true,true
+"mIn1[dpy-10(e128) mIs14]",mIn1,true,true
+"mIn1[dpy-10(e128) mIs14]",mIs14,true,true
