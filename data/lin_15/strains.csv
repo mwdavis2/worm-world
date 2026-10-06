@@ -1,0 +1,7 @@
+name,genotype,description
+EG1306,oxIs12 lin-15(n765ts) X.,oxIs12 lin-15(n765ts) homozygous.
+EG1000,dpy-5(e61) I; rol-6(e187) II; lon-1(e1820) III.,dpy-5(e61) rol-6(e187) lon-1(e1820) homozygous.
+EG1020,bli-6(sc16) IV; dpy-11(e224) V; lon-2(e678) X.,bli-6(sc16) dpy-11(e224) lon-2(e678) homozygous.
+154,unc-73(e936) I; sma-3(e491) III; bli-6(sc16) IV.,unc-73(e936) sma-3(e491) bli-6(sc16) homozygous.
+155,unc-73(e936) I; dpy-11(e224) V; lon-2(e678) X.,unc-73(e936) dpy-11(e224) lon-2(e678) homozygous.
+DA438,bli-4(e937) I; rol-6(e187) II; daf-2(e1368ts) vab-7(e1562) III; unc-31(e928) IV; dpy-11(e224) V; lon-2(e678) X.,bli-4(e937) rol-6(e187) daf-2(e1368ts) vab-7(e1562) unc-31(e928) dpy-11(e224) lon-2(e678) homozygous.
