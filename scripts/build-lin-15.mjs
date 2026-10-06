@@ -6,7 +6,7 @@
 // Writes data/lin_15/{variations,phenotypes,alleles,allele_exprs,expr_relations}.csv
 // (import in that order). lin-15 (ZK678.1&ZK662.4) is the shipped combined row
 // for lin-15A and lin-15B together:
-// - lin-15(n765) is a temperature-sensitive loss of function: a recessive
+// - lin-15(n765ts) is a temperature-sensitive loss of function: a recessive
 //   class-5 `Lin-15` phenotype rescued by the wild type, expressed only at 25C.
 // - the integrated transgenes oxIs12 and oxIs644 rescue lin-15: each expresses
 //   the wild-type `Lin-15` phenotype (`Lin-15` only, not `Lin-15A` and
@@ -28,7 +28,7 @@ const DOMINANT_DOMINANCE = 2; // stored form of '1or2'
 
 // [allele, gene, phenotype, the condition it needs ('' for none)]
 const MUTANTS = [
-  ['n765', GENE, PHENOTYPE, '25C'],
+  ['n765ts', GENE, PHENOTYPE, '25C'],
   ['ed3', UNC119_GENE, 'Unc-119', ''],
   ['ed4', UNC119_GENE, 'Unc-119', ''],
   ['ed9', UNC119_GENE, 'Unc-119', ''],
