@@ -72,7 +72,10 @@ strains and their own alleles, in the same files:
 - **Gene alleles** are recessive class-5 with capitalized phenotypes rescued by
   the wild type (`Unc-76`, `Rol-9`, `Dpy-21`, `Unc-52`, `Dpy-1`, `Unc-4`,
   `Dpy-19`); `laf-1(q267)` is `Let`; `glp-1(q339)` is `Glp-1` with the
-  female-sterile flag. `dpy-10(e128)` is the existing allele `e128`.
+  female-sterile flag. `dpy-10(e128)` is the existing allele `e128`; its allele row is not
+  generated, but it gets a recessive class-5 `Dpy-10` phenotype (with the
+  rescued-by-WT rows) in the `allele_exprs`, `phenotypes` and `expr_relations`
+  files.
 - **`umnIs32` and `umnIs41`** are integrated transgenes (Pmyo-2::GFP and
   Pmyo-2::mKate2) with neomycin resistance, written as the New Allele dialog
   writes a drug-resistance marker. They sit just past the middle of their

@@ -90,76 +90,74 @@ const phenotypeOf = (name: string, wild: string): Phenotype => {
 
 const exprRows = dir('allele_exprs.csv');
 const relationRows = dir('expr_relations.csv');
-const alleles = new Map<string, Allele>(
-  dir('alleles.csv').map((row) => {
-    const expressions = exprRows
-      .filter((expr) => expr.alleleName === row.name)
-      .map(
-        (expr) =>
-          new AlleleExpression({
-            alleleName: row.name,
-            expressingPhenotype: phenotypeOf(
-              expr.expressingPhenotypeName,
-              expr.expressingPhenotypeWild
+const makeAllele = (row: Row): [string, Allele] => {
+  const expressions = exprRows
+    .filter((expr) => expr.alleleName === row.name)
+    .map(
+      (expr) =>
+        new AlleleExpression({
+          alleleName: row.name,
+          expressingPhenotype: phenotypeOf(
+            expr.expressingPhenotypeName,
+            expr.expressingPhenotypeWild
+          ),
+          requiredPhenotypes: [],
+          requiredConditions: relationRows
+            .filter(
+              (rel) =>
+                rel.allele_name === row.name &&
+                rel.expressing_phenotype_name ===
+                  expr.expressingPhenotypeName &&
+                rel.expressing_phenotype_wild ===
+                  expr.expressingPhenotypeWild &&
+                rel.altering_condition !== '' &&
+                rel.is_suppressing === '0'
+            )
+            .map((rel) => new Condition({ name: rel.altering_condition })),
+          suppressingPhenotypes: relationRows
+            .filter(
+              (rel) =>
+                rel.allele_name === row.name &&
+                rel.expressing_phenotype_name ===
+                  expr.expressingPhenotypeName &&
+                rel.expressing_phenotype_wild ===
+                  expr.expressingPhenotypeWild &&
+                rel.altering_phenotype_name !== '' &&
+                rel.is_suppressing === '1'
+            )
+            .map((rel) =>
+              phenotypeOf(
+                rel.altering_phenotype_name,
+                rel.altering_phenotype_wild
+              )
             ),
-            requiredPhenotypes: [],
-            requiredConditions: relationRows
-              .filter(
-                (rel) =>
-                  rel.allele_name === row.name &&
-                  rel.expressing_phenotype_name ===
-                    expr.expressingPhenotypeName &&
-                  rel.expressing_phenotype_wild ===
-                    expr.expressingPhenotypeWild &&
-                  rel.altering_condition !== '' &&
-                  rel.is_suppressing === '0'
-              )
-              .map((rel) => new Condition({ name: rel.altering_condition })),
-            suppressingPhenotypes: relationRows
-              .filter(
-                (rel) =>
-                  rel.allele_name === row.name &&
-                  rel.expressing_phenotype_name ===
-                    expr.expressingPhenotypeName &&
-                  rel.expressing_phenotype_wild ===
-                    expr.expressingPhenotypeWild &&
-                  rel.altering_phenotype_name !== '' &&
-                  rel.is_suppressing === '1'
-              )
-              .map((rel) =>
-                phenotypeOf(
-                  rel.altering_phenotype_name,
-                  rel.altering_phenotype_wild
-                )
-              ),
-            suppressingConditions: [],
-            dominance: dominanceToZygosity(Number(expr.dominance)),
-          })
-      );
-    return [
-      row.name,
-      new Allele({
-        name: row.name,
-        gene: row.sysGeneName === '' ? undefined : genes.get(row.sysGeneName),
-        variation:
-          row.variationName === ''
-            ? undefined
-            : variations.get(row.variationName),
-        alleleExpressions: expressions,
-      }),
-    ];
-  })
-);
+          suppressingConditions: [],
+          dominance: dominanceToZygosity(Number(expr.dominance)),
+        })
+    );
+  return [
+    row.name,
+    new Allele({
+      name: row.name,
+      gene: row.sysGeneName === '' ? undefined : genes.get(row.sysGeneName),
+      variation:
+        row.variationName === ''
+          ? undefined
+          : variations.get(row.variationName),
+      alleleExpressions: expressions,
+    }),
+  ];
+};
+const alleles = new Map<string, Allele>(dir('alleles.csv').map(makeAllele));
 
-// dpy-10(e128) is an existing allele, not generated with the others.
-alleles.set(
-  'e128',
-  new Allele({
-    name: 'e128',
-    gene: genes.get('T14B4.7'),
-    alleleExpressions: [],
-  })
-);
+// dpy-10(e128) is an existing allele; only its phenotype rows are generated.
+const [, e128] = makeAllele({
+  name: 'e128',
+  contents: '',
+  sysGeneName: 'T14B4.7',
+  variationName: '',
+});
+alleles.set('e128', e128);
 
 const strainRows = dir('strains.csv');
 const strainAlleleRows = dir('strain_alleles.csv');

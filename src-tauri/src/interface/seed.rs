@@ -501,6 +501,13 @@ mod tests {
             )))
             .await
             .unwrap();
+        // dpy-10(e128) already exists in the database; the strains use it
+        state
+            .insert_alleles(bulk_from(
+                b"name,contents,sysGeneName,variationName\ne128,,T14B4.7,\n".as_slice(),
+            ))
+            .await
+            .unwrap();
         state
             .insert_allele_exprs(bulk_from(include_bytes!(
                 "../../../data/inversion_balancers/allele_exprs.csv"
@@ -517,13 +524,6 @@ mod tests {
             .insert_strains(bulk_from(include_bytes!(
                 "../../../data/inversion_balancers/strains.csv"
             )))
-            .await
-            .unwrap();
-        // dpy-10(e128) already exists in the database; the strains use it
-        state
-            .insert_alleles(bulk_from(
-                b"name,contents,sysGeneName,variationName\ne128,,T14B4.7,\n".as_slice(),
-            ))
             .await
             .unwrap();
         state

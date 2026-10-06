@@ -132,7 +132,8 @@ const TRANSGENES = [
   ['umnIs32', 'II', 'mnC1', 'Pmyo-2::GFP'],
   ['umnIs41', 'III', 'sC1', 'Pmyo-2::mKate2'],
 ];
-// dpy-10(e128) is the existing allele e128 (not generated here)
+// dpy-10(e128) is the existing allele e128 (its allele row is not generated,
+// only its recessive Dpy-10 phenotype rows)
 const EXISTING = { e128: 'dpy-10' };
 // [strain, alleles on the balancer's homolog, alleles on the other homolog,
 // homozygous]. A homozygous strain has everything on both homologs.
@@ -372,9 +373,12 @@ CLASSICAL_ALLELES.forEach(([allele, geneName, kind]) => {
     addExpr(allele, 'Let', 0, LOF_DOMINANCE);
   }
 });
+// The existing alleles (not added to alleles.csv) get their phenotype rows
+// here: e128 is a recessive class-5 Dpy-10 rescued by the wild type.
 Object.entries(EXISTING).forEach(([allele, geneName]) => {
   const gene = geneNamed(geneName);
   info.set(allele, { label: `${gene.desc}(${allele})`, chr: gene.chr, gen: gene.gen });
+  addLossOfFunction(allele, gene);
 });
 
 // Resistance to a drug, as the New Allele dialog's Basic tab writes it (and as
