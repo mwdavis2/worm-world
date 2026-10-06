@@ -254,4 +254,23 @@ mod tests {
             .await
             .is_err());
     }
+
+    // The real mIn1 folder (data/mIn1) imports on top of the shipped genes.
+    #[sqlx::test]
+    async fn the_min1_folder_imports_on_the_shipped_genes(pool: Pool<Sqlite>) {
+        let state = state(&pool).await;
+        let folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/mIn1");
+        let report = state.import_folder(&folder).await.unwrap();
+
+        assert_eq!(report.len(), 7);
+        assert!(report.iter().all(|r| r.read == r.inserted && r.read > 0));
+        let genotype: String =
+            sqlx::query_scalar("SELECT genotype FROM strains WHERE name = 'mIn1[dpy-10(e128) mIs14]'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(genotype, "dpy-10(e128) mIn1 mIs14 II.");
+        let again = state.import_folder(&folder).await.unwrap();
+        assert!(again.iter().all(|r| r.inserted == 0));
+    }
 }

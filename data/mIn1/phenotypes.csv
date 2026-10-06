@@ -1,0 +1,5 @@
+name,wild,short_name,description,male_mating,lethal,female_sterile,arrested,maturation_days
+Dpy-10,0,Dpy-10,,,0,,,
+Dpy-10,1,Dpy-10,,,,,,
+Pmyo-2::GFP(weak),0,Pmyo-2::GFP(weak),,,0,,,
+Pmyo-2::GFP,0,Pmyo-2::GFP,,,0,,,

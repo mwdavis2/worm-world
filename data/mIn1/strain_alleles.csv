@@ -1,0 +1,4 @@
+strainName,alleleName,isOnTop,isOnBot
+mIn1[dpy-10(e128) mIs14],e128,true,true
+mIn1[dpy-10(e128) mIs14],mIn1,true,true
+mIn1[dpy-10(e128) mIs14],mIs14,true,true

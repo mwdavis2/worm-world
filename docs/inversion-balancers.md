@@ -80,3 +80,21 @@ strains and their own alleles, in the same files:
   Pmyo-2::mKate2) with neomycin resistance, written as the New Allele dialog
   writes a drug-resistance marker. They sit just past the middle of their
   balancer's range, whose own position is the middle.
+
+## mIn1[dpy-10(e128) mIs14] (a folder to import)
+
+`data/mIn1/` is a self-contained set of table files for the classical `mIn1`
+balancer of chromosome II (Edgley and Riddle 2001) and the
+`mIn1[dpy-10(e128) mIs14]` strain. Load it with the data tables'
+**Import folder** button; it needs only the shipped genes. Rebuild it with
+`node scripts/build-min1.mjs`.
+
+- `mIn1` is a single range, II:3,553,628 to 12,704,681 (the breakpoints
+  sequenced by Maroilley 2021; the CGC describes it as lin-31 to rol-1), at the
+  range's midpoint.
+- `dpy-10(e128)` is a recessive `Dpy-10`, rescued by the wild type.
+- `mIs14` is an integrated pharyngeal GFP and is semidominant: one copy gives
+  `Pmyo-2::GFP(weak)` and two copies give `Pmyo-2::GFP`. Its position inside the
+  inversion is not published, so it sits just right of the midpoint.
+- the strain is homozygous (mIn1 homozygotes are viable).
+

@@ -1,0 +1,3 @@
+alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd,isLocationReference,percentLoss
+mIn1,II,8129155,0.7,3553628,12704681,false,
+mIs14,II,8130155,0.71,,,false,

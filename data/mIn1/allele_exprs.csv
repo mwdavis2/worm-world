@@ -1,0 +1,4 @@
+alleleName,expressingPhenotypeName,expressingPhenotypeWild,dominance
+e128,Dpy-10,0,4
+mIs14,Pmyo-2::GFP(weak),0,1
+mIs14,Pmyo-2::GFP,0,0
