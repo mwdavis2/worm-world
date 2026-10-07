@@ -1,5 +1,5 @@
-import { getPhenotype, insertDbPhenotype } from 'api/phenotype';
-import { getCondition, insertDbCondition } from 'api/condition';
+import { findPhenotype, insertDbPhenotype } from 'api/phenotype';
+import { findCondition, insertDbCondition } from 'api/condition';
 import { insertDbAlleleExpression } from 'api/alleleExpression';
 import { insertDbExpressionRelation } from 'api/expressionRelation';
 import { zygosityToDominance } from 'models/frontend/AlleleExpression/AlleleExpression';
@@ -67,9 +67,9 @@ const findOrCreatePhenotype = async (
   wild: boolean,
   lethal: boolean | null
 ): Promise<void> => {
-  // getPhenotype resolves to `undefined` (not a rejected promise) when no
-  // matching row exists - see getSingleRecordOrThrow (FilterGroup.ts).
-  const existing = await getPhenotype(name, wild);
+  // findPhenotype resolves to `undefined` (not a rejected promise) when no
+  // matching row exists.
+  const existing = await findPhenotype(name, wild);
   if (existing !== undefined) {
     if (lethal !== null && existing.lethal !== lethal) {
       throw new Error(
@@ -96,7 +96,7 @@ const findOrCreatePhenotype = async (
 };
 
 const findOrCreateCondition = async (name: string): Promise<void> => {
-  const existing = await getCondition(name);
+  const existing = await findCondition(name);
   if (existing !== undefined) return;
   await insertDbCondition({
     name,

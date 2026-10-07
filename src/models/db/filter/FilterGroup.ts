@@ -86,12 +86,16 @@ export const getSingleRecordOrThrow = <T>(
   response: T[],
   error = 'unable to get a single record from db'
 ): T => {
-  try {
-    return response[0];
-  } catch {
-    throw Error(error);
-  }
+  if (response.length === 0) throw Error(error);
+  return response[0];
 };
+
+/**
+ * The first record of a lookup, or `undefined` when there is none - for the
+ * callers that treat "not found" as an answer (find-or-create), not an error.
+ */
+export const getSingleRecordOrUndefined = <T>(response: T[]): T | undefined =>
+  response[0];
 
 export const getValuesForFilterType = (filter: Filter): FormValueType[] => {
   const filterName = getFilterType(filter);

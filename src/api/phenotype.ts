@@ -6,6 +6,7 @@ import {
   type FilterGroup,
   getDbBoolean,
   getSingleRecordOrThrow,
+  getSingleRecordOrUndefined,
 } from 'models/db/filter/FilterGroup';
 import { type Phenotype } from 'models/frontend/Phenotype/Phenotype';
 
@@ -29,18 +30,33 @@ export const getCountFilteredPhenotypes = async (
   });
 };
 
+const phenotypeFilter = (
+  name: string,
+  wild: boolean
+): FilterGroup<PhenotypeFieldName> => ({
+  filters: [[['Name', { Equal: name }]], [['Wild', getDbBoolean(wild)]]],
+  orderBy: [],
+});
+
+/** The (name, wild) phenotype; throws if there is none. */
 export const getPhenotype = async (
   name: string,
   wild: boolean
 ): Promise<db_Phenotype> => {
-  const filter: FilterGroup<PhenotypeFieldName> = {
-    filters: [[['Name', { Equal: name }]], [['Wild', getDbBoolean(wild)]]],
-    orderBy: [],
-  };
-  const res = await getFilteredPhenotypes(filter);
+  const res = await getFilteredPhenotypes(phenotypeFilter(name, wild));
   return getSingleRecordOrThrow(
     res,
     `Unable to find any phenotypes with the name: ${name} and wild: ${wild}`
+  );
+};
+
+/** The (name, wild) phenotype, or `undefined` if there is none. */
+export const findPhenotype = async (
+  name: string,
+  wild: boolean
+): Promise<db_Phenotype | undefined> => {
+  return getSingleRecordOrUndefined(
+    await getFilteredPhenotypes(phenotypeFilter(name, wild))
   );
 };
 

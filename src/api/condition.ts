@@ -6,6 +6,7 @@ import {
   type FilterGroup,
   getDbBoolean,
   getSingleRecordOrThrow,
+  getSingleRecordOrUndefined,
 } from 'models/db/filter/FilterGroup';
 import { type Condition } from 'models/frontend/Condition/Condition';
 
@@ -29,16 +30,26 @@ export const getCountFilteredConditions = async (
   });
 };
 
-export const getCondition = async (name: string): Promise<db_Condition> => {
-  const filter: FilterGroup<ConditionFieldName> = {
-    filters: [[['Name', { Equal: name }]]],
-    orderBy: [],
-  };
+const conditionFilter = (name: string): FilterGroup<ConditionFieldName> => ({
+  filters: [[['Name', { Equal: name }]]],
+  orderBy: [],
+});
 
-  const res = await getFilteredConditions(filter);
+/** The condition called `name`; throws if there is none. */
+export const getCondition = async (name: string): Promise<db_Condition> => {
+  const res = await getFilteredConditions(conditionFilter(name));
   return getSingleRecordOrThrow(
     res,
     `Unable to find a condition with the name: ${name}`
+  );
+};
+
+/** The condition called `name`, or `undefined` if there is none. */
+export const findCondition = async (
+  name: string
+): Promise<db_Condition | undefined> => {
+  return getSingleRecordOrUndefined(
+    await getFilteredConditions(conditionFilter(name))
   );
 };
 
