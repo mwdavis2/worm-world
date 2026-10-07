@@ -545,6 +545,11 @@ export class Strain {
       )
     );
     Strain.reduceStrains(strains);
+    // A genotype with exactly zero probability cannot occur (for instance a
+    // recombinant across a balancer's range, which suppresses crossing over
+    // there), so it is not an outcome of the cross.
+    const possible = strains.filter((strain) => (strain.probability ?? 0) > 0);
+    strains.splice(0, strains.length, ...possible);
     strains.sort((a, b) => (b?.probability ?? 0) - (a?.probability ?? 0));
     return strains;
   }

@@ -4,6 +4,7 @@
 // a balancer over wild type with its real alleles - must be viable with every
 // phenotype resolved.
 import { readFileSync } from 'fs';
+import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import { describe, expect, test } from 'vitest';
 import { Allele } from 'models/frontend/Allele/Allele';
 import {
@@ -208,4 +209,28 @@ describe('generated balancer strains', () => {
       );
     }
   );
+});
+
+describe('crossing a balancer', () => {
+  afterEach(() => {
+    clearMocks();
+  });
+
+  test('offers only the outcomes that can occur, not the zero-probability recombinants', async () => {
+    mockIPC((cmd) => {
+      if (cmd === 'get_filtered_strain_alleles') return [];
+    });
+    const male = buildStrain('nT1[unc-?(n754dm) let-?]');
+    const children = await male.crossWith(new Strain({ allelePairs: [] }));
+
+    // the balancer suppresses crossing over across its whole range, so the
+    // recombinant genotypes have probability exactly 0 and are not children
+    expect(children).toHaveLength(4);
+    children.forEach((child) => {
+      expect(child.probability).toBeCloseTo(0.25);
+    });
+    expect(
+      children.reduce((sum, child) => sum + (child.probability ?? 0), 0)
+    ).toBeCloseTo(1);
+  });
 });
