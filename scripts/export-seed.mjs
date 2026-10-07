@@ -19,6 +19,7 @@
 //   genes, synonyms and placeholder genes added from WormBase).
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { zipFolder } from './lib/zipFolder.mjs';
 
 const database = process.argv[2];
 if (!database) {
@@ -59,3 +60,8 @@ for (const [table, sql] of Object.entries(TABLES)) {
   writeFileSync(`src-tauri/seed/${table}.csv`, csv);
   console.log(`${table}.csv: ${csv.trim().split('\n').length - 1} rows`);
 }
+
+// The same files as one zip, so an install that already has a database (the
+// app only seeds a brand-new one) can load the full seed with "Import Data
+// Tables Zip File".
+zipFolder('src-tauri/seed', 'data/seed.zip');

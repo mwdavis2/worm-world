@@ -72,13 +72,16 @@ export const zipEntries = (entries) => {
   return Buffer.concat([...chunks, directory, end]);
 };
 
-/** Zips the .csv files of `folder` into `<folder>.zip`; returns the file names. */
-export const zipFolder = (folder) => {
+/**
+ * Zips the .csv files of `folder` into `zipPath` (default `<folder>.zip`);
+ * returns the file names.
+ */
+export const zipFolder = (folder, zipPath = `${folder}.zip`) => {
   const names = readdirSync(folder)
     .filter((name) => name.endsWith('.csv'))
     .sort();
   const entries = names.map((name) => ({ name, data: readFileSync(join(folder, name)) }));
-  writeFileSync(`${folder}.zip`, zipEntries(entries));
-  console.log(`${folder}.zip: ${names.length} files`);
+  writeFileSync(zipPath, zipEntries(entries));
+  console.log(`${zipPath}: ${names.length} files`);
   return names;
 };

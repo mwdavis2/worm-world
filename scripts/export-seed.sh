@@ -36,3 +36,7 @@ export_table allele_exprs "SELECT allele_name AS alleleName, expressing_phenotyp
 export_table expr_relations "SELECT allele_name, expressing_phenotype_name, expressing_phenotype_wild, altering_phenotype_name, altering_phenotype_wild, altering_condition, is_suppressing FROM expr_relations ORDER BY allele_name, expressing_phenotype_name, expressing_phenotype_wild"
 export_table strains "SELECT name, genotype, description FROM strains ORDER BY name"
 export_table strain_alleles "SELECT strain_name AS strainName, allele_name AS alleleName, CASE WHEN is_on_top THEN 'true' ELSE 'false' END AS isOnTop, CASE WHEN is_on_bot THEN 'true' ELSE 'false' END AS isOnBot FROM strain_alleles ORDER BY strain_name, allele_name"
+
+# The same files as one zip (data/seed.zip) for "Import Data Tables Zip File", so
+# an install that already has a database can load the full seed.
+node "$(cd "$(dirname "$0")/.." && pwd)/scripts/zip-seed.mjs" "$OUT"

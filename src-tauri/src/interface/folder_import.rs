@@ -630,4 +630,42 @@ mod tests {
         .unwrap();
         assert_eq!(genotype, "dpy-10(e128) mIn1 mIs14 II.");
     }
+
+    // The full-seed zip (data/seed.zip) loads into a database with nothing in it,
+    // and adds nothing to one that was already seeded - the case for an install
+    // that predates the first-run seeding.
+    #[sqlx::test]
+    async fn the_full_seed_zip_loads_into_a_bare_database(pool: Pool<Sqlite>) {
+        let state = InnerDbState {
+            conn_pool: pool.clone(),
+        };
+        let zip = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/seed.zip");
+
+        let report = state.import_archive(&zip, None).await.unwrap();
+        assert_eq!(report.len(), 9);
+        assert!(report.iter().all(|r| r.read == r.inserted && r.read > 0));
+        for table in ["genes", "phenotypes", "alleles", "strains", "strain_alleles"] {
+            let rows = report.iter().find(|r| r.table == table).unwrap().inserted;
+            assert_eq!(count(&pool, table).await, rows as i64);
+        }
+
+        // the same data as the first-run seed: loading it again changes nothing
+        let again = state.import_archive(&zip, None).await.unwrap();
+        assert!(again.iter().all(|r| r.inserted == 0));
+    }
+
+    #[sqlx::test]
+    async fn the_full_seed_zip_matches_what_a_new_install_gets(pool: Pool<Sqlite>) {
+        let state = InnerDbState {
+            conn_pool: pool.clone(),
+        };
+        state.seed_defaults().await.unwrap();
+        let zip = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/seed.zip");
+
+        let report = state.import_archive(&zip, None).await.unwrap();
+        assert!(
+            report.iter().all(|r| r.inserted == 0),
+            "data/seed.zip has rows the embedded seed does not (run scripts/zip-seed.mjs): {report:?}"
+        );
+    }
 }

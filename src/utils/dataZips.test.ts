@@ -6,13 +6,16 @@ import { existsSync, readdirSync, readFileSync } from 'fs';
 import { inflateRawSync } from 'zlib';
 import { describe, expect, test } from 'vitest';
 
-const SETS = [
-  'translocations',
-  'balancer_alleles',
-  'balancer_strains',
-  'inversion_balancers',
-  'lin_15',
-  'mIn1',
+// [zip, the folder it was made from]
+const SETS: Array<[string, string]> = [
+  ['data/translocations.zip', 'data/translocations'],
+  ['data/balancer_alleles.zip', 'data/balancer_alleles'],
+  ['data/balancer_strains.zip', 'data/balancer_strains'],
+  ['data/inversion_balancers.zip', 'data/inversion_balancers'],
+  ['data/lin_15.zip', 'data/lin_15'],
+  ['data/mIn1.zip', 'data/mIn1'],
+  // the full first-run data, for installs that already have a database
+  ['data/seed.zip', 'src-tauri/seed'],
 ];
 
 const readZip = (path: string): Map<string, Buffer> => {
@@ -47,19 +50,17 @@ const readZip = (path: string): Map<string, Buffer> => {
 };
 
 describe('data set zips', () => {
-  test.each(SETS)('data/%s.zip matches the data/%s folder', (set) => {
-    expect(existsSync(`data/${set}.zip`), `data/${set}.zip is missing`).toBe(
-      true
-    );
-    const files = readZip(`data/${set}.zip`);
-    const csvs = readdirSync(`data/${set}`)
+  test.each(SETS)('%s matches the %s folder', (zipPath, folder) => {
+    expect(existsSync(zipPath), `${zipPath} is missing`).toBe(true);
+    const files = readZip(zipPath);
+    const csvs = readdirSync(folder)
       .filter((name) => name.endsWith('.csv'))
       .sort();
     expect([...files.keys()].sort()).toEqual(csvs);
     csvs.forEach((name) => {
       expect(
-        files.get(name)?.equals(readFileSync(`data/${set}/${name}`)),
-        `${set}/${name} differs from the zip`
+        files.get(name)?.equals(readFileSync(`${folder}/${name}`)),
+        `${folder}/${name} differs from the zip`
       ).toBe(true);
     });
   });
