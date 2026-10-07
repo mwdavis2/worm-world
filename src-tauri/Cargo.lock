@@ -5431,7 +5431,7 @@ dependencies = [
 
 [[package]]
 name = "worm-world"
-version = "0.0.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "chrono",
