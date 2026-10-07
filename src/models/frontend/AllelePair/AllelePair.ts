@@ -118,10 +118,15 @@ export class AllelePair implements IAllelePair {
     return !this.isHomo() && (this.top.isWild() || this.bot.isWild());
   }
 
+  /**
+   * Combines two pairs of the same gene or variation that each carry one
+   * non-wild allele, on opposite homologs, into one compound-heterozygous pair
+   * (for instance ed3 on top and ed4 on the bottom).
+   */
   public merge(other: AllelePair): AllelePair {
-    if (!this.isWildHet() || other.isWildHet())
+    if (!this.isWildHet() || !other.isWildHet())
       throw new Error(
-        'Cannot merge allele pairs where a pair contains two non-wild alleles'
+        'Cannot merge allele pairs unless each has exactly one non-wild allele'
       );
     if (
       (this.top.isWild() && other.top.isWild()) ||

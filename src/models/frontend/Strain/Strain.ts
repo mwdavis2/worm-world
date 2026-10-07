@@ -21,6 +21,7 @@ import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { type Condition } from 'models/frontend/Condition/Condition';
 import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
 import { getStrain, insertStrain, updateStrain } from 'api/strain';
+import { getErrorMessage } from 'utils/getErrorMessage';
 import { mapLimit } from 'utils/mapLimit';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import {
@@ -62,7 +63,7 @@ interface IStrain {
  * records.
  */
 export interface SyncCache {
-  strains: Map<string, Promise<Strain>>;
+  strains: Map<string, Promise<Strain | undefined>>;
   alleles: Map<string, Promise<Allele>>;
 }
 export const newSyncCache = (): SyncCache => ({
@@ -260,10 +261,14 @@ export class Strain {
         (await getFilteredStrainAlleles(sAFilter)).map((sa) => sa.strainName)
       ),
     ];
-    const matchCandidates = await mapLimit(
+    const loaded = await mapLimit(
       strainNames,
       SYNC_CONCURRENCY,
       async (name) => await Strain.loadSavedStrain(name, cache)
+    );
+    // A saved strain that cannot be loaded cannot be the match either way
+    const matchCandidates = loaded.filter(
+      (strain): strain is Strain => strain !== undefined
     );
     for (const candidate of matchCandidates) {
       if (this.equals(candidate)) {
@@ -274,16 +279,28 @@ export class Strain {
     }
   }
 
-  /** The saved strain called `name`, loaded once per cache. */
+  /**
+   * The saved strain called `name`, loaded once per cache, or `undefined` if it
+   * cannot be loaded (a malformed saved strain, say). Naming a new strain after
+   * a saved one is only a convenience, so one bad saved strain must not stop
+   * a cross: it is skipped, with a warning.
+   */
   private static async loadSavedStrain(
     name: string,
     cache: SyncCache
-  ): Promise<Strain> {
+  ): Promise<Strain | undefined> {
     let loading = cache.strains.get(name);
     if (loading === undefined) {
-      loading = getStrain(name).then(
-        async (record) => await Strain.createFromRecord(record, cache)
-      );
+      loading = getStrain(name)
+        .then(async (record) => await Strain.createFromRecord(record, cache))
+        .catch((err) => {
+          console.warn(
+            `Skipping saved strain "${name}" while naming a cross: ${getErrorMessage(
+              err
+            )}`
+          );
+          return undefined;
+        });
       cache.strains.set(name, loading);
     }
     return await loading;
@@ -365,7 +382,8 @@ export class Strain {
       })
     );
 
-    // Merge co-located het pairs
+    // Pairs of one gene or variation (e.g. a compound heterozygote's two
+    // alleles, saved as two rows) are merged into a single pair
     const hetPairs: AllelePair[] = [];
     const hetMap = new Map<string, AllelePair[]>();
     allelePairs.forEach((allelePair) => {
@@ -387,7 +405,7 @@ export class Strain {
       name: record.name,
       description: record.description ?? undefined,
       genotype: record.genotype,
-      allelePairs: await Promise.all(allelePairs),
+      allelePairs: hetPairs,
     });
   }
 

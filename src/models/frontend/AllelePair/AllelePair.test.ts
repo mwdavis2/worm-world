@@ -10,7 +10,7 @@ import {
 } from 'models/frontend/Allele/Allele.mock';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { expect, test, describe } from 'vitest';
-import { WILD_ALLELE_NAME } from 'models/frontend/Allele/Allele';
+import { Allele, WILD_ALLELE_NAME } from 'models/frontend/Allele/Allele';
 
 describe('allele pair', () => {
   test('constructs homozygous pair', () => {
@@ -326,5 +326,28 @@ describe('allele pair', () => {
     const pairBack = AllelePair.fromJSON(str);
     expect(pairBack).toEqual(pair);
     expect(pairBack.toJSON).toBeDefined();
+  });
+});
+
+describe('merge', () => {
+  const ed4 = new Allele({ ...ed3, name: 'ed4' });
+
+  test('combines two single-allele pairs on opposite homologs', () => {
+    const merged = ed3.toTopHet().merge(ed4.toBotHet());
+    expect(merged.top.name).toBe('ed3');
+    expect(merged.bot.name).toBe('ed4');
+    const reversed = ed4.toBotHet().merge(ed3.toTopHet());
+    expect(reversed.top.name).toBe('ed3');
+    expect(reversed.bot.name).toBe('ed4');
+  });
+
+  test('refuses two alleles on the same homolog, and homozygous pairs', () => {
+    expect(() => ed3.toTopHet().merge(ed4.toTopHet())).toThrow(/same side/);
+    expect(() => ed3.toHomo().merge(ed4.toHomo())).toThrow(
+      /exactly one non-wild/
+    );
+    expect(() => ed3.toTopHet().merge(ed4.toHomo())).toThrow(
+      /exactly one non-wild/
+    );
   });
 });
