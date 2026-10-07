@@ -83,8 +83,7 @@ const FAMILIES = [
       { chr: 'I', range: [1, 7_631_470] },
       { chr: 'X', range: [2_314_605, 17_718_942] },
     ],
-    note: 'Sequenced breakpoints I:7,631,470 and X:2,314,605 (Maroilley 2021; the X inversion to 2,597,434 is ignored). The X junction is near dpy-3, the classical left edge. The paper does not corroborate that szT1 balances X from the right end (the sequenced strain may be a derivative), so the right end of the X range is kept from the classical description.',
-    verify: 'X half range: right end not corroborated by sequencing',
+    note: 'Sequenced breakpoints I:7,631,470 and X:2,314,605 (Maroilley 2021; the X inversion to 2,597,434 is ignored). The X junction is near dpy-3, the classical left edge. The right end of X is the settled classical extent (szT1 balances X from the right end to around dpy-3). The paper finds no heterozygosity there in its sequenced strain, CB3475, which it suggests may carry a derivative of szT1; that says nothing against the rearrangement itself.',
   },
   {
     name: 'hT3',

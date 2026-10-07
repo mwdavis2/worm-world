@@ -27,7 +27,7 @@ table. A heterozygous half suppresses crossovers inside its range.
 |  | V | 1-16,832,779 | 16,832,779 |  |
 | **hT2** | I | 1-13,187,133 | 13,187,133 | Sequenced breakpoints (PMC8662349): I:13,187,133 (right-most I breakpoint) and III:4,822,648 (left-most III breakpoint; the other, 4,989,701, is where III-right joins hT2(I)). They fall between the balanced/unbalanced marker pairs unc-101/unc-59 (I) and dpy-17/unc-93 (III). |
 |  | III | 4,822,648-13,783,801 | 4,822,648 |  |
-| **szT1** | I | 1-7,631,470 | 7,631,470 | Sequenced breakpoints I:7,631,470 and X:2,314,605 (Maroilley 2021; the X inversion to 2,597,434 is ignored). The X junction is near dpy-3, the classical left edge. The paper does not corroborate that szT1 balances X from the right end (the sequenced strain may be a derivative), so the right end of the X range is kept from the classical description. |
+| **szT1** | I | 1-7,631,470 | 7,631,470 | Sequenced breakpoints I:7,631,470 and X:2,314,605 (Maroilley 2021; the X inversion to 2,597,434 is ignored). The X junction is near dpy-3, the classical left edge. The right end of X is the settled classical extent (szT1 balances X from the right end to around dpy-3). The paper finds no heterozygosity there in its sequenced strain, CB3475, which it suggests may carry a derivative of szT1; that says nothing against the rearrangement itself. |
 |  | X | 2,314,605-17,718,942 | 2,314,605 |  |
 | **hT3** | I | 1-5,245,743 | 5,245,743 | Not sequenced (Maroilley 2021 could not resolve it). X: right end to between dpy-7 and unc-3 (smaller option taken). |
 |  | X | 14,773,538-17,718,942 | 14,773,538 |  |
@@ -99,5 +99,4 @@ aneuploid phenotypes and no positions).
 
 ## Needs confirming
 
-- szT1: X half range: right end not corroborated by sequencing
 - hT3: X half range (smaller option)
