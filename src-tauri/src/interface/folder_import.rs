@@ -296,7 +296,8 @@ mod tests {
     const VARIATIONS: &str = "alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd,isLocationReference,percentLoss\nfiX1,X,1000,1.5,,,false,\n";
     const PHENOTYPES: &str = "name,wild,short_name,description,male_mating,lethal,female_sterile,arrested,maturation_days\nFiPheno,0,FiPheno,,,0,,,\nFiPheno,1,FiPheno,,,,,,\n";
     const ALLELES: &str = "name,contents,sysGeneName,variationName\nfiX1,,,fiX1\n";
-    const ALLELE_EXPRS: &str = "alleleName,expressingPhenotypeName,expressingPhenotypeWild,dominance\nfiX1,FiPheno,0,4\n";
+    const ALLELE_EXPRS: &str =
+        "alleleName,expressingPhenotypeName,expressingPhenotypeWild,dominance\nfiX1,FiPheno,0,4\n";
     const EXPR_RELATIONS: &str = "allele_name,expressing_phenotype_name,expressing_phenotype_wild,altering_phenotype_name,altering_phenotype_wild,altering_condition,is_suppressing\nfiX1,FiPheno,0,FiPheno,1,,1\nfiX1,FiPheno,0,,,25C,0\n";
     const STRAINS: &str = "name,genotype,description\nFI1,fiX1 X.,test\n";
     const STRAIN_ALLELES: &str = "strainName,alleleName,isOnTop,isOnBot\nFI1,fiX1,true,true\n";
@@ -348,7 +349,10 @@ mod tests {
                 "strain_alleles"
             ]
         );
-        assert_eq!(report.iter().map(|r| r.read).collect::<Vec<_>>(), [1, 2, 1, 1, 2, 1, 1]);
+        assert_eq!(
+            report.iter().map(|r| r.read).collect::<Vec<_>>(),
+            [1, 2, 1, 1, 2, 1, 1]
+        );
         assert!(report.iter().all(|r| r.read == r.inserted));
         assert_eq!(count(&pool, "strain_alleles").await, 1);
     }
@@ -369,8 +373,7 @@ mod tests {
     async fn a_failure_rolls_back_every_table(pool: Pool<Sqlite>) {
         let state = state(&pool).await;
         // alleles.csv points at a gene that does not exist
-        let bad_alleles =
-            "name,contents,sysGeneName,variationName\nfiX1,,NO.SUCH.GENE,\n";
+        let bad_alleles = "name,contents,sysGeneName,variationName\nfiX1,,NO.SUCH.GENE,\n";
         let mut files = all_files();
         files.retain(|(file, _)| *file != "alleles.csv");
         files.push(("alleles.csv", bad_alleles));
@@ -398,7 +401,10 @@ mod tests {
     #[sqlx::test]
     async fn missing_files_are_skipped(pool: Pool<Sqlite>) {
         let state = state(&pool).await;
-        let folder = Folder::new("few", &[("variations.csv", VARIATIONS), ("notes.txt", "hi")]);
+        let folder = Folder::new(
+            "few",
+            &[("variations.csv", VARIATIONS), ("notes.txt", "hi")],
+        );
         let report = state.import_folder(&folder.0).await.unwrap();
         assert_eq!(report.len(), 1);
         assert_eq!(report[0].table, "variations");
@@ -423,11 +429,12 @@ mod tests {
 
         assert_eq!(report.len(), 7);
         assert!(report.iter().all(|r| r.read == r.inserted && r.read > 0));
-        let genotype: String =
-            sqlx::query_scalar("SELECT genotype FROM strains WHERE name = 'mIn1[dpy-10(e128) mIs14]'")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let genotype: String = sqlx::query_scalar(
+            "SELECT genotype FROM strains WHERE name = 'mIn1[dpy-10(e128) mIs14]'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         assert_eq!(genotype, "dpy-10(e128) mIn1 mIs14 II.");
         let again = state.import_folder(&folder).await.unwrap();
         assert!(again.iter().all(|r| r.inserted == 0));
@@ -515,10 +522,17 @@ mod tests {
         let zip = make_zip(
             &folder,
             "tables.zip",
-            &[("variations.csv", VARIATIONS), ("../variations.csv", VARIATIONS)],
+            &[
+                ("variations.csv", VARIATIONS),
+                ("../variations.csv", VARIATIONS),
+            ],
         );
 
-        let error = state.import_archive(&zip, None).await.unwrap_err().to_string();
+        let error = state
+            .import_archive(&zip, None)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(error.contains("unsafe path"), "{error}");
         assert_eq!(count(&pool, "variations").await, 0);
         assert!(!folder.0.parent().unwrap().join("variations.csv").exists());
@@ -530,7 +544,11 @@ mod tests {
         let folder = Folder::new("zip-empty", &[]);
         let zip = make_zip(&folder, "tables.zip", &[("readme.txt", "hello")]);
 
-        let error = state.import_archive(&zip, None).await.unwrap_err().to_string();
+        let error = state
+            .import_archive(&zip, None)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(error.contains("no table files"), "{error}");
     }
 
@@ -541,10 +559,17 @@ mod tests {
         let zip = make_zip(
             &folder,
             "tables.zip",
-            &[("variations.csv", VARIATIONS), ("tables/variations.csv", VARIATIONS)],
+            &[
+                ("variations.csv", VARIATIONS),
+                ("tables/variations.csv", VARIATIONS),
+            ],
         );
 
-        let error = state.import_archive(&zip, None).await.unwrap_err().to_string();
+        let error = state
+            .import_archive(&zip, None)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(error.contains("more than once"), "{error}");
     }
 
@@ -558,7 +583,10 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("not a readable zip"), "{error}");
-        assert!(state.import_archive(&folder.0.join("missing.zip"), None).await.is_err());
+        assert!(state
+            .import_archive(&folder.0.join("missing.zip"), None)
+            .await
+            .is_err());
     }
 
     #[sqlx::test]
@@ -584,7 +612,11 @@ mod tests {
         let entries: Vec<(&str, &str)> = names.iter().map(|n| (n.as_str(), "x")).collect();
         let zip = make_zip(&folder, "tables.zip", &entries);
 
-        let error = state.import_archive(&zip, None).await.unwrap_err().to_string();
+        let error = state
+            .import_archive(&zip, None)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(error.contains("too many entries"), "{error}");
     }
 
@@ -603,8 +635,10 @@ mod tests {
                 )
             })
             .collect();
-        let entries: Vec<(&str, &str)> =
-            contents.iter().map(|(f, c)| (f.as_str(), c.as_str())).collect();
+        let entries: Vec<(&str, &str)> = contents
+            .iter()
+            .map(|(f, c)| (f.as_str(), c.as_str()))
+            .collect();
         let folder = Folder::new("zip-min1", &[]);
         let zip = make_zip(&folder, "mIn1.zip", &entries);
 
@@ -644,7 +678,13 @@ mod tests {
         let report = state.import_archive(&zip, None).await.unwrap();
         assert_eq!(report.len(), 9);
         assert!(report.iter().all(|r| r.read == r.inserted && r.read > 0));
-        for table in ["genes", "phenotypes", "alleles", "strains", "strain_alleles"] {
+        for table in [
+            "genes",
+            "phenotypes",
+            "alleles",
+            "strains",
+            "strain_alleles",
+        ] {
             let rows = report.iter().find(|r| r.table == table).unwrap().inserted;
             assert_eq!(count(&pool, table).await, rows as i64);
         }
@@ -667,5 +707,65 @@ mod tests {
             report.iter().all(|r| r.inserted == 0),
             "data/seed.zip has rows the embedded seed does not (run scripts/zip-seed.mjs): {report:?}"
         );
+    }
+
+    // A strain whose alleles of one gene cannot coexist stops the whole import.
+    #[sqlx::test]
+    async fn a_zip_with_an_impossible_strain_imports_nothing(pool: Pool<Sqlite>) {
+        let state = state(&pool).await;
+        let folder = Folder::new("zip-impossible", &[]);
+        let zip = make_zip(
+            &folder,
+            "tables.zip",
+            &[
+                ("variations.csv", VARIATIONS),
+                (
+                    "alleles.csv",
+                    "name,contents,sysGeneName,variationName\nfiG1,,T14B4.7,\nfiG2,,T14B4.7,\n",
+                ),
+                ("strains.csv", "name,genotype,description\nFI2,x,test\n"),
+                // both alleles of dpy-10 on the top homolog: not a possible strain
+                (
+                    "strain_alleles.csv",
+                    "strainName,alleleName,isOnTop,isOnBot\nFI2,fiG1,true,false\nFI2,fiG2,true,false\n",
+                ),
+            ],
+        );
+
+        let error = state
+            .import_archive(&zip, None)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("FI2") && error.contains("compound heterozygote"),
+            "{error}"
+        );
+        assert_eq!(count(&pool, "variations").await, 0);
+        assert_eq!(count(&pool, "alleles").await, 0);
+        assert_eq!(count(&pool, "strains").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn a_zip_with_a_compound_heterozygote_strain_imports(pool: Pool<Sqlite>) {
+        let state = state(&pool).await;
+        let folder = Folder::new("zip-compound", &[]);
+        let zip = make_zip(
+            &folder,
+            "tables.zip",
+            &[
+                (
+                    "alleles.csv",
+                    "name,contents,sysGeneName,variationName\nfiG1,,T14B4.7,\nfiG2,,T14B4.7,\n",
+                ),
+                ("strains.csv", "name,genotype,description\nFI2,x,test\n"),
+                (
+                    "strain_alleles.csv",
+                    "strainName,alleleName,isOnTop,isOnBot\nFI2,fiG1,true,false\nFI2,fiG2,false,true\n",
+                ),
+            ],
+        );
+        state.import_archive(&zip, None).await.unwrap();
+        assert_eq!(count(&pool, "strain_alleles").await, 2);
     }
 }
