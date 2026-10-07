@@ -1,6 +1,7 @@
 import { BiDotsHorizontalRounded as MoreHorizIcon } from 'react-icons/bi';
 import { Link, useNavigate } from 'react-router-dom';
 import CrossDesign from 'models/frontend/CrossDesign/CrossDesign';
+import { fixNodeDeserialization } from 'models/frontend/CrossDesign/fixNodeDeserialization';
 import { Menu } from 'components/Menu/Menu';
 import { useEffect, useState } from 'react';
 import {
@@ -219,7 +220,11 @@ const exportCrossDesignWithData = async (
       ],
     });
     if (path === null) return;
-    const { strainNames, alleleNames } = crossDesign.getDataNames();
+    // The card's design is only half-revived from JSON (its strains' chromosome
+    // pairs are still plain objects), so read the names from a revived copy.
+    const revived = CrossDesign.fromJSON(crossDesign.toJSON());
+    fixNodeDeserialization(revived);
+    const { strainNames, alleleNames } = revived.getDataNames();
     const summary = await exportDesignBundle(
       path,
       crossDesign.toJSON(),
