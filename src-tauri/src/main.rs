@@ -14,7 +14,10 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 
 mod interface;
-use interface::{bulk::Bulk, folder_import::TableImport, DbError, InnerDbState};
+use interface::{
+    bulk::Bulk, design_bundle::DesignBundleSummary, folder_import::TableImport, DbError,
+    InnerDbState,
+};
 
 mod models;
 use models::{
@@ -79,6 +82,8 @@ async fn main() {
             insert_gene,
             insert_genes_from_file,
             import_data_tables_zip,
+            read_bundle_design,
+            export_design_bundle,
             delete_filtered_genes,
             // conditions
             get_conditions,
@@ -277,14 +282,41 @@ async fn insert_genes_from_file(
 }
 
 /// Imports every table file in a zip archive (genes.csv, alleles.csv, ...) in
-/// one transaction (see `interface::folder_import`).
+/// one transaction (see `interface::folder_import`). A cross design, if given,
+/// is added in the same transaction (the design of a design bundle).
 #[tauri::command]
 async fn import_data_tables_zip(
     state: tauri::State<'_, DbState>,
     path: String,
+    cross_design: Option<CrossDesign>,
 ) -> Result<Vec<TableImport>, DbError> {
     let state_guard = state.0.read().await;
-    state_guard.import_archive(Path::new(&path)).await
+    state_guard
+        .import_archive(Path::new(&path), cross_design.as_ref())
+        .await
+}
+
+/// The design inside a design bundle (`design.ww.json`), or `None` if the zip
+/// holds only data tables.
+#[tauri::command]
+async fn read_bundle_design(path: String) -> Result<Option<String>, DbError> {
+    InnerDbState::read_bundle_design(Path::new(&path))
+}
+
+/// Writes a cross design bundled with the data table rows it needs (see
+/// `interface::design_bundle`).
+#[tauri::command]
+async fn export_design_bundle(
+    state: tauri::State<'_, DbState>,
+    path: String,
+    design_json: String,
+    allele_names: Vec<String>,
+    strain_names: Vec<String>,
+) -> Result<DesignBundleSummary, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard
+        .export_design_bundle(Path::new(&path), &design_json, &allele_names, &strain_names)
+        .await
 }
 
 #[tauri::command]

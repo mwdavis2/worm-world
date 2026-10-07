@@ -64,6 +64,20 @@ impl InnerDbState {
     }
 
     pub async fn insert_cross_design(&self, cross_design: &CrossDesign) -> Result<(), DbError> {
+        let mut conn = self
+            .conn_pool
+            .acquire()
+            .await
+            .map_err(|e| DbError::Insert(e.to_string()))?;
+        Self::insert_cross_design_on(&mut conn, cross_design).await
+    }
+
+    /// Inserts on the given connection, so a caller can do it inside a
+    /// transaction together with other writes.
+    pub(crate) async fn insert_cross_design_on(
+        conn: &mut sqlx::SqliteConnection,
+        cross_design: &CrossDesign,
+    ) -> Result<(), DbError> {
         let editable = cross_design.editable as i32;
         match sqlx::query!(
             "INSERT INTO cross_designs (id, name, last_edited, data, editable)
@@ -75,7 +89,7 @@ impl InnerDbState {
             cross_design.data,
             editable,
         )
-        .execute(&self.conn_pool)
+        .execute(&mut *conn)
         .await
         {
             Ok(_) => Ok(()),

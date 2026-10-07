@@ -5,7 +5,12 @@
 //! folder and hands to `import_folder`. The tables are imported in dependency
 //! order, so a table never refers to a row that has not been added yet, and the
 //! whole import is rolled back if any table fails.
+//!
+//! A design bundle (`<design>.ww.zip`, see `design_bundle`) is the same archive
+//! plus a `design.ww.json`; importing it adds the design in the same
+//! transaction as the tables.
 use super::{bulk::Bulk, DbError, InnerDbState};
+use crate::models::cross_design::CrossDesign;
 use crate::models::{
     allele::Allele, allele_expr::AlleleExpressionDb, condition::ConditionDb,
     expr_relation::ExpressionRelationDb, gene::GeneDb, phenotype::PhenotypeDb, strain::Strain,
@@ -60,6 +65,8 @@ fn read<T: serde::de::DeserializeOwned>(path: &Path, table: &str) -> Result<Bulk
 
 /// The most entries and uncompressed bytes an archive may hold; a table set is
 /// a handful of small text files, so anything bigger is not one.
+/// The entry that holds the design inside a design bundle.
+pub const DESIGN_ENTRY: &str = "design.ww.json";
 const MAX_ENTRIES: usize = 64;
 const MAX_UNCOMPRESSED_BYTES: u64 = 256 * 1024 * 1024;
 
@@ -84,8 +91,9 @@ fn archive_error(zip_path: &Path, message: impl std::fmt::Display) -> DbError {
 /// inside a single top-level folder (what Finder's "Compress" produces); other
 /// entries (a `__MACOSX` folder, notes, ...) are ignored. An entry whose path
 /// escapes the archive (`..`, an absolute path) is an error, as is an archive
-/// that is not a zip, is too large, repeats a table, or holds no table at all.
-fn extract_tables(zip_path: &Path) -> Result<TempDir, DbError> {
+/// that is not a zip, is too large or repeats a table. The flag says whether any
+/// table file was found.
+fn extract_tables(zip_path: &Path) -> Result<(TempDir, bool), DbError> {
     let file = File::open(zip_path).map_err(|e| archive_error(zip_path, e))?;
     let mut archive = zip::ZipArchive::new(file)
         .map_err(|e| archive_error(zip_path, format!("not a readable zip file ({e})")))?;
@@ -139,35 +147,86 @@ fn extract_tables(zip_path: &Path) -> Result<TempDir, DbError> {
             .map_err(|e| archive_error(zip_path, e))?;
         extracted.push(name);
     }
-    if extracted.is_empty() {
-        return Err(archive_error(
-            zip_path,
-            "no table files found (expected names like genes.csv or alleles.csv)",
-        ));
-    }
-    Ok(dir)
+    Ok((dir, !extracted.is_empty()))
 }
 
 impl InnerDbState {
     /// Imports the table files of a zip archive: unpacks them to a temporary
-    /// folder and imports that in one transaction (see `import_folder`).
-    pub async fn import_archive(&self, zip_path: &Path) -> Result<Vec<TableImport>, DbError> {
-        let dir = extract_tables(zip_path)?;
-        self.import_folder(dir.path()).await
-    }
-
-    /// Imports each table file found in `dir`, in dependency order, in a single
-    /// transaction: if any file is unreadable, has an invalid row, or violates a
-    /// reference, nothing is imported. Missing files are skipped.
-    pub async fn import_folder(&self, dir: &Path) -> Result<Vec<TableImport>, DbError> {
-        if !dir.is_dir() {
-            return Err(DbError::BulkInsert(format!("{dir:?} is not a folder")));
+    /// folder and imports that in one transaction (see `import_folder`). If a
+    /// `design` is given it is added in the same transaction, so a failure
+    /// anywhere (a bad table, a design that already exists) imports nothing.
+    pub async fn import_archive(
+        &self,
+        zip_path: &Path,
+        design: Option<&CrossDesign>,
+    ) -> Result<Vec<TableImport>, DbError> {
+        let (dir, found_tables) = extract_tables(zip_path)?;
+        if !found_tables && design.is_none() {
+            return Err(archive_error(
+                zip_path,
+                "no table files found (expected names like genes.csv or alleles.csv)",
+            ));
         }
         let mut tx = self
             .conn_pool
             .begin()
             .await
             .map_err(|e| DbError::BulkInsert(e.to_string()))?;
+        let report = Self::import_dir_on(&mut tx, dir.path()).await?;
+        if let Some(design) = design {
+            Self::insert_cross_design_on(&mut tx, design).await?;
+        }
+        tx.commit()
+            .await
+            .map_err(|e| DbError::BulkInsert(e.to_string()))?;
+        Ok(report)
+    }
+
+    /// The `design.ww.json` of a design bundle, or `None` for a plain data
+    /// tables zip.
+    pub fn read_bundle_design(zip_path: &Path) -> Result<Option<String>, DbError> {
+        let file = File::open(zip_path).map_err(|e| archive_error(zip_path, e))?;
+        let mut archive = zip::ZipArchive::new(file)
+            .map_err(|e| archive_error(zip_path, format!("not a readable zip file ({e})")))?;
+        let mut entry = match archive.by_name(DESIGN_ENTRY) {
+            Ok(entry) => entry,
+            Err(zip::result::ZipError::FileNotFound) => return Ok(None),
+            Err(e) => return Err(archive_error(zip_path, e)),
+        };
+        if entry.size() > MAX_UNCOMPRESSED_BYTES {
+            return Err(archive_error(zip_path, "the design is too large"));
+        }
+        let mut json = String::new();
+        entry
+            .read_to_string(&mut json)
+            .map_err(|e| archive_error(zip_path, e))?;
+        Ok(Some(json))
+    }
+
+    /// Imports each table file found in `dir`, in dependency order, in a single
+    /// transaction: if any file is unreadable, has an invalid row, or violates a
+    /// reference, nothing is imported. Missing files are skipped.
+    pub async fn import_folder(&self, dir: &Path) -> Result<Vec<TableImport>, DbError> {
+        let mut tx = self
+            .conn_pool
+            .begin()
+            .await
+            .map_err(|e| DbError::BulkInsert(e.to_string()))?;
+        let report = Self::import_dir_on(&mut tx, dir).await?;
+        tx.commit()
+            .await
+            .map_err(|e| DbError::BulkInsert(e.to_string()))?;
+        Ok(report)
+    }
+
+    /// The tables of `dir` on an open transaction (the caller commits).
+    async fn import_dir_on(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        dir: &Path,
+    ) -> Result<Vec<TableImport>, DbError> {
+        if !dir.is_dir() {
+            return Err(DbError::BulkInsert(format!("{dir:?} is not a folder")));
+        }
         let mut report = Vec::new();
         for table in IMPORT_ORDER {
             let Some(path) = file_for(dir, table) else {
@@ -202,9 +261,6 @@ impl InnerDbState {
                 inserted: inserted as u32,
             });
         }
-        tx.commit()
-            .await
-            .map_err(|e| DbError::BulkInsert(e.to_string()))?;
         Ok(report)
     }
 }
@@ -399,7 +455,7 @@ mod tests {
         let folder = Folder::new("zip-flat", &[]);
         let zip = make_zip(&folder, "tables.zip", &all_files());
 
-        let report = state.import_archive(&zip).await.unwrap();
+        let report = state.import_archive(&zip, None).await.unwrap();
         assert_eq!(report.len(), 7);
         assert!(report.iter().all(|r| r.read == r.inserted && r.read > 0));
         assert_eq!(count(&pool, "strain_alleles").await, 1);
@@ -416,7 +472,7 @@ mod tests {
         let entries: Vec<(&str, &str)> = nested.iter().map(|(f, c)| (f.as_str(), *c)).collect();
         let zip = make_zip(&folder, "tables.zip", &entries);
 
-        let report = state.import_archive(&zip).await.unwrap();
+        let report = state.import_archive(&zip, None).await.unwrap();
         assert_eq!(report.len(), 7);
     }
 
@@ -425,10 +481,10 @@ mod tests {
         let state = state(&pool).await;
         let folder = Folder::new("zip-again", &[]);
         let zip = make_zip(&folder, "tables.zip", &all_files());
-        state.import_archive(&zip).await.unwrap();
+        state.import_archive(&zip, None).await.unwrap();
         let relations = count(&pool, "expr_relations").await;
 
-        let second = state.import_archive(&zip).await.unwrap();
+        let second = state.import_archive(&zip, None).await.unwrap();
         assert!(second.iter().all(|r| r.read > 0 && r.inserted == 0));
         assert_eq!(count(&pool, "expr_relations").await, relations);
     }
@@ -446,7 +502,7 @@ mod tests {
         entries.push(("strains.txt", "wrong extension"));
         let zip = make_zip(&folder, "tables.zip", &entries);
 
-        let report = state.import_archive(&zip).await.unwrap();
+        let report = state.import_archive(&zip, None).await.unwrap();
         assert_eq!(report.len(), 1);
         assert_eq!(report[0].table, "variations");
         assert_eq!(count(&pool, "variations").await, 1);
@@ -462,7 +518,7 @@ mod tests {
             &[("variations.csv", VARIATIONS), ("../variations.csv", VARIATIONS)],
         );
 
-        let error = state.import_archive(&zip).await.unwrap_err().to_string();
+        let error = state.import_archive(&zip, None).await.unwrap_err().to_string();
         assert!(error.contains("unsafe path"), "{error}");
         assert_eq!(count(&pool, "variations").await, 0);
         assert!(!folder.0.parent().unwrap().join("variations.csv").exists());
@@ -474,7 +530,7 @@ mod tests {
         let folder = Folder::new("zip-empty", &[]);
         let zip = make_zip(&folder, "tables.zip", &[("readme.txt", "hello")]);
 
-        let error = state.import_archive(&zip).await.unwrap_err().to_string();
+        let error = state.import_archive(&zip, None).await.unwrap_err().to_string();
         assert!(error.contains("no table files"), "{error}");
     }
 
@@ -488,7 +544,7 @@ mod tests {
             &[("variations.csv", VARIATIONS), ("tables/variations.csv", VARIATIONS)],
         );
 
-        let error = state.import_archive(&zip).await.unwrap_err().to_string();
+        let error = state.import_archive(&zip, None).await.unwrap_err().to_string();
         assert!(error.contains("more than once"), "{error}");
     }
 
@@ -497,12 +553,12 @@ mod tests {
         let state = state(&pool).await;
         let folder = Folder::new("zip-not", &[("fake.zip", "this is plain text")]);
         let error = state
-            .import_archive(&folder.0.join("fake.zip"))
+            .import_archive(&folder.0.join("fake.zip"), None)
             .await
             .unwrap_err()
             .to_string();
         assert!(error.contains("not a readable zip"), "{error}");
-        assert!(state.import_archive(&folder.0.join("missing.zip")).await.is_err());
+        assert!(state.import_archive(&folder.0.join("missing.zip"), None).await.is_err());
     }
 
     #[sqlx::test]
@@ -515,7 +571,7 @@ mod tests {
         entries.push(("alleles.csv", bad_alleles));
         let zip = make_zip(&folder, "tables.zip", &entries);
 
-        assert!(state.import_archive(&zip).await.is_err());
+        assert!(state.import_archive(&zip, None).await.is_err());
         assert_eq!(count(&pool, "variations").await, 0);
         assert_eq!(count(&pool, "phenotypes").await, 0);
     }
@@ -528,7 +584,7 @@ mod tests {
         let entries: Vec<(&str, &str)> = names.iter().map(|n| (n.as_str(), "x")).collect();
         let zip = make_zip(&folder, "tables.zip", &entries);
 
-        let error = state.import_archive(&zip).await.unwrap_err().to_string();
+        let error = state.import_archive(&zip, None).await.unwrap_err().to_string();
         assert!(error.contains("too many entries"), "{error}");
     }
 
@@ -552,7 +608,7 @@ mod tests {
         let folder = Folder::new("zip-min1", &[]);
         let zip = make_zip(&folder, "mIn1.zip", &entries);
 
-        let report = state.import_archive(&zip).await.unwrap();
+        let report = state.import_archive(&zip, None).await.unwrap();
         assert_eq!(report.len(), 7);
         assert!(report.iter().all(|r| r.read == r.inserted && r.read > 0));
     }
@@ -563,7 +619,7 @@ mod tests {
         let state = state(&pool).await;
         let zip = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/mIn1.zip");
 
-        let report = state.import_archive(&zip).await.unwrap();
+        let report = state.import_archive(&zip, None).await.unwrap();
         assert_eq!(report.len(), 7);
         assert!(report.iter().all(|r| r.read == r.inserted && r.read > 0));
         let genotype: String = sqlx::query_scalar(

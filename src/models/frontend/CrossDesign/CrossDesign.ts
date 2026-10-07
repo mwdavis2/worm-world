@@ -213,6 +213,30 @@ export default class CrossDesign {
     return JSON.stringify(instanceToPlain(this));
   }
 
+  /**
+   * The names of the saved data this design may rely on: its strains' names
+   * and the names of the (non-wild) alleles they carry. An exported bundle looks
+   * these up in the data tables to bring along the rows the design needs.
+   */
+  public getDataNames(): { strainNames: string[]; alleleNames: string[] } {
+    const strainNames = new Set<string>();
+    const alleleNames = new Set<string>();
+    this.nodes
+      .filter((node) => node.type === NodeType.Strain)
+      .forEach((node) => {
+        const strain = node.data as Strain;
+        if (strain.name !== undefined && strain.name !== '')
+          strainNames.add(strain.name);
+        strain.getNonWildAlleles().forEach((allele) => {
+          alleleNames.add(allele.name);
+        });
+      });
+    return {
+      strainNames: [...strainNames].sort(),
+      alleleNames: [...alleleNames].sort(),
+    };
+  }
+
   public createId(): string {
     return ulid();
   }

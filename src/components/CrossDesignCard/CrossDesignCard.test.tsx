@@ -30,4 +30,15 @@ describe('CrossDesignCard', () => {
     expect(screen.getByText(/open/i)).toBeVisible();
     expect(screen.getByText(/copy/i)).toBeVisible();
   });
+
+  test('offers both export choices', async () => {
+    const user = userEvent.setup();
+    render(<MockCrossDesignCard />);
+    await user.click(screen.getByTestId('menu'));
+    expect(screen.getByText('Export Design Only')).toBeVisible();
+    expect(
+      screen.getByText('Export Design with Strain Data Tables')
+    ).toBeVisible();
+    expect(screen.queryByText('Export')).toBeNull();
+  });
 });

@@ -3,6 +3,7 @@ pub mod allele_expr;
 pub mod bulk;
 pub mod condition;
 pub mod cross_design;
+pub mod design_bundle;
 pub mod expr_relation;
 pub mod folder_import;
 pub mod gene;

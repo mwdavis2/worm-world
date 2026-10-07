@@ -569,3 +569,79 @@ describe('applyFilteredProbabilities', () => {
     });
   });
 });
+
+describe('getDataNames', () => {
+  const strainNode = (id: string, strain: Strain): Node => ({
+    id,
+    type: NodeType.Strain,
+    position: { x: 0, y: 0 },
+    data: strain,
+  });
+
+  test('lists the strain names and the non-wild allele names, sorted and without repeats', () => {
+    const design = new CrossDesign({
+      name: 'bundle me',
+      nodes: [
+        strainNode(
+          '1',
+          new Strain({ name: 'EG1', allelePairs: [n765.toHomo()] })
+        ),
+        strainNode(
+          '2',
+          new Strain({
+            name: 'EG2',
+            allelePairs: [n765.toTopHet(), ed3.toHomo()],
+          })
+        ),
+        // a Self/X middle node carries a filter, not a strain
+        {
+          id: '3',
+          type: NodeType.Self,
+          position: { x: 0, y: 0 },
+          data: new StrainFilter(),
+        },
+        // an unsaved strain has no name to look up
+        strainNode(
+          '4',
+          new Strain({ name: '', allelePairs: [ox1059.toHomo()] })
+        ),
+      ],
+      edges: [],
+      lastSaved: new Date(),
+      editable: true,
+    });
+    expect(design.getDataNames()).toEqual({
+      strainNames: ['EG1', 'EG2'],
+      alleleNames: [ed3.name, n765.name, ox1059.name].sort(),
+    });
+  });
+
+  test('is empty for a design with no strains', () => {
+    const design = new CrossDesign({
+      name: '',
+      nodes: [],
+      edges: [],
+      lastSaved: new Date(),
+      editable: true,
+    });
+    expect(design.getDataNames()).toEqual({ strainNames: [], alleleNames: [] });
+  });
+
+  test('does not count the wild alleles a strain is filled out with', () => {
+    const design = new CrossDesign({
+      name: '',
+      nodes: [
+        {
+          id: '1',
+          type: NodeType.Strain,
+          position: { x: 0, y: 0 },
+          data: new Strain({ name: 'EG1', allelePairs: [ed3.toTopHet()] }),
+        },
+      ],
+      edges: [],
+      lastSaved: new Date(),
+      editable: true,
+    });
+    expect(design.getDataNames().alleleNames).toEqual([ed3.name]);
+  });
+});

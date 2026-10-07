@@ -8,7 +8,8 @@ import {
   insertCrossDesign,
   updateCrossDesign,
 } from 'api/crossDesign';
-import { open } from '@tauri-apps/api/dialog';
+import { open, save } from '@tauri-apps/api/dialog';
+import { exportDesignBundle } from 'api/dataTablesZip';
 import { writeTextFile } from '@tauri-apps/api/fs';
 import { sep } from '@tauri-apps/api/path';
 import { toast } from 'react-toastify';
@@ -48,9 +49,15 @@ const CrossDesignCard = (props: CrossDesignCardProps): React.JSX.Element => {
       },
     },
     {
-      text: 'Export',
+      text: 'Export Design Only',
       menuCallback: () => {
         exportCrossDesign(props.crossDesign).catch(console.error);
+      },
+    },
+    {
+      text: 'Export Design with Strain Data Tables',
+      menuCallback: () => {
+        exportCrossDesignWithData(props.crossDesign).catch(console.error);
       },
     },
     {
@@ -188,6 +195,55 @@ const exportCrossDesign = async (crossDesign: CrossDesign): Promise<void> => {
     toast.success('Successfully exported crossDesign');
   } catch (err) {
     toast.error(`Error exporting crossDesign: ${err}`);
+  } finally {
+    exportInProgress = false;
+  }
+};
+
+// Saves the design together with the data table rows its strains and alleles
+// refer to, as one zip a teammate can import (home page Import button).
+const exportCrossDesignWithData = async (
+  crossDesign: CrossDesign
+): Promise<void> => {
+  if (exportInProgress) {
+    toast.error('An export is already in progress');
+    return;
+  }
+  exportInProgress = true;
+  try {
+    const filename = crossDesign.name !== '' ? crossDesign.name : 'untitled';
+    const path = await save({
+      defaultPath: `${filename}.ww.zip`,
+      filters: [
+        { name: 'WormWorld design with data tables', extensions: ['zip'] },
+      ],
+    });
+    if (path === null) return;
+    const { strainNames, alleleNames } = crossDesign.getDataNames();
+    const summary = await exportDesignBundle(
+      path,
+      crossDesign.toJSON(),
+      strainNames,
+      alleleNames
+    );
+    const rows = summary.tables.reduce((sum, table) => sum + table.rows, 0);
+    toast.success(
+      `Exported the design with ${rows} data table row${
+        rows === 1 ? '' : 's'
+      } to ${path}`
+    );
+    if (summary.missingAlleles.length > 0)
+      toast.warning(
+        `${summary.missingAlleles.length} allele${
+          summary.missingAlleles.length === 1 ? ' is' : 's are'
+        } not in the data tables, so ${
+          summary.missingAlleles.length === 1
+            ? 'its rows were'
+            : 'their rows were'
+        } not bundled: ${summary.missingAlleles.join(', ')}`
+      );
+  } catch (err) {
+    toast.error(`Error exporting crossDesign: ${getErrorMessage(err)}`);
   } finally {
     exportInProgress = false;
   }
