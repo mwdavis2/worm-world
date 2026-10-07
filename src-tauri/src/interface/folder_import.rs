@@ -219,6 +219,66 @@ impl InnerDbState {
         Ok(report)
     }
 
+    /// Imports the file of ONE table on the given connection: reads it, adds the
+    /// rows that are not there yet and reports how many it read and added.
+    async fn import_table_on(
+        conn: &mut sqlx::SqliteConnection,
+        table: &str,
+        path: &Path,
+    ) -> Result<TableImport, DbError> {
+        macro_rules! import {
+            ($ty:ty, $insert:path) => {{
+                let bulk = read::<$ty>(path, table)?;
+                let rows = bulk.data.len() as u32;
+                let inserted = $insert(conn, bulk)
+                    .await
+                    .map_err(|e| DbError::BulkInsert(format!("{table}: {e}")))?;
+                (rows, inserted)
+            }};
+        }
+        let (rows, inserted) = match table {
+            "genes" => import!(GeneDb, Self::insert_genes_on),
+            "conditions" => import!(ConditionDb, Self::insert_conditions_on),
+            "variations" => import!(VariationDb, Self::insert_variations_on),
+            "phenotypes" => import!(PhenotypeDb, Self::insert_phenotypes_on),
+            "alleles" => import!(Allele, Self::insert_alleles_on),
+            "allele_exprs" => import!(AlleleExpressionDb, Self::insert_allele_exprs_on),
+            "expr_relations" => import!(ExpressionRelationDb, Self::insert_expr_relations_on),
+            "strains" => import!(Strain, Self::insert_strains_on),
+            "strain_alleles" => import!(StrainAllele, Self::insert_strain_alleles_on),
+            _ => {
+                return Err(DbError::BulkInsert(format!(
+                    "{table} is not a table that can be imported from a file"
+                )))
+            }
+        };
+        Ok(TableImport {
+            table: table.to_owned(),
+            read: rows,
+            inserted: inserted as u32,
+        })
+    }
+
+    /// Imports one CSV/TSV file into `table` (one of `IMPORT_ORDER`) in a
+    /// transaction, and says how many rows it read and how many were added; the
+    /// difference is rows that were already there, which are kept as they are.
+    pub async fn import_table_file(
+        &self,
+        table: &str,
+        path: &Path,
+    ) -> Result<TableImport, DbError> {
+        let mut tx = self
+            .conn_pool
+            .begin()
+            .await
+            .map_err(|e| DbError::BulkInsert(e.to_string()))?;
+        let report = Self::import_table_on(&mut tx, table, path).await?;
+        tx.commit()
+            .await
+            .map_err(|e| DbError::BulkInsert(e.to_string()))?;
+        Ok(report)
+    }
+
     /// The tables of `dir` on an open transaction (the caller commits).
     async fn import_dir_on(
         tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
@@ -232,34 +292,7 @@ impl InnerDbState {
             let Some(path) = file_for(dir, table) else {
                 continue;
             };
-            let conn = &mut *tx;
-            macro_rules! import {
-                ($ty:ty, $insert:path) => {{
-                    let bulk = read::<$ty>(&path, table)?;
-                    let rows = bulk.data.len() as u32;
-                    let inserted = $insert(conn, bulk)
-                        .await
-                        .map_err(|e| DbError::BulkInsert(format!("{table}: {e}")))?;
-                    (rows, inserted)
-                }};
-            }
-            let (rows, inserted) = match table {
-                "genes" => import!(GeneDb, Self::insert_genes_on),
-                "conditions" => import!(ConditionDb, Self::insert_conditions_on),
-                "variations" => import!(VariationDb, Self::insert_variations_on),
-                "phenotypes" => import!(PhenotypeDb, Self::insert_phenotypes_on),
-                "alleles" => import!(Allele, Self::insert_alleles_on),
-                "allele_exprs" => import!(AlleleExpressionDb, Self::insert_allele_exprs_on),
-                "expr_relations" => import!(ExpressionRelationDb, Self::insert_expr_relations_on),
-                "strains" => import!(Strain, Self::insert_strains_on),
-                "strain_alleles" => import!(StrainAllele, Self::insert_strain_alleles_on),
-                _ => unreachable!("every table in IMPORT_ORDER is handled"),
-            };
-            report.push(TableImport {
-                table: table.to_owned(),
-                read: rows,
-                inserted: inserted as u32,
-            });
+            report.push(Self::import_table_on(&mut *tx, table, &path).await?);
         }
         Ok(report)
     }
@@ -767,5 +800,99 @@ mod tests {
         );
         state.import_archive(&zip, None).await.unwrap();
         assert_eq!(count(&pool, "strain_alleles").await, 2);
+    }
+
+    // ---- one table's file (the Import button on each data table) -----------
+
+    #[sqlx::test]
+    async fn one_tables_file_reports_what_was_added_and_what_was_kept(pool: Pool<Sqlite>) {
+        let state = state(&pool).await;
+        let folder = Folder::new("one-table", &[("variations.csv", VARIATIONS)]);
+        let path = folder.0.join("variations.csv");
+
+        let first = state.import_table_file("variations", &path).await.unwrap();
+        assert_eq!(
+            first,
+            TableImport {
+                table: "variations".to_owned(),
+                read: 1,
+                inserted: 1
+            }
+        );
+        // the same file again: read, but nothing new, so the row is kept
+        let second = state.import_table_file("variations", &path).await.unwrap();
+        assert_eq!((second.read, second.inserted), (1, 0));
+        assert_eq!(count(&pool, "variations").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn one_tables_file_with_an_invalid_row_adds_nothing(pool: Pool<Sqlite>) {
+        let state = state(&pool).await;
+        // the second row is missing a column
+        let folder = Folder::new(
+            "one-table-bad",
+            &[(
+                "strains.csv",
+                "name,genotype,description\nGOOD,x,fine\nBAD\n",
+            )],
+        );
+        let error = state
+            .import_table_file("strains", &folder.0.join("strains.csv"))
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("strains"), "{error}");
+        assert_eq!(count(&pool, "strains").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn one_tables_file_names_the_file_it_could_not_read(pool: Pool<Sqlite>) {
+        let state = state(&pool).await;
+        let error = state
+            .import_table_file("genes", Path::new("/no/such/genes.csv"))
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("genes") && error.contains("/no/such/genes.csv"),
+            "{error}"
+        );
+    }
+
+    #[sqlx::test]
+    async fn an_unknown_table_name_is_refused(pool: Pool<Sqlite>) {
+        let state = state(&pool).await;
+        let folder = Folder::new("one-table-unknown", &[("tasks.csv", "id\n1\n")]);
+        assert!(state
+            .import_table_file("tasks", &folder.0.join("tasks.csv"))
+            .await
+            .is_err());
+    }
+
+    #[sqlx::test]
+    async fn one_tables_file_applies_the_strain_allele_check(pool: Pool<Sqlite>) {
+        let state = state(&pool).await;
+        sqlx::query("INSERT INTO alleles (name, systematic_gene_name) VALUES ('g1', 'T14B4.7'), ('g2', 'T14B4.7')")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO strains (name, genotype) VALUES ('S', '')")
+            .execute(&pool)
+            .await
+            .unwrap();
+        let folder = Folder::new(
+            "one-table-strain-alleles",
+            &[(
+                "strain_alleles.csv",
+                "strainName,alleleName,isOnTop,isOnBot\nS,g1,true,false\nS,g2,true,false\n",
+            )],
+        );
+        let error = state
+            .import_table_file("strain_alleles", &folder.0.join("strain_alleles.csv"))
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("compound heterozygote"), "{error}");
+        assert_eq!(count(&pool, "strain_alleles").await, 0);
     }
 }

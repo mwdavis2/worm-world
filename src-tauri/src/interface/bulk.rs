@@ -3,15 +3,11 @@ use csv::Reader;
 use serde::de::DeserializeOwned;
 use std::path::Path;
 
-// TODO: every insert_X(bulk) consumer of this struct writes its valid rows
-// via "INSERT OR IGNORE", which silently drops any row that violates a
-// constraint (most commonly a duplicate primary key, e.g. a repeated gene
-// systematic_name) - the user gets no indication anything was skipped.
-// Comparing bulk.data.len() against the summed rows_affected() of each
-// insert statement would give an accurate skipped-row count; surfacing that
-// to the UI requires changing insert_X's return type (and the matching
-// Tauri command, ts-rs binding, frontend api wrapper, and DataTableView's
-// shared import-success toast) across all 9 tables that use Bulk.
+// Every insert_X(bulk) writes its rows with "INSERT OR IGNORE", so a row whose
+// key is already there is kept as it is, not overwritten. The importers report
+// it: `InnerDbState::import_table_file` and the zip import return how many rows
+// were read and how many were new (`folder_import::TableImport`), and the data
+// tables page shows the difference as "kept your existing N".
 pub struct Bulk<T>
 where
     T: DeserializeOwned,

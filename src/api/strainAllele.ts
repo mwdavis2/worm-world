@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/tauri';
+import { type db_TableImport } from 'models/db/db_TableImport';
 import { type db_StrainAllele } from 'models/db/db_StrainAllele';
 import { type StrainAlleleFieldName } from 'models/db/filter/db_StrainAlleleFieldName';
 import { type FilterGroup } from 'models/db/filter/FilterGroup';
@@ -37,10 +38,15 @@ export const updateDbStrainAllele = async (
   await invoke('update_strain_allele', { strainAllele: record });
 };
 
+/**
+ * Imports a CSV/TSV file into this table in one transaction. Rows already in
+ * the table are kept as they are; the result says how many rows the file held
+ * and how many were new.
+ */
 export const insertStrainAllelesFromFile = async (
   path: string
-): Promise<void> => {
-  await invoke('insert_strain_alleles_from_file', { path });
+): Promise<db_TableImport> => {
+  return await invoke('insert_strain_alleles_from_file', { path });
 };
 
 export const deleteFilteredStrainAlleles = async (

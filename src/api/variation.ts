@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/tauri';
+import { type db_TableImport } from 'models/db/db_TableImport';
 import { type db_Variation } from 'models/db/db_Variation';
 import { type VariationFieldName } from 'models/db/filter/db_VariationFieldName';
 import {
@@ -63,8 +64,15 @@ export const updateDbVariation = async (
   await invoke('update_variation', { variation: record });
 };
 
-export const insertVariationsFromFile = async (path: string): Promise<void> => {
-  await invoke('insert_variations_from_file', { path });
+/**
+ * Imports a CSV/TSV file into this table in one transaction. Rows already in
+ * the table are kept as they are; the result says how many rows the file held
+ * and how many were new.
+ */
+export const insertVariationsFromFile = async (
+  path: string
+): Promise<db_TableImport> => {
+  return await invoke('insert_variations_from_file', { path });
 };
 
 export const deleteFilteredVariations = async (

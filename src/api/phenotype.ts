@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/tauri';
+import { type db_TableImport } from 'models/db/db_TableImport';
 import { type db_Phenotype } from 'models/db/db_Phenotype';
 import { type ExpressionRelationFieldName } from 'models/db/filter/db_ExpressionRelationFieldName';
 import { type PhenotypeFieldName } from 'models/db/filter/db_PhenotypeFieldName';
@@ -103,8 +104,15 @@ export const updateDbPhenotype = async (
   await invoke('update_phenotype', { phenotype: record });
 };
 
-export const insertPhenotypesFromFile = async (path: string): Promise<void> => {
-  await invoke('insert_phenotypes_from_file', { path });
+/**
+ * Imports a CSV/TSV file into this table in one transaction. Rows already in
+ * the table are kept as they are; the result says how many rows the file held
+ * and how many were new.
+ */
+export const insertPhenotypesFromFile = async (
+  path: string
+): Promise<db_TableImport> => {
+  return await invoke('insert_phenotypes_from_file', { path });
 };
 
 export const deleteFilteredPhenotypes = async (

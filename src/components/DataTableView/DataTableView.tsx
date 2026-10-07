@@ -2,6 +2,7 @@ import { open } from '@tauri-apps/api/dialog';
 import { type Field } from 'components/ColumnFilter/ColumnFilter';
 import DataImportForm from 'components/DataInputForm/DataInputForm';
 import { Table, type ColumnDefinitionType } from 'components/Table/Table';
+import { type db_TableImport } from 'models/db/db_TableImport';
 import { type FilterGroup } from 'models/db/filter/FilterGroup';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -9,6 +10,7 @@ import { FaEdit as EditIcon } from 'react-icons/fa';
 import { getErrorMessage } from 'utils/getErrorMessage';
 import { getPreferences, setPreferences } from 'utils/preferences';
 import { beginImport, endImport } from 'utils/importGuard';
+import { summarizeTableImport } from 'utils/summarizeTableImport';
 
 interface DataTableProps<T, K> {
   title: string;
@@ -19,7 +21,7 @@ interface DataTableProps<T, K> {
   insertRecord: (record: T) => Promise<void>;
   getFilteredRecords: (filterObj: FilterGroup<K>) => Promise<T[]>;
   getCountFilteredRecords: (filterObj: FilterGroup<K>) => Promise<number>;
-  insertRecordsFromFile: (path: string) => Promise<void>;
+  insertRecordsFromFile: (path: string) => Promise<db_TableImport>;
   deleteRecord: (row: T) => Promise<void>;
   updateRecord?: (
     row: T,
@@ -159,9 +161,12 @@ const DataTableView = <T, K>(
         ],
       })) as string | null;
       if (filepath === null) return;
-      await props.insertRecordsFromFile(filepath);
+      const report = await props.insertRecordsFromFile(filepath);
       refresh();
-      toast.success('Successfully imported data');
+      const message = summarizeTableImport(props.title, report);
+      // nothing added is information worth noticing, not a success to celebrate
+      if (report.inserted === 0) toast.info(message);
+      else toast.success(message);
     } catch (e) {
       toast.error(
         'An error has occured when importing data: ' + getErrorMessage(e)

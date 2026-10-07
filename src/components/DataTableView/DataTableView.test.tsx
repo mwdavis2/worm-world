@@ -37,7 +37,11 @@ const renderTable = (
       getFilteredRecords={getFilteredRecords}
       getCountFilteredRecords={getCountFilteredRecords}
       insertRecord={vi.fn(async () => {})}
-      insertRecordsFromFile={vi.fn(async () => {})}
+      insertRecordsFromFile={vi.fn(async () => ({
+        table: 'things',
+        read: 0,
+        inserted: 0,
+      }))}
       deleteRecord={vi.fn(async () => {})}
       {...overrides}
     />

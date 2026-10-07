@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/tauri';
+import { type db_TableImport } from 'models/db/db_TableImport';
 import { type db_ExpressionRelation } from 'models/db/db_ExpressionRelation';
 import { type ExpressionRelationFieldName } from 'models/db/filter/db_ExpressionRelationFieldName';
 import { type FilterGroup, getDbBoolean } from 'models/db/filter/FilterGroup';
@@ -42,10 +43,15 @@ export const updateDbExpressionRelation = async (
   });
 };
 
+/**
+ * Imports a CSV/TSV file into this table in one transaction. Rows already in
+ * the table are kept as they are; the result says how many rows the file held
+ * and how many were new.
+ */
 export const insertExpressionRelationsFromFile = async (
   path: string
-): Promise<void> => {
-  await invoke('insert_expr_relations_from_file', { path });
+): Promise<db_TableImport> => {
+  return await invoke('insert_expr_relations_from_file', { path });
 };
 
 export const deleteFilteredExpressionRelations = async (

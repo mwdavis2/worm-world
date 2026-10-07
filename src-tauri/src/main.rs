@@ -15,25 +15,24 @@ use tokio::sync::RwLock;
 
 mod interface;
 use interface::{
-    bulk::Bulk, design_bundle::DesignBundleSummary, folder_import::TableImport, DbError,
-    InnerDbState,
+    design_bundle::DesignBundleSummary, folder_import::TableImport, DbError, InnerDbState,
 };
 
 mod models;
 use models::{
     allele::{Allele, AlleleFieldName},
-    allele_expr::{AlleleExpression, AlleleExpressionDb, AlleleExpressionFieldName},
-    condition::{Condition, ConditionDb, ConditionFieldName},
+    allele_expr::{AlleleExpression, AlleleExpressionFieldName},
+    condition::{Condition, ConditionFieldName},
     cross_design::{CrossDesign, CrossDesignFieldName},
-    expr_relation::{ExpressionRelation, ExpressionRelationDb, ExpressionRelationFieldName},
+    expr_relation::{ExpressionRelation, ExpressionRelationFieldName},
     filter::FilterGroup,
-    gene::{Gene, GeneDb, GeneFieldName},
-    phenotype::{Phenotype, PhenotypeDb, PhenotypeFieldName},
+    gene::{Gene, GeneFieldName},
+    phenotype::{Phenotype, PhenotypeFieldName},
     strain::{Strain, StrainFieldName},
     strain_allele::{StrainAllele, StrainAlleleFieldName},
     sync_account::SyncAccount,
     task::{Task, TaskFieldName},
-    variation::{Variation, VariationDb, VariationFieldName},
+    variation::{Variation, VariationFieldName},
 };
 
 mod sync;
@@ -273,12 +272,11 @@ async fn insert_gene(state: tauri::State<'_, DbState>, gene: Gene) -> Result<(),
 async fn insert_genes_from_file(
     state: tauri::State<'_, DbState>,
     path: String,
-) -> Result<(), DbError> {
+) -> Result<TableImport, DbError> {
     let state_guard = state.0.read().await;
-    match Bulk::<GeneDb>::new(Path::new(&path)) {
-        Ok(bulk) => state_guard.insert_genes(bulk).await,
-        Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
-    }
+    state_guard
+        .import_table_file("genes", Path::new(&path))
+        .await
 }
 
 /// Imports every table file in a zip archive (genes.csv, alleles.csv, ...) in
@@ -379,12 +377,11 @@ async fn insert_condition(
 async fn insert_conditions_from_file(
     state: tauri::State<'_, DbState>,
     path: String,
-) -> Result<(), DbError> {
+) -> Result<TableImport, DbError> {
     let state_guard = state.0.read().await;
-    match Bulk::<ConditionDb>::new(Path::new(&path)) {
-        Ok(bulk) => state_guard.insert_conditions(bulk).await,
-        Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
-    }
+    state_guard
+        .import_table_file("conditions", Path::new(&path))
+        .await
 }
 
 #[tauri::command]
@@ -447,12 +444,11 @@ async fn insert_phenotype(
 async fn insert_phenotypes_from_file(
     state: tauri::State<'_, DbState>,
     path: String,
-) -> Result<(), DbError> {
+) -> Result<TableImport, DbError> {
     let state_guard = state.0.read().await;
-    match Bulk::<PhenotypeDb>::new(Path::new(&path)) {
-        Ok(bulk) => state_guard.insert_phenotypes(bulk).await,
-        Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
-    }
+    state_guard
+        .import_table_file("phenotypes", Path::new(&path))
+        .await
 }
 #[tauri::command]
 async fn delete_filtered_phenotypes(
@@ -510,12 +506,11 @@ async fn insert_variation(
 async fn insert_variations_from_file(
     state: tauri::State<'_, DbState>,
     path: String,
-) -> Result<(), DbError> {
+) -> Result<TableImport, DbError> {
     let state_guard = state.0.read().await;
-    match Bulk::<VariationDb>::new(Path::new(&path)) {
-        Ok(bulk) => state_guard.insert_variations(bulk).await,
-        Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
-    }
+    state_guard
+        .import_table_file("variations", Path::new(&path))
+        .await
 }
 
 #[tauri::command]
@@ -568,12 +563,11 @@ async fn insert_allele_expr(
 async fn insert_allele_exprs_from_file(
     state: tauri::State<'_, DbState>,
     path: String,
-) -> Result<(), DbError> {
+) -> Result<TableImport, DbError> {
     let state_guard = state.0.read().await;
-    match Bulk::<AlleleExpressionDb>::new(Path::new(&path)) {
-        Ok(bulk) => state_guard.insert_allele_exprs(bulk).await,
-        Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
-    }
+    state_guard
+        .import_table_file("allele_exprs", Path::new(&path))
+        .await
 }
 
 #[tauri::command]
@@ -631,12 +625,11 @@ async fn insert_allele(state: tauri::State<'_, DbState>, allele: Allele) -> Resu
 async fn insert_alleles_from_file(
     state: tauri::State<'_, DbState>,
     path: String,
-) -> Result<(), DbError> {
+) -> Result<TableImport, DbError> {
     let state_guard = state.0.read().await;
-    match Bulk::<Allele>::new(Path::new(&path)) {
-        Ok(bulk) => state_guard.insert_alleles(bulk).await,
-        Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
-    }
+    state_guard
+        .import_table_file("alleles", Path::new(&path))
+        .await
 }
 
 #[tauri::command]
@@ -687,12 +680,11 @@ async fn insert_expr_relation(
 async fn insert_expr_relations_from_file(
     state: tauri::State<'_, DbState>,
     path: String,
-) -> Result<(), DbError> {
+) -> Result<TableImport, DbError> {
     let state_guard = state.0.read().await;
-    match Bulk::<ExpressionRelationDb>::new(Path::new(&path)) {
-        Ok(bulk) => state_guard.insert_expr_relations(bulk).await,
-        Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
-    }
+    state_guard
+        .import_table_file("expr_relations", Path::new(&path))
+        .await
 }
 #[tauri::command]
 async fn delete_filtered_expr_relations(
@@ -863,12 +855,11 @@ async fn insert_strain(state: tauri::State<'_, DbState>, strain: Strain) -> Resu
 async fn insert_strains_from_file(
     state: tauri::State<'_, DbState>,
     path: String,
-) -> Result<(), DbError> {
+) -> Result<TableImport, DbError> {
     let state_guard = state.0.read().await;
-    match Bulk::<Strain>::new(Path::new(&path)) {
-        Ok(bulk) => state_guard.insert_strains(bulk).await,
-        Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
-    }
+    state_guard
+        .import_table_file("strains", Path::new(&path))
+        .await
 }
 
 #[tauri::command]
@@ -997,12 +988,11 @@ async fn insert_strain_allele(
 async fn insert_strain_alleles_from_file(
     state: tauri::State<'_, DbState>,
     path: String,
-) -> Result<(), DbError> {
+) -> Result<TableImport, DbError> {
     let state_guard = state.0.read().await;
-    match Bulk::<StrainAllele>::new(Path::new(&path)) {
-        Ok(bulk) => state_guard.insert_strain_alleles(bulk).await,
-        Err(_) => Err(DbError::BulkInsert("Unable to open file".to_owned())),
-    }
+    state_guard
+        .import_table_file("strain_alleles", Path::new(&path))
+        .await
 }
 
 #[tauri::command]
