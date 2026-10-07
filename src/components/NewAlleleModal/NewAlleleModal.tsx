@@ -110,7 +110,7 @@ const ConditionSearchInput = (props: {
           <></>
         )
       ) : (
-        <ul className='dropdown-content menu rounded-box z-50 my-2 max-h-60 w-52 overflow-auto bg-base-100 p-2 shadow'>
+        <ul className='menu dropdown-content rounded-box z-50 my-2 max-h-60 w-52 overflow-auto bg-base-100 p-2 shadow'>
           {searchRes.map((condition, idx) => (
             <li
               key={idx}
@@ -259,6 +259,11 @@ const FluorescentMarkerControl = (props: {
 const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
   const [activeTab, setActiveTab] = useState<AlleleTab>('gene');
   const [activeView, setActiveView] = useState<'basic' | 'advanced'>('basic');
+  // Counts how many times the dialog has been opened. It keys the dialog body so
+  // every opening starts with fresh text in the search boxes (drug, gene, ...):
+  // those boxes hold their own typed text, which would otherwise outlive the
+  // reset of the dialog's state below and show a value the state no longer has.
+  const [openCount, setOpenCount] = useState(0);
   const [gene, setGene] = useState<GeneTabState>(defaultGeneTabState());
   const [tiSiIs, setTiSiIs] = useState<VariationTabState>(
     defaultVariationTabState()
@@ -270,6 +275,7 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
 
   useEffect(() => {
     if (!props.isOpen) return;
+    setOpenCount((count) => count + 1);
     setActiveView('basic');
     // Route the typed search text to whichever tab it actually names -
     // e.g. "oxEx100" belongs on the Ex tab, not the Gene tab's plain
@@ -486,10 +492,10 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
         checked={props.isOpen}
       />
       <div className='modal'>
-        <div className='modal-box max-w-3xl'>
+        <div className='modal-box max-w-3xl' key={openCount}>
           <h2 className='text-lg font-bold'>New Allele</h2>
 
-          <div className='tabs tabs-boxed my-2 w-fit'>
+          <div className='tabs-boxed tabs my-2 w-fit'>
             <button
               type='button'
               className={`tab ${activeTab === 'gene' ? 'tab-active' : ''}`}

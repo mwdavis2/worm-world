@@ -250,4 +250,62 @@ describe('NewAlleleModal', () => {
     await user.click(wildTypeCheckbox);
     expect(wildTypeCheckbox.checked).toBe(false);
   });
+
+  test('a new opening starts with empty drug and gene boxes, not the text from the last one', async () => {
+    setupIPC((cmd) => {
+      if (cmd === 'get_filtered_conditions')
+        return [{ name: 'Puromycin', description: 'drug' }];
+      return NOT_HANDLED;
+    });
+    const { rerender } = render(
+      <NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />
+    );
+
+    // pick a drug from the list: the checkbox becomes usable
+    const drugBox = screen.getByPlaceholderText('Drug name');
+    await user.type(drugBox, 'Puro');
+    await user.click(await screen.findByText('Puromycin'));
+    expect(screen.getByLabelText('Resistant to Drug')).toBeEnabled();
+    expect(drugBox).toHaveValue('Puromycin');
+
+    // close and open again: the box and the checkbox agree (both empty)
+    rerender(
+      <NewAlleleModal
+        isOpen={false}
+        setIsOpen={() => {}}
+        onCreated={() => {}}
+      />
+    );
+    rerender(
+      <NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />
+    );
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Drug name')).toHaveValue('');
+    });
+    expect(screen.getByLabelText('Resistant to Drug')).toBeDisabled();
+  });
+
+  test('a picked gene does not linger in the gene box on the next opening', async () => {
+    setupIPC();
+    const { rerender } = render(
+      <NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />
+    );
+    await user.type(screen.getByRole('textbox', { name: 'Gene' }), 'unc');
+    await user.click(await screen.findByText(/unc-119/i));
+    expect(screen.getByRole('textbox', { name: 'Gene' })).not.toHaveValue('');
+
+    rerender(
+      <NewAlleleModal
+        isOpen={false}
+        setIsOpen={() => {}}
+        onCreated={() => {}}
+      />
+    );
+    rerender(
+      <NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Gene' })).toHaveValue('');
+    });
+  });
 });
