@@ -233,4 +233,22 @@ describe('crossing a balancer', () => {
       children.reduce((sum, child) => sum + (child.probability ?? 0), 0)
     ).toBeCloseTo(1);
   });
+
+  test('looks up saved strain names once per distinct child, not once per gamete pairing', async () => {
+    const calls: Record<string, number> = {};
+    mockIPC((cmd) => {
+      calls[cmd] = (calls[cmd] ?? 0) + 1;
+      if (cmd === 'get_filtered_strain_alleles') return [];
+    });
+    // a self cross pairs 16 gametes with 16 gametes: 256 pairings, 9 children
+    const herm = buildStrain('nT1[unc-?(n754dm) let-?]');
+    const children = await herm.selfCross();
+
+    expect(children).toHaveLength(9);
+    // one lookup for each child that carries an allele (the wild-type child
+    // has nothing to look up)
+    expect(calls.get_filtered_strain_alleles).toBe(
+      children.filter((child) => child.getNonWildAlleles().length > 0).length
+    );
+  });
 });

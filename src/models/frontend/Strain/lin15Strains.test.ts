@@ -35,9 +35,24 @@ const readCsv = (path: string): Row[] => {
 const STAND_INS: Record<string, Row[]> = {
   'variations.csv': [
     { alleleName: 'oxIs644', chromosome: 'IV', physLoc: '', geneticLoc: '0' },
-    { alleleName: 'oxTi302', chromosome: 'I', physLoc: '10166156', geneticLoc: '' },
-    { alleleName: 'oxTi75', chromosome: 'II', physLoc: '5448561', geneticLoc: '' },
-    { alleleName: 'oxSi1168', chromosome: 'II', physLoc: '8420158', geneticLoc: '' },
+    {
+      alleleName: 'oxTi302',
+      chromosome: 'I',
+      physLoc: '10166156',
+      geneticLoc: '',
+    },
+    {
+      alleleName: 'oxTi75',
+      chromosome: 'II',
+      physLoc: '5448561',
+      geneticLoc: '',
+    },
+    {
+      alleleName: 'oxSi1168',
+      chromosome: 'II',
+      physLoc: '8420158',
+      geneticLoc: '',
+    },
     { alleleName: 'oxEx2254', chromosome: 'Ex', physLoc: '', geneticLoc: '' },
   ],
   'phenotypes.csv': [
@@ -46,29 +61,100 @@ const STAND_INS: Record<string, Row[]> = {
     { name: 'Dpy-9', wild: '0', short_name: 'Dpy-9', lethal: '0' },
     { name: 'dpy-9', wild: '1', short_name: 'dpy-9', lethal: '' },
     { name: 'mCherry', wild: '0', short_name: 'mCherry', lethal: '0' },
-    { name: 'mScarlet(coel)', wild: '0', short_name: 'mScarlet(coel)', lethal: '0' },
-    { name: 'YFP(pharynx)', wild: '0', short_name: 'YFP(pharynx)', lethal: '0' },
+    {
+      name: 'mScarlet(coel)',
+      wild: '0',
+      short_name: 'mScarlet(coel)',
+      lethal: '0',
+    },
+    {
+      name: 'YFP(pharynx)',
+      wild: '0',
+      short_name: 'YFP(pharynx)',
+      lethal: '0',
+    },
   ],
   'alleles.csv': [
-    { name: 'oxIs644', contents: '', sysGeneName: '', variationName: 'oxIs644' },
+    {
+      name: 'oxIs644',
+      contents: '',
+      sysGeneName: '',
+      variationName: 'oxIs644',
+    },
     { name: 'e1107', contents: '', sysGeneName: 'LLC1.1', variationName: '' },
     { name: 'e12', contents: '', sysGeneName: 'T21D12.2', variationName: '' },
     { name: 'ox1059', contents: '', sysGeneName: 'C10C6.1', variationName: '' },
-    { name: 'oxTi302', contents: '', sysGeneName: '', variationName: 'oxTi302' },
+    {
+      name: 'oxTi302',
+      contents: '',
+      sysGeneName: '',
+      variationName: 'oxTi302',
+    },
     { name: 'oxTi75', contents: '', sysGeneName: '', variationName: 'oxTi75' },
-    { name: 'oxSi1168', contents: '', sysGeneName: '', variationName: 'oxSi1168' },
-    { name: 'oxEx2254', contents: '', sysGeneName: '', variationName: 'oxEx2254' },
+    {
+      name: 'oxSi1168',
+      contents: '',
+      sysGeneName: '',
+      variationName: 'oxSi1168',
+    },
+    {
+      name: 'oxEx2254',
+      contents: '',
+      sysGeneName: '',
+      variationName: 'oxEx2254',
+    },
   ],
   'allele_exprs.csv': [
-    { alleleName: 'e1107', expressingPhenotypeName: 'Tra-3', expressingPhenotypeWild: '0', dominance: '4' },
-    { alleleName: 'e12', expressingPhenotypeName: 'Dpy-9', expressingPhenotypeWild: '0', dominance: '4' },
-    { alleleName: 'oxTi302', expressingPhenotypeName: 'mCherry', expressingPhenotypeWild: '0', dominance: '2' },
-    { alleleName: 'oxEx2254', expressingPhenotypeName: 'Flp', expressingPhenotypeWild: '1', dominance: '2' },
-    { alleleName: 'oxEx2254', expressingPhenotypeName: 'mScarlet(coel)', expressingPhenotypeWild: '0', dominance: '2' },
+    {
+      alleleName: 'e1107',
+      expressingPhenotypeName: 'Tra-3',
+      expressingPhenotypeWild: '0',
+      dominance: '4',
+    },
+    {
+      alleleName: 'e12',
+      expressingPhenotypeName: 'Dpy-9',
+      expressingPhenotypeWild: '0',
+      dominance: '4',
+    },
+    {
+      alleleName: 'oxTi302',
+      expressingPhenotypeName: 'mCherry',
+      expressingPhenotypeWild: '0',
+      dominance: '2',
+    },
+    {
+      alleleName: 'oxEx2254',
+      expressingPhenotypeName: 'Flp',
+      expressingPhenotypeWild: '1',
+      dominance: '2',
+    },
+    {
+      alleleName: 'oxEx2254',
+      expressingPhenotypeName: 'mScarlet(coel)',
+      expressingPhenotypeWild: '0',
+      dominance: '2',
+    },
   ],
   'expr_relations.csv': [
-    { allele_name: 'e1107', expressing_phenotype_name: 'Tra-3', expressing_phenotype_wild: '0', altering_phenotype_name: 'tra-3', altering_phenotype_wild: '1', altering_condition: '', is_suppressing: '1' },
-    { allele_name: 'e12', expressing_phenotype_name: 'Dpy-9', expressing_phenotype_wild: '0', altering_phenotype_name: 'dpy-9', altering_phenotype_wild: '1', altering_condition: '', is_suppressing: '1' },
+    {
+      allele_name: 'e1107',
+      expressing_phenotype_name: 'Tra-3',
+      expressing_phenotype_wild: '0',
+      altering_phenotype_name: 'tra-3',
+      altering_phenotype_wild: '1',
+      altering_condition: '',
+      is_suppressing: '1',
+    },
+    {
+      allele_name: 'e12',
+      expressing_phenotype_name: 'Dpy-9',
+      expressing_phenotype_wild: '0',
+      altering_phenotype_name: 'dpy-9',
+      altering_phenotype_wild: '1',
+      altering_condition: '',
+      is_suppressing: '1',
+    },
   ],
 };
 const both = (file: string): Row[] => [
@@ -154,7 +240,8 @@ const makeAllele = (row: Row): [string, Allele] => {
             ),
           requiredConditions: relationsOf(expr)
             .filter(
-              (rel) => rel.altering_condition !== '' && rel.is_suppressing === '0'
+              (rel) =>
+                rel.altering_condition !== '' && rel.is_suppressing === '0'
             )
             .map((rel) => new Condition({ name: rel.altering_condition })),
           suppressingPhenotypes: relationsOf(expr)
@@ -280,7 +367,14 @@ describe('temperature-sensitive alleles', () => {
     expect(nonWildNames(strain, [])).not.toContain('Daf-2');
     expect(nonWildNames(strain, ['25C'])).toContain('Daf-2');
     expect(nonWildNames(strain, [])).toEqual(
-      expect.arrayContaining(['Bli-4', 'Rol-6', 'Vab-7', 'Unc-31', 'Dpy-11', 'Lon-2'])
+      expect.arrayContaining([
+        'Bli-4',
+        'Rol-6',
+        'Vab-7',
+        'Unc-31',
+        'Dpy-11',
+        'Lon-2',
+      ])
     );
   });
 
@@ -339,16 +433,19 @@ describe('the alleles that had no phenotype', () => {
     ['e138', 'Unc-24'],
     ['hd43', 'Fbl-1'],
     ['e1415', 'Dpy-20'],
-  ])('%s is a recessive %s: shown when homozygous, not when heterozygous', (allele, phenotype) => {
-    const homo = new Strain({
-      allelePairs: [alleles.get(allele)?.toHomo() as never],
-    });
-    const het = new Strain({
-      allelePairs: [alleles.get(allele)?.toTopHet() as never],
-    });
-    expect(nonWildNames(homo, [])).toContain(phenotype);
-    expect(nonWildNames(het, [])).not.toContain(phenotype);
-  });
+  ])(
+    '%s is a recessive %s: shown when homozygous, not when heterozygous',
+    (allele, phenotype) => {
+      const homo = new Strain({
+        allelePairs: [alleles.get(allele)?.toHomo() as never],
+      });
+      const het = new Strain({
+        allelePairs: [alleles.get(allele)?.toTopHet() as never],
+      });
+      expect(nonWildNames(homo, [])).toContain(phenotype);
+      expect(nonWildNames(het, [])).not.toContain(phenotype);
+    }
+  );
 
   test('n498 is semidominant: weak at one copy, strong at two', () => {
     const copies = (strain: Strain): string[] => nonWildNames(strain, []);

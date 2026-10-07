@@ -47,6 +47,7 @@ import { ImLoop2 as SelfIcon } from 'react-icons/im';
 import { TbArrowsCross as CrossIcon } from 'react-icons/tb';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { getErrorMessage } from 'utils/getErrorMessage';
 import { readText, writeText } from '@tauri-apps/api/clipboard';
 import {
   MdContentCopy as CopyIcon,
@@ -750,7 +751,11 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   const performSelfCross = async (
     parentNode: Node<Strain>
   ): Promise<CrossResult> => {
-    parentNode.data = new Strain({ ...parentNode.data, isParent: true });
+    // The parent is only marked as crossed once the cross has worked (below),
+    // so a failed cross leaves it as it was.
+    const parentStrain = new Strain({ ...parentNode.data, isParent: true });
+    const strainOpts = await parentStrain.selfCross();
+    parentNode.data = parentStrain;
     const selfNode: Node<StrainFilter> = {
       id: props.crossDesign.createId(),
       position: CrossDesign.getSelfNodePos(),
@@ -764,7 +769,6 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       target: selfNode.id,
       sourceHandle: 'bottom',
     };
-    const strainOpts = await parentNode.data.selfCross();
     const childNodes = getChildNodes(selfNode, strainOpts);
     applyInitialHiddenFilter(
       selfNode,
@@ -794,9 +798,14 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       console.error('Cannot self-cross a node that is undefined/not a strain');
       return;
     }
-    const result = await performSelfCross(parentNode);
-    setNodes((nodes) => addToArray(nodes, ...result.nodes));
-    setEdges((edges) => [...edges, ...result.edges]);
+    try {
+      const result = await performSelfCross(parentNode);
+      setNodes((nodes) => addToArray(nodes, ...result.nodes));
+      setEdges((edges) => [...edges, ...result.edges]);
+    } catch (err) {
+      console.error(err);
+      toast.error(`The self cross failed: ${getErrorMessage(err)}`);
+    }
   };
 
   // Performs a mated cross without touching the canvas (see performSelfCross).
@@ -805,6 +814,10 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     maleNode: Node<Strain>,
     fromHerm = true
   ): Promise<CrossResult> => {
+    // Cross first: the parents are only marked and moved once the cross has
+    // worked, so a failed cross leaves them as they were.
+    const childOptions = await maleNode.data.crossWith(hermNode.data);
+
     // Mark as parents
     maleNode.data = new Strain({ ...maleNode.data, isParent: true });
     hermNode.data = new Strain({ ...hermNode.data, isParent: true });
@@ -851,7 +864,6 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       sourceHandle: 'left',
       targetHandle: 'right',
     };
-    const childOptions = await maleStrain.crossWith(hermStrain);
     const childNodes = getChildNodes(xNode, childOptions);
     applyInitialHiddenFilter(xNode, childNodes, [
       ...hermStrain.getNonWildAlleles(),
@@ -878,9 +890,14 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     maleNode: Node<Strain>,
     fromHerm = true
   ): Promise<void> => {
-    const result = await performMatedCross(hermNode, maleNode, fromHerm);
-    setNodes((nodes) => addToArray(nodes, ...result.nodes));
-    setEdges((edges) => [...edges, ...result.edges]);
+    try {
+      const result = await performMatedCross(hermNode, maleNode, fromHerm);
+      setNodes((nodes) => addToArray(nodes, ...result.nodes));
+      setEdges((edges) => [...edges, ...result.edges]);
+    } catch (err) {
+      console.error(err);
+      toast.error(`The cross failed: ${getErrorMessage(err)}`);
+    }
   };
 
   /** Create a collection of strain nodes to represent children of a cross, from child strain options */

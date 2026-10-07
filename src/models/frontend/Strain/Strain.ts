@@ -21,6 +21,7 @@ import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { type Condition } from 'models/frontend/Condition/Condition';
 import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
 import { getStrain, insertStrain, updateStrain } from 'api/strain';
+import { mapLimit } from 'utils/mapLimit';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import {
   type ChromosomeOption,
@@ -55,6 +56,23 @@ interface IStrain {
 /**
  * A genetic profile consisting of an ordered sequence allele pairs.
  */
+/**
+ * Saved strains and alleles already loaded from the database during one naming
+ * pass, so many new strains share the work instead of each reloading the same
+ * records.
+ */
+export interface SyncCache {
+  strains: Map<string, Promise<Strain>>;
+  alleles: Map<string, Promise<Allele>>;
+}
+export const newSyncCache = (): SyncCache => ({
+  strains: new Map(),
+  alleles: new Map(),
+});
+
+/** How many database lookups a naming pass may run at once. */
+const SYNC_CONCURRENCY = 4;
+
 export class Strain {
   public name = '';
   public sex = Sex.Hermaphrodite;
@@ -118,6 +136,15 @@ export class Strain {
     const strain = new Strain(params);
     await strain.syncFromDb(); // Dynamically query for name
     return strain;
+  }
+
+  /** A strain of these chromosome pairs, not yet named from the database. */
+  public static fromChromPairs(chromPairs: ChromosomePair[]): Strain {
+    return new Strain({
+      allelePairs: chromPairs
+        .filter((chromPair) => !chromPair.isEca() || !chromPair.isWild())
+        .flatMap((chromPair) => chromPair.allelePairs),
+    });
   }
 
   public static async buildFromChromPairs(
@@ -213,7 +240,11 @@ export class Strain {
     return clone;
   }
 
-  private async syncFromDb(): Promise<void> {
+  /**
+   * Names this strain after the saved strain with the same genotype, if there
+   * is one. `cache` shares the loaded strains and alleles with other calls.
+   */
+  public async syncFromDb(cache: SyncCache = newSyncCache()): Promise<void> {
     if (this.getNonWildAlleles().length === 0) return undefined;
     const sAFilter: FilterGroup<StrainAlleleFieldName> = {
       filters: [
@@ -224,10 +255,15 @@ export class Strain {
       ],
       orderBy: [],
     };
-    const matchCandidates = await Promise.all(
-      (await getFilteredStrainAlleles(sAFilter))
-        .map(async (sa) => await getStrain(sa.strainName))
-        .map(async (strain) => await Strain.createFromRecord(await strain))
+    const strainNames = [
+      ...new Set(
+        (await getFilteredStrainAlleles(sAFilter)).map((sa) => sa.strainName)
+      ),
+    ];
+    const matchCandidates = await mapLimit(
+      strainNames,
+      SYNC_CONCURRENCY,
+      async (name) => await Strain.loadSavedStrain(name, cache)
     );
     for (const candidate of matchCandidates) {
       if (this.equals(candidate)) {
@@ -236,6 +272,29 @@ export class Strain {
         break;
       }
     }
+  }
+
+  /** The saved strain called `name`, loaded once per cache. */
+  private static async loadSavedStrain(
+    name: string,
+    cache: SyncCache
+  ): Promise<Strain> {
+    let loading = cache.strains.get(name);
+    if (loading === undefined) {
+      loading = getStrain(name).then(
+        async (record) => await Strain.createFromRecord(record, cache)
+      );
+      cache.strains.set(name, loading);
+    }
+    return await loading;
+  }
+
+  /** Names new strains from the saved strains, sharing one cache between them. */
+  public static async syncNames(strains: Strain[]): Promise<void> {
+    const cache = newSyncCache();
+    await mapLimit(strains, SYNC_CONCURRENCY, async (strain) => {
+      await strain.syncFromDb(cache);
+    });
   }
 
   public getSortedChromPairs(): ChromosomePair[] {
@@ -266,7 +325,27 @@ export class Strain {
     return str === '' ? 'Wild type' : str + '.';
   }
 
-  static async createFromRecord(record: db_Strain): Promise<Strain> {
+  /** The allele called `name`, built from the database once per cache. */
+  private static async loadSavedAllele(
+    name: string,
+    cache?: SyncCache
+  ): Promise<Allele> {
+    if (cache === undefined)
+      return await Allele.createFromRecord(await getAllele(name));
+    let loading = cache.alleles.get(name);
+    if (loading === undefined) {
+      loading = getAllele(name).then(
+        async (record) => await Allele.createFromRecord(record)
+      );
+      cache.alleles.set(name, loading);
+    }
+    return await loading;
+  }
+
+  static async createFromRecord(
+    record: db_Strain,
+    cache?: SyncCache
+  ): Promise<Strain> {
     const strainAlleleFilter: FilterGroup<StrainAlleleFieldName> = {
       filters: [[['StrainName', { Equal: record.name }]]],
       orderBy: [],
@@ -275,8 +354,9 @@ export class Strain {
     const strainAlleles = await getFilteredStrainAlleles(strainAlleleFilter);
     const allelePairs = await Promise.all(
       strainAlleles.map(async (strainAllele) => {
-        const allele = await Allele.createFromRecord(
-          await getAllele(strainAllele.alleleName)
+        const allele = await Strain.loadSavedAllele(
+          strainAllele.alleleName,
+          cache
         );
         return new AllelePair({
           top: strainAllele.isOnTop ? allele : allele.toWild(),
@@ -536,7 +616,7 @@ export class Strain {
               ChromosomePair.buildFromChroms(chrom, gamete2.chromosomes[idx])
             );
             chromPairs.push(exOption.pair);
-            const strain = await Strain.buildFromChromPairs(chromPairs);
+            const strain = Strain.fromChromPairs(chromPairs);
             strain.probability = gamete1.prob * gamete2.prob * exOption.prob;
             strain.isChild = true;
             return strain;
@@ -551,6 +631,9 @@ export class Strain {
     const possible = strains.filter((strain) => (strain.probability ?? 0) > 0);
     strains.splice(0, strains.length, ...possible);
     strains.sort((a, b) => (b?.probability ?? 0) - (a?.probability ?? 0));
+    // Name the children after the saved strains they match - only now, for the
+    // distinct genotypes that remain, not for every gamete pairing.
+    await Strain.syncNames(strains);
     return strains;
   }
 
