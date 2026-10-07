@@ -22,6 +22,7 @@
 //   mnC1, qC1) come with their own strains, most of them balancer-over-partner
 //   heterozygotes with the partner's alleles on the bottom homolog.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { zipFolder } from './lib/zipFolder.mjs';
 
 const OUT_DIR = 'data/inversion_balancers';
 const LOF_DOMINANCE = 4; // stored form of zygosity '5', "2 copies (lof)"
@@ -524,3 +525,4 @@ write('allele_exprs.csv', ['alleleName', 'expressingPhenotypeName', 'expressingP
 write('expr_relations.csv', ['allele_name', 'expressing_phenotype_name', 'expressing_phenotype_wild', 'altering_phenotype_name', 'altering_phenotype_wild', 'altering_condition', 'is_suppressing'], exprRelations);
 write('strains.csv', ['name', 'genotype', 'description'], strains);
 write('strain_alleles.csv', ['strainName', 'alleleName', 'isOnTop', 'isOnBot'], strainAlleles);
+zipFolder(OUT_DIR);

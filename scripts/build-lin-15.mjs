@@ -18,6 +18,7 @@
 // - unc-119(ed3), (ed4) and (ed9) are recessive class-5 `Unc-119` loss of
 //   function alleles, rescued by the wild type.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { zipFolder } from './lib/zipFolder.mjs';
 
 const OUT_DIR = 'data/lin_15';
 const GENE = 'ZK678.1&ZK662.4';
@@ -474,3 +475,4 @@ write('allele_exprs.csv', ['alleleName', 'expressingPhenotypeName', 'expressingP
 write('expr_relations.csv', ['allele_name', 'expressing_phenotype_name', 'expressing_phenotype_wild', 'altering_phenotype_name', 'altering_phenotype_wild', 'altering_condition', 'is_suppressing'], exprRelations);
 write('strains.csv', ['name', 'genotype', 'description'], strains);
 write('strain_alleles.csv', ['strainName', 'alleleName', 'isOnTop', 'isOnBot'], strainAlleles);
+zipFolder(OUT_DIR);

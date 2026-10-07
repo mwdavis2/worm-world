@@ -2,14 +2,13 @@ import { open } from '@tauri-apps/api/dialog';
 import { type Field } from 'components/ColumnFilter/ColumnFilter';
 import DataImportForm from 'components/DataInputForm/DataInputForm';
 import { Table, type ColumnDefinitionType } from 'components/Table/Table';
-import { importFolder } from 'api/folderImport';
 import { type FilterGroup } from 'models/db/filter/FilterGroup';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FaEdit as EditIcon } from 'react-icons/fa';
 import { getErrorMessage } from 'utils/getErrorMessage';
 import { getPreferences, setPreferences } from 'utils/preferences';
-import { summarizeFolderImport } from 'utils/summarizeFolderImport';
+import { beginImport, endImport } from 'utils/importGuard';
 
 interface DataTableProps<T, K> {
   title: string;
@@ -53,11 +52,6 @@ interface DataTableProps<T, K> {
 }
 
 export const PAGE_SIZES = [25, 50, 100, 200];
-
-// Tauri's native dialog.open() presents a modal sheet on the app window; firing
-// a second one before the first resolves leaves the extra sheet unresponsive
-// to all input (macOS only tracks one active modal session per window).
-let importInProgress = false;
 
 const DataTableView = <T, K>(
   props: DataTableProps<T, K>
@@ -151,11 +145,10 @@ const DataTableView = <T, K>(
   };
 
   const importData = async (): Promise<void> => {
-    if (importInProgress) {
+    if (!beginImport()) {
       toast.error('An import is already in progress');
       return;
     }
-    importInProgress = true;
     try {
       const filepath: string | null = (await open({
         filters: [
@@ -174,29 +167,7 @@ const DataTableView = <T, K>(
         'An error has occured when importing data: ' + getErrorMessage(e)
       );
     } finally {
-      importInProgress = false;
-    }
-  };
-
-  // Imports every table found in a folder in one transaction (all or nothing).
-  const importFolderData = async (): Promise<void> => {
-    if (importInProgress) {
-      toast.error('An import is already in progress');
-      return;
-    }
-    importInProgress = true;
-    try {
-      const folder = (await open({ directory: true })) as string | null;
-      if (folder === null) return;
-      const report = await importFolder(folder);
-      refresh();
-      toast.success(summarizeFolderImport(report), {
-        style: { whiteSpace: 'pre-line' },
-      });
-    } catch (e) {
-      toast.error('Nothing was imported: ' + getErrorMessage(e));
-    } finally {
-      importInProgress = false;
+      endImport();
     }
   };
 
@@ -349,15 +320,6 @@ const DataTableView = <T, K>(
             }}
           >
             Import
-          </button>
-          <button
-            className='btn'
-            title='Import every table file in a folder (genes.csv, alleles.csv, ...) in one step; nothing is imported if any file has a problem'
-            onClick={() => {
-              importFolderData().catch(console.error);
-            }}
-          >
-            Import folder
           </button>
           {props.clearTable !== undefined && (
             <button

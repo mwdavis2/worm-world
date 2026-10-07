@@ -24,6 +24,7 @@
 // semidominant lesion of an unknown unc gene: one copy gives Unc(n754dm), two
 // copies are lethal and male sterile (the Let phenotype's flags). No relations.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { zipFolder } from './lib/zipFolder.mjs';
 
 const OUT_DIR = 'data/balancer_alleles';
 const LOF_DOMINANCE = 4; // stored form of zygosity '5', "2 copies (lof)"
@@ -222,3 +223,4 @@ write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mati
 write('alleles.csv', ['name', 'contents', 'sysGeneName', 'variationName'], alleles);
 write('allele_exprs.csv', ['alleleName', 'expressingPhenotypeName', 'expressingPhenotypeWild', 'dominance'], alleleExprs);
 write('expr_relations.csv', ['allele_name', 'expressing_phenotype_name', 'expressing_phenotype_wild', 'altering_phenotype_name', 'altering_phenotype_wild', 'altering_condition', 'is_suppressing'], exprRelations);
+zipFolder(OUT_DIR);

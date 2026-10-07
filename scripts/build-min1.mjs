@@ -6,7 +6,8 @@
 // Writes data/mIn1/{variations,phenotypes,alleles,allele_exprs,expr_relations,
 // strains,strain_alleles}.csv. The folder is self-contained on top of the
 // shipped genes (dpy-10 is T14B4.7), so it can be loaded in one step with the
-// data tables' "Import folder" button.
+// data tables' "Import Data Tables Zip File" button (also written as
+// data/mIn1.zip).
 //
 // - mIn1 is the II inversion of Edgley & Riddle 2001, with the sequenced
 //   breakpoints II:3,553,628 and II:12,704,681 (Maroilley 2021).
@@ -15,6 +16,7 @@
 //   (Pmyo-2::GFP(weak)) than two (Pmyo-2::GFP). It sits inside the inversion.
 // - the strain is homozygous (mIn1 homozygotes are viable).
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { zipFolder } from './lib/zipFolder.mjs';
 
 const OUT_DIR = 'data/mIn1';
 const CHROMOSOME = 'II';
@@ -107,3 +109,4 @@ write('allele_exprs.csv', ['alleleName', 'expressingPhenotypeName', 'expressingP
 write('expr_relations.csv', ['allele_name', 'expressing_phenotype_name', 'expressing_phenotype_wild', 'altering_phenotype_name', 'altering_phenotype_wild', 'altering_condition', 'is_suppressing'], exprRelations);
 write('strains.csv', ['name', 'genotype', 'description'], strains);
 write('strain_alleles.csv', ['strainName', 'alleleName', 'isOnTop', 'isOnBot'], strainAlleles);
+zipFolder(OUT_DIR);

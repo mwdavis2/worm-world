@@ -27,3 +27,12 @@ describe('Data Tables tab indicator', () => {
     expect(activeTabs()).toEqual(['Genes']);
   });
 });
+
+describe('Data Tables page header', () => {
+  test('has one Import Data Tables Zip File button', () => {
+    renderAt('/data-tables/genes');
+    expect(
+      screen.getAllByRole('button', { name: 'Import Data Tables Zip File' })
+    ).toHaveLength(1);
+  });
+});

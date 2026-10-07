@@ -23,6 +23,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { zipFolder } from './lib/zipFolder.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = join(ROOT, 'data', 'translocations');
@@ -484,9 +485,13 @@ exprRelations.forEach((r) => {
   check(!relationKeys.has(key), `duplicate expr_relations row ${key}`);
   relationKeys.add(key);
 });
+// An uncloned gene (keyed by its public name, e.g. dec-2) has an interpolated
+// position - the midpoint of a ~70 kb span - so near a chromosome end it can
+// fall a little past the end; only genes with a sequence name are checked.
+const isUncloned = (g) => g.sysName === g.descName && /^[a-z]{2,4}-\d/.test(g.sysName);
 genes.forEach((g) => {
   const length = CHROMOSOME_LENGTHS[g.chromosome];
-  if (length !== undefined && g.physLoc !== '')
+  if (length !== undefined && g.physLoc !== '' && !isUncloned(g))
     check(Number(g.physLoc) <= length, `chromosome length for ${g.chromosome} is smaller than gene ${g.sysName} (${g.physLoc})`);
 });
 
@@ -594,3 +599,4 @@ ${[...new Set(verifyNotes)].map((n) => `- ${n}`).join('\n')}
 `;
 writeFileSync(DOC_PATH, doc);
 console.log(`docs/translocations.md written; ${verifyNotes.length} items flagged to verify`);
+zipFolder(OUT_DIR);

@@ -38,6 +38,9 @@ oauth2 = "4.4.2"
 keyring = "2.3.0"
 tiny_http = "0.12.0"
 dotenvy = "0.15.7"
+# data tables zip import (pure Rust deflate only: no C libraries, so it builds the same on every OS)
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+tempfile = "3"
 
 [dev-dependencies]
 pretty_assertions = "1.3"

@@ -78,7 +78,7 @@ async fn main() {
             get_count_filtered_genes,
             insert_gene,
             insert_genes_from_file,
-            import_folder,
+            import_data_tables_zip,
             delete_filtered_genes,
             // conditions
             get_conditions,
@@ -276,15 +276,15 @@ async fn insert_genes_from_file(
     }
 }
 
-/// Imports every table file found in a folder, in one transaction (see
-/// `interface::folder_import`).
+/// Imports every table file in a zip archive (genes.csv, alleles.csv, ...) in
+/// one transaction (see `interface::folder_import`).
 #[tauri::command]
-async fn import_folder(
+async fn import_data_tables_zip(
     state: tauri::State<'_, DbState>,
     path: String,
 ) -> Result<Vec<TableImport>, DbError> {
     let state_guard = state.0.read().await;
-    state_guard.import_folder(Path::new(&path)).await
+    state_guard.import_archive(Path::new(&path)).await
 }
 
 #[tauri::command]

@@ -18,6 +18,7 @@
 // app's own code. The one allele that is not generated here is dpy-10(e128):
 // it is the existing allele `e128`.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { zipFolder } from './lib/zipFolder.mjs';
 
 const OUT_DIR = 'data/balancer_strains';
 const E128 = { name: 'e128', geneSys: 'T14B4.7' }; // dpy-10(e128), already in the database
@@ -180,3 +181,4 @@ writeFileSync(`${OUT_DIR}/strains.csv`, toCsv(['name', 'genotype', 'description'
 writeFileSync(`${OUT_DIR}/strain_alleles.csv`, toCsv(['strainName', 'alleleName', 'isOnTop', 'isOnBot'], strainAlleles));
 console.log(`strains.csv: ${strains.length} rows`);
 console.log(`strain_alleles.csv: ${strainAlleles.length} rows`);
+zipFolder(OUT_DIR);

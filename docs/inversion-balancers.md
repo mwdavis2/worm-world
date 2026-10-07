@@ -81,12 +81,14 @@ strains and their own alleles, in the same files:
   writes a drug-resistance marker. They sit just past the middle of their
   balancer's range, whose own position is the middle.
 
-## mIn1[dpy-10(e128) mIs14] (a folder to import)
+## mIn1[dpy-10(e128) mIs14] (a zip to import)
 
 `data/mIn1/` is a self-contained set of table files for the classical `mIn1`
 balancer of chromosome II (Edgley and Riddle 2001) and the
 `mIn1[dpy-10(e128) mIs14]` strain. Load it with the data tables'
-**Import folder** button; it needs only the shipped genes. Rebuild it with
+**Import Data Tables Zip File** button (in the Data Tables page header) after
+zipping the folder, or use the ready-made `data/mIn1.zip`; it needs only the
+shipped genes. Rebuild both with
 `node scripts/build-min1.mjs`.
 
 - `mIn1` is a single range, II:3,553,628 to 12,704,681 (the breakpoints
