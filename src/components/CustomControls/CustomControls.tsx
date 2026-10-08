@@ -1,5 +1,6 @@
 import { fs } from '@tauri-apps/api';
 import { toPng } from 'html-to-image';
+import { useEffect } from 'react';
 import { BsCardImage } from 'react-icons/bs';
 import { FaPlus, FaMinus, FaExpand, FaLock, FaLockOpen } from 'react-icons/fa6';
 import { SiMicrogenetics as GeneIcon } from 'react-icons/si';
@@ -32,7 +33,32 @@ interface CustomControlsProps {
 // otherwise override.
 const TIP = 'tooltip tooltip-right flex items-center justify-center';
 
+const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+const MOD = isMac ? '⌘' : 'Ctrl+';
+
 const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
+  // Cmd/Ctrl with plus, minus or zero works the zoom and fit-view buttons
+  const { reactFlowInstance } = props;
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+      if (['+', '='].includes(event.key)) {
+        event.preventDefault();
+        reactFlowInstance?.zoomIn({ duration: 150 });
+      } else if (['-', '_'].includes(event.key)) {
+        event.preventDefault();
+        reactFlowInstance?.zoomOut({ duration: 150 });
+      } else if (event.key === '0') {
+        event.preventDefault();
+        reactFlowInstance?.fitView();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [reactFlowInstance]);
+
   // react-flow's own fit-view and lock buttons can't take a tooltip, so they are
   // rebuilt here: the lock is what react-flow's built-in one does.
   const store = useStoreApi();
@@ -58,7 +84,7 @@ const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
     >
       <ControlButton
         className={TIP}
-        data-tip='Fit view'
+        data-tip={`Fit view (${MOD}0)`}
         onClick={() => props.reactFlowInstance?.fitView()}
       >
         <FaExpand className='hover:cursor-pointer' />
@@ -78,14 +104,14 @@ const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
       )}
       <ControlButton
         className={TIP}
-        data-tip='Zoom in'
+        data-tip={`Zoom in (${MOD}+)`}
         onClick={() => props.reactFlowInstance?.zoomIn({ duration: 150 })}
       >
         <FaPlus className='hover:cursor-pointer' />
       </ControlButton>
       <ControlButton
         className={TIP}
-        data-tip='Zoom out'
+        data-tip={`Zoom out (${MOD}-)`}
         onClick={() => props.reactFlowInstance?.zoomOut({ duration: 150 })}
       >
         <FaMinus className='hover:cursor-pointer' />

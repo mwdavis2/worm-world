@@ -128,9 +128,9 @@ describe('Editor', () => {
     expect(tips.every((tip) => tip !== '')).toBe(true);
     expect(tips).toEqual(
       expect.arrayContaining([
-        'Fit view',
-        'Zoom in',
-        'Zoom out',
+        expect.stringMatching(/^Fit view/),
+        expect.stringMatching(/^Zoom in/),
+        expect.stringMatching(/^Zoom out/),
         'Export image',
         expect.stringMatching(/^Allele labels: /),
       ])

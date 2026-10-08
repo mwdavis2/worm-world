@@ -24,7 +24,8 @@ if (import.meta.env.PROD) {
   });
 
   // Browser shortcuts with no use in the app: reload, print, back/forward and
-  // the developer tools. Copy and paste (Cmd/Ctrl-C and V) are left alone.
+  // the developer tools, and select-all outside text fields. Copy and paste
+  // (Cmd/Ctrl-C and V) are left alone.
   document.addEventListener(
     'keydown',
     (e) => {
@@ -37,7 +38,16 @@ if (import.meta.env.PROD) {
         (mod && (e.shiftKey || e.altKey) && ['i', 'j'].includes(key)) ||
         (mod && e.altKey && key === 'c') ||
         (e.altKey && !mod && ['arrowleft', 'arrowright'].includes(key));
-      if (blocked) e.preventDefault();
+      // Select-all only selects page text, but is kept inside text fields
+      const selectAllOutsideFields =
+        mod &&
+        !e.shiftKey &&
+        !e.altKey &&
+        key === 'a' &&
+        (e.target as HTMLElement | null)?.closest(
+          'input, textarea, [contenteditable="true"]'
+        ) == null;
+      if (blocked || selectAllOutsideFields) e.preventDefault();
     },
     true
   );
