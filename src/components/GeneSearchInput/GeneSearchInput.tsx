@@ -1,9 +1,9 @@
 import { getFilteredGenes } from 'api/gene';
 import { type db_Gene } from 'models/db/db_Gene';
 import { type GeneFieldName } from 'models/db/filter/db_GeneFieldName';
-import { type FilterGroup } from 'models/db/filter/FilterGroup';
+import { type Filter } from 'models/db/filter/Filter';
 import { Gene } from 'models/frontend/Gene/Gene';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export interface GeneSearchInputProps {
   selectedGene?: Gene;
@@ -36,6 +36,43 @@ export const optionLabel = (gene: db_Gene, results: db_Gene[]): string => {
 // merges allele-name + gene-descName filters. The real Genes table has
 // 47,611 rows (confirmed directly), so this must stay a live-filtered
 // search, never a full list.
+// At most this many genes are listed; typing more narrows them
+export const MAX_RESULTS = 50;
+// Wait this long after the last keystroke before searching
+export const SEARCH_DELAY_MS = 150;
+export const MIN_SEARCH_LENGTH = 2;
+
+// Genes whose name starts with the text, then genes that merely contain it,
+// each capped so a one- or two-letter search never pulls back thousands of
+// rows.
+const searchGenes = async (value: string): Promise<db_Gene[]> => {
+  const query = async (
+    field: GeneFieldName,
+    filter: Filter
+  ): Promise<db_Gene[]> =>
+    await getFilteredGenes({
+      filters: [[[field, filter]]],
+      orderBy: [[field, 'Asc']],
+      limit: MAX_RESULTS,
+    });
+  const [sysStarts, descStarts, sysContains, descContains] = await Promise.all([
+    query('SysName', { StartsWith: value }),
+    query('DescName', { StartsWith: value }),
+    query('SysName', { Like: value }),
+    query('DescName', { Like: value }),
+  ]);
+  const merged = new Map<string, db_Gene>();
+  for (const gene of [
+    ...descStarts,
+    ...sysStarts,
+    ...descContains,
+    ...sysContains,
+  ]) {
+    if (!merged.has(gene.sysName)) merged.set(gene.sysName, gene);
+  }
+  return [...merged.values()].slice(0, MAX_RESULTS);
+};
+
 export const GeneSearchInput = (
   props: GeneSearchInputProps
 ): React.JSX.Element => {
@@ -43,34 +80,37 @@ export const GeneSearchInput = (
   const [text, setText] = useState(
     props.selectedGene?.descName ?? props.selectedGene?.sysName ?? ''
   );
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  // Identifies the latest search, so a slow earlier one can't overwrite it
+  const latestSearch = useRef(0);
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+    },
+    []
+  );
 
   const onInputChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const value = event.target.value;
     setText(value);
-    if (value === '') {
+    clearTimeout(timer.current);
+    const thisSearch = ++latestSearch.current;
+    if (value.length < MIN_SEARCH_LENGTH) {
       setSearchRes([]);
       return;
     }
-    const bySysName: FilterGroup<GeneFieldName> = {
-      filters: [[['SysName', { Like: value }]]],
-      orderBy: [],
-    };
-    const byDescName: FilterGroup<GeneFieldName> = {
-      filters: [[['DescName', { Like: value }]]],
-      orderBy: [],
-    };
-    Promise.all([getFilteredGenes(bySysName), getFilteredGenes(byDescName)])
-      .then(([sysNameRes, descNameRes]) => {
-        const merged = new Map<string, db_Gene>();
-        [...sysNameRes, ...descNameRes].forEach((gene) => {
-          merged.set(gene.sysName, gene);
-        });
-        setSearchRes([...merged.values()]);
-      })
-      .catch(console.error);
+    timer.current = setTimeout(() => {
+      searchGenes(value)
+        .then((genes) => {
+          if (thisSearch === latestSearch.current) setSearchRes(genes);
+        })
+        .catch(console.error);
+    }, SEARCH_DELAY_MS);
   };
 
   const select = (gene: db_Gene): void => {
+    clearTimeout(timer.current);
+    latestSearch.current++;
     props.onSelect(Gene.createFromRecord(gene));
     setText(gene.descName ?? gene.sysName);
     setSearchRes([]);
@@ -86,6 +126,11 @@ export const GeneSearchInput = (
         onChange={onInputChange}
         value={text}
       />
+      {text.length > 0 && text.length < MIN_SEARCH_LENGTH && (
+        <div className='dropdown-content rounded-box z-50 my-2 w-full bg-base-100 p-3 text-sm opacity-70 shadow'>
+          Type at least {MIN_SEARCH_LENGTH} characters
+        </div>
+      )}
       {searchRes.length === 0 ? (
         <></>
       ) : (

@@ -104,6 +104,13 @@ impl InnerDbState {
         }
         gene_filter.add_filtered_query(&mut qb, false, true);
 
+        // `add_filtered_query` skips ORDER BY / LIMIT when it doesn't supply the
+        // WHERE, so a requested limit is applied here
+        if let Some(limit) = allele_filter.limit {
+            qb.push(" ORDER BY name COLLATE NOCASE ASC LIMIT ");
+            qb.push_bind(limit);
+        }
+
         match qb.build().fetch_all(&self.conn_pool).await {
             Ok(exprs) => {
                 let tuples: Vec<(Allele, Gene)> = exprs
@@ -819,6 +826,41 @@ oxTi302,[Peft-3::mCherry; cbr-unc-119(+)],,oxTi302"
                 .get_count_filtered_phenotypes(&unused_phenotypes)
                 .await?,
             1
+        );
+        Ok(())
+    }
+
+    // The allele/gene search honours a limit and orders by allele name
+    #[sqlx::test]
+    async fn test_allele_gene_search_limit(pool: Pool<Sqlite>) -> Result<()> {
+        sqlx::query("INSERT INTO alleles (name) VALUES ('ed9'), ('ed3'), ('ed4'), ('xx1')")
+            .execute(&pool)
+            .await?;
+        let state = InnerDbState { conn_pool: pool };
+        let alleles = FilterGroup::<AlleleFieldName> {
+            filters: vec![vec![(
+                AlleleFieldName::Name,
+                Filter::StartsWith("ed".to_string()),
+            )]],
+            order_by: vec![],
+            limit: Some(2),
+            offset: None,
+        };
+        let genes = FilterGroup::<GeneFieldName> {
+            filters: vec![vec![(
+                GeneFieldName::DescName,
+                Filter::StartsWith("ed".to_string()),
+            )]],
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        };
+        let found = state
+            .get_filtered_alleles_with_gene_filter(&alleles, &genes)
+            .await?;
+        assert_eq!(
+            found.into_iter().map(|(a, _)| a.name).collect::<Vec<_>>(),
+            vec!["ed3", "ed4"]
         );
         Ok(())
     }

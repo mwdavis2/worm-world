@@ -570,4 +570,38 @@ FAKE23.4\tunc-new\t\t10902633\t6.78"
 
         Ok(())
     }
+
+    // StartsWith matches only the beginning of the name, and a limit caps the rows
+    #[sqlx::test]
+    async fn test_starts_with_and_limit(pool: Pool<Sqlite>) -> Result<()> {
+        for sql in [
+            "INSERT INTO genes (systematic_name, descriptive_name) VALUES ('A1', 'unc-1'), ('A2', 'unc-2'), ('A3', 'lin-unc'), ('A4', 'dpy-1')",
+        ] {
+            sqlx::query(sql).execute(&pool).await?;
+        }
+        let state = InnerDbState { conn_pool: pool };
+        let filter = |f: Filter, limit: Option<u32>| FilterGroup::<GeneFieldName> {
+            filters: vec![vec![(GeneFieldName::DescName, f)]],
+            order_by: vec![(GeneFieldName::DescName, Order::Asc)],
+            limit,
+            offset: None,
+        };
+        let names = |genes: Vec<Gene>| -> Vec<String> {
+            genes
+                .into_iter()
+                .filter_map(|g| g.descriptive_name)
+                .collect()
+        };
+
+        let starts = state
+            .get_filtered_genes(&filter(Filter::StartsWith("unc".to_string()), None))
+            .await?;
+        assert_eq!(names(starts), vec!["unc-1", "unc-2"]);
+
+        let contains = state
+            .get_filtered_genes(&filter(Filter::Like("unc".to_string()), Some(2)))
+            .await?;
+        assert_eq!(names(contains), vec!["lin-unc", "unc-1"]);
+        Ok(())
+    }
 }

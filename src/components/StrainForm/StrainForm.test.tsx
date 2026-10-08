@@ -33,11 +33,11 @@ describe('Strain form', () => {
     );
 
     await user.click(screen.getByLabelText(/alleles/i));
-    await user.keyboard('e');
+    await user.keyboard('ed');
 
-    expect(screen.getByText(/ed3/i)).toBeVisible();
+    expect(await screen.findByText(/ed3/i)).toBeVisible();
 
-    await user.keyboard('{backspace}');
+    await user.keyboard('{backspace}{backspace}');
     expect(screen.queryByText(/ed3/i)).toBeNull();
   });
 });

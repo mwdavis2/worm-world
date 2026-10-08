@@ -37,6 +37,8 @@ pub enum Filter {
     NotEqual(String),
     /// searches all entries that contain the string
     Like(String),
+    /// searches all entries that start with the string
+    StartsWith(String),
     Null,
     NotNull,
     True,
@@ -85,6 +87,10 @@ impl Filter {
             Self::Like(a) => {
                 qb.push(" LIKE ");
                 qb.push_bind(format!("%{}%", a.to_owned()));
+            }
+            Self::StartsWith(a) => {
+                qb.push(" LIKE ");
+                qb.push_bind(format!("{}%", a.to_owned()));
             }
             Self::Null => {
                 qb.push(" IS NULL");

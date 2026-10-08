@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import user from '@testing-library/user-event';
 import {
@@ -74,7 +75,7 @@ describe('AlleleMultiSelect', () => {
     await user.click(input);
     await user.type(input, 'unc');
 
-    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(await screen.findAllByRole('listitem')).toHaveLength(3);
 
     const option = screen.getByText(/ed3/i);
     await user.click(option);
@@ -93,7 +94,7 @@ describe('AlleleMultiSelect', () => {
     await user.click(input);
     await user.type(input, 'unc');
 
-    const option1 = screen.getByText(/ed3/i);
+    const option1 = await screen.findByText(/ed3/i);
     await user.click(option1);
     await waitFor(() => {
       // check pill shows up
@@ -103,7 +104,7 @@ describe('AlleleMultiSelect', () => {
 
     await user.click(input);
     await user.type(input, 'ox11000');
-    const option2 = screen.getByText('unc-119(ox11000)');
+    const option2 = await screen.findByText('unc-119(ox11000)');
 
     await user.click(option2);
     await waitFor(() => {
@@ -120,9 +121,55 @@ describe('AlleleMultiSelect', () => {
     await user.click(input);
     await user.type(input, 'unc');
 
-    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(await screen.findAllByRole('listitem')).toHaveLength(1);
 
     const item = screen.getByRole('listitem');
     expect(item).toHaveTextContent(`${unc119.descName}(${ox11001.name})`);
+  });
+
+  test('searches names that start with the text as well as names that contain it, each capped', async () => {
+    const calls: any[] = [];
+    mockIPC((cmd, args) => {
+      if (cmd === 'get_filtered_alleles_with_gene_filter')
+        calls.push((args as any).alleleFilter);
+      return [[ed3, unc119]];
+    });
+    renderComponent({});
+    const input = screen.getByRole('textbox');
+    await user.click(input);
+    await user.type(input, 'ed');
+    await screen.findByText(/ed3/i);
+    expect(calls).toHaveLength(2);
+    expect(
+      calls.map((filter) => Object.keys(filter.filters[0][0][1])[0]).sort()
+    ).toEqual(['Like', 'StartsWith']);
+    expect(calls.every((filter) => filter.limit === 200)).toBe(true);
+  });
+
+  test('does not search for a single character and says so', async () => {
+    const searched = vi.fn();
+    mockIPC((cmd) => {
+      if (cmd === 'get_filtered_alleles_with_gene_filter') searched();
+      return [];
+    });
+    renderComponent({});
+    const input = screen.getByRole('textbox');
+    await user.click(input);
+    await user.type(input, 'e');
+    expect(screen.getByText(/Type at least 2 characters/)).toBeTruthy();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(searched).not.toHaveBeenCalled();
+  });
+
+  test('shows at most 50 alleles', async () => {
+    mockIPC(() =>
+      Array.from({ length: 120 }, (_, i) => [{ ...ed3, name: `e${i}` }, unc119])
+    );
+    renderComponent({});
+    const input = screen.getByRole('textbox');
+    await user.click(input);
+    await user.type(input, 'e');
+    await user.type(input, '1');
+    expect(await screen.findAllByRole('listitem')).toHaveLength(50);
   });
 });
