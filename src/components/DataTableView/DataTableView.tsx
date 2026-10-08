@@ -3,6 +3,9 @@ import { type Field } from 'components/ColumnFilter/ColumnFilter';
 import DataImportForm from 'components/DataInputForm/DataInputForm';
 import { Table, type ColumnDefinitionType } from 'components/Table/Table';
 import { type db_TableImport } from 'models/db/db_TableImport';
+import { type db_CascadeTable } from 'models/db/db_CascadeTable';
+import { type db_DependentRows } from 'models/db/db_DependentRows';
+import { deleteWithDependents, getDeleteImpact } from 'api/cascade';
 import { type FilterGroup } from 'models/db/filter/FilterGroup';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -55,6 +58,14 @@ interface DataTableProps<T, K> {
   // tooltip, and a "Show only unused" checkbox appears. `fieldName` is the
   // table's virtual "Unused" filter column, `getKeys` returns the keys of the
   // unused rows and `rowKey` the key of a row.
+  // Makes deleting a row also delete the rows that depend on it (the foreign
+  // keys would otherwise refuse): the user is shown what would go and
+  // confirms. `key` is the row's key values, in the order the database
+  // identifies the row by.
+  cascade?: {
+    table: db_CascadeTable;
+    key: (row: T) => string[];
+  };
   unused?: {
     fieldName: K;
     hint: string;
@@ -149,6 +160,45 @@ const DataTableView = <T, K>(
       // The delete reports success even when nothing matched the row, so say
       // so rather than leaving it looking like it worked.
       if (after >= before)
+        toast.warning(
+          'Nothing was deleted: no row in the database matched this one'
+        );
+      refresh();
+    } catch (e) {
+      toast.error(`Unable to delete record: ${getErrorMessage(e)}`);
+    }
+  };
+
+  // The row the user asked to delete and what else would go with it, shown
+  // for confirmation
+  const [pendingDelete, setPendingDelete] = useState<{
+    row: T;
+    impact: db_DependentRows[];
+  }>();
+
+  const requestCascadeDelete = (row: T): void => {
+    const cascade = props.cascade;
+    if (cascade === undefined) return;
+    getDeleteImpact(cascade.table, cascade.key(row))
+      .then((impact) => {
+        setPendingDelete({ row, impact });
+      })
+      .catch((e) => {
+        toast.error(`Unable to delete record: ${getErrorMessage(e)}`);
+      });
+  };
+
+  const confirmCascadeDelete = async (): Promise<void> => {
+    const cascade = props.cascade;
+    if (cascade === undefined || pendingDelete === undefined) return;
+    const { row } = pendingDelete;
+    setPendingDelete(undefined);
+    try {
+      const deleted = await deleteWithDependents(
+        cascade.table,
+        cascade.key(row)
+      );
+      if (deleted === 0)
         toast.warning(
           'Nothing was deleted: no row in the database matched this one'
         );
@@ -378,6 +428,58 @@ const DataTableView = <T, K>(
           )}
         </div>
       </div>
+      {pendingDelete !== undefined && (
+        <div className='modal modal-open'>
+          <div className='modal-box'>
+            <h3 className='text-lg font-bold'>Delete this row?</h3>
+            {pendingDelete.impact.length === 0 ? (
+              <p className='py-4'>Nothing else depends on it.</p>
+            ) : (
+              <>
+                <p className='py-4'>
+                  Deleting it will also delete the rows that depend on it:
+                </p>
+                <ul className='list-inside list-disc pb-4'>
+                  {pendingDelete.impact.map((dependent) => (
+                    <li key={dependent.table}>
+                      {dependent.count.toLocaleString()} {dependent.table}
+                      {dependent.names.length > 0 &&
+                        ` (${dependent.names.slice(0, 5).join(', ')}${
+                          dependent.names.length > 5
+                            ? `, and ${dependent.names.length - 5} more`
+                            : ''
+                        }${
+                          dependent.table === 'variations'
+                            ? '; no other allele uses them'
+                            : ''
+                        })`}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <p className='text-sm opacity-70'>It can&apos;t be undone.</p>
+            <div className='modal-action'>
+              <button
+                className='btn'
+                onClick={() => {
+                  setPendingDelete(undefined);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className='btn btn-error'
+                onClick={() => {
+                  confirmCascadeDelete().catch(console.error);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {clearDialogTotal !== undefined && (
         <div className='modal modal-open'>
           <div className='modal-box'>
@@ -431,6 +533,9 @@ const DataTableView = <T, K>(
                 }
           }
           deleteRecord={deleteRecord}
+          requestDelete={
+            props.cascade === undefined ? undefined : requestCascadeDelete
+          }
           unusedHint={
             props.unused === undefined
               ? undefined

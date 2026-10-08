@@ -83,6 +83,7 @@ export default function ConditionDataTable(): React.JSX.Element {
       getCountFilteredRecords={getCountFilteredConditions}
       insertRecord={insertDbCondition}
       insertRecordsFromFile={insertConditionsFromFile}
+      cascade={{ table: 'Conditions', key: (row) => [row.name] }}
       deleteRecord={deleteCondition}
       updateRow={updateDbCondition}
       lockedFields={['name']}

@@ -1,6 +1,7 @@
 pub mod allele;
 pub mod allele_expr;
 pub mod bulk;
+pub mod cascade;
 pub mod condition;
 pub mod cross_design;
 pub mod design_bundle;

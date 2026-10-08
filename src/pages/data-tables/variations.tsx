@@ -128,6 +128,7 @@ export default function VariationDataTable(): React.JSX.Element {
         await insertDbVariation(toDbVariation(await withGeneticLoc(row)));
       }}
       insertRecordsFromFile={insertVariationsFromFile}
+      cascade={{ table: 'Variations', key: (row) => [row.alleleName] }}
       deleteRecord={async (row) => {
         // Only the name picks the row, so don't validate the range here.
         const { recombSuppressorStart, recombSuppressorEnd, ...rest } = row;

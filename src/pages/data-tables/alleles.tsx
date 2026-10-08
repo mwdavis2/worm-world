@@ -63,6 +63,7 @@ export default function AlleleDataTable(): React.JSX.Element {
       getCountFilteredRecords={getCountFilteredAlleles}
       insertRecord={insertDbAllele}
       insertRecordsFromFile={insertAllelesFromFile}
+      cascade={{ table: 'Alleles', key: (row) => [row.name] }}
       deleteRecord={deleteAllele}
       updateRow={updateDbAllele}
       lockedFields={['name']}

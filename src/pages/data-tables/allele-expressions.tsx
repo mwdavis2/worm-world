@@ -65,6 +65,14 @@ export default function AlleleExpressionDataTable(): React.JSX.Element {
       getCountFilteredRecords={getCountFilteredAlleleExpressions}
       insertRecord={insertDbAlleleExpression}
       insertRecordsFromFile={insertAlleleExpressionsFromFile}
+      cascade={{
+        table: 'AlleleExprs',
+        key: (row) => [
+          row.alleleName,
+          row.expressingPhenotypeName,
+          String(row.expressingPhenotypeWild),
+        ],
+      }}
       deleteRecord={deleteAlleleExpression}
       updateRow={updateDbAlleleExpression}
       lockedFields={[

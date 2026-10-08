@@ -71,6 +71,7 @@ export default function GeneDataTable(): React.JSX.Element {
       getCountFilteredRecords={getCountFilteredGenes}
       insertRecord={insertDbGene}
       insertRecordsFromFile={insertGenesFromFile}
+      cascade={{ table: 'Genes', key: (row) => [row.sysName] }}
       deleteRecord={deleteGene}
       updateRow={updateDbGene}
       lockedFields={['sysName']}

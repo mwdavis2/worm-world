@@ -67,6 +67,7 @@ export default function StrainDataTable(): React.JSX.Element {
         getCountFilteredRecords={getCountFilteredStrains}
         insertRecord={insertDbStrain}
         insertRecordsFromFile={insertStrainsFromFile}
+        cascade={{ table: 'Strains', key: (row) => [row.name] }}
         deleteRecord={deleteStrain}
         clearTable={async () => {
           await deleteFilteredStrains({ filters: [], orderBy: [] });

@@ -15,7 +15,10 @@ use tokio::sync::RwLock;
 
 mod interface;
 use interface::{
-    design_bundle::DesignBundleSummary, folder_import::TableImport, DbError, InnerDbState,
+    cascade::{CascadeTable, DependentRows},
+    design_bundle::DesignBundleSummary,
+    folder_import::TableImport,
+    DbError, InnerDbState,
 };
 
 mod models;
@@ -169,6 +172,8 @@ async fn main() {
             update_strain_allele,
             update_strain,
             delete_filtered_strains,
+            get_delete_impact,
+            delete_with_dependents,
             // strain_alleles,
             get_strain_alleles,
             get_filtered_strain_alleles,
@@ -972,6 +977,28 @@ async fn delete_filtered_strains(
     state_guard.delete_filtered_strains(&filter).await
 }
 /* #endregion strains */
+
+/* #region cascading deletes */
+#[tauri::command]
+async fn get_delete_impact(
+    state: tauri::State<'_, DbState>,
+    table: CascadeTable,
+    key: Vec<String>,
+) -> Result<Vec<DependentRows>, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.get_delete_impact(table, key).await
+}
+
+#[tauri::command]
+async fn delete_with_dependents(
+    state: tauri::State<'_, DbState>,
+    table: CascadeTable,
+    key: Vec<String>,
+) -> Result<u32, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.delete_with_dependents(table, key).await
+}
+/* #endregion cascading deletes */
 
 /* #region strain_alleles */
 #[tauri::command]

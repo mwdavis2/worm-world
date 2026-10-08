@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { toast } from 'react-toastify';
+import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import DataTableView from './DataTableView';
 import { type Field } from 'components/ColumnFilter/ColumnFilter';
 import { type ColumnDefinitionType } from 'components/Table/Table';
@@ -260,5 +261,99 @@ describe('unused rows', () => {
     renderTable();
     await screen.findByText('b');
     expect(screen.queryByLabelText('Show only unused')).toBeNull();
+  });
+});
+
+describe('cascading delete', () => {
+  const cascade = {
+    table: 'Alleles' as const,
+    key: (row: Row) => [row.name],
+  };
+  const clickDeleteOfFirstRow = async (): Promise<void> => {
+    const cell = (await screen.findByText('a')).closest('tr')?.lastElementChild;
+    if (cell === null || cell === undefined) throw new Error('no delete cell');
+    await userEvent.click(cell);
+  };
+  const mockBackend = (
+    impact: unknown[],
+    deleted = 1
+  ): Array<{ cmd: string; args: any }> => {
+    const calls: Array<{ cmd: string; args: any }> = [];
+    mockIPC((cmd, args) => {
+      calls.push({ cmd, args });
+      if (cmd === 'get_delete_impact') return impact;
+      if (cmd === 'delete_with_dependents') return deleted;
+      return null;
+    });
+    return calls;
+  };
+  afterEach(() => {
+    clearMocks();
+  });
+
+  test('lists what else would be deleted, and deletes nothing on Cancel', async () => {
+    const calls = mockBackend([
+      { table: 'strain alleles', count: 2, names: [] },
+      { table: 'variations', count: 1, names: ['ox11000'] },
+    ]);
+    const deleteRecord = vi.fn(async () => {});
+    renderTable({ cascade, deleteRecord });
+    await clickDeleteOfFirstRow();
+
+    expect(await screen.findByText('Delete this row?')).toBeTruthy();
+    expect(screen.getByText(/2 strain alleles/)).toBeTruthy();
+    expect(
+      screen.getByText(/1 variations \(ox11000; no other allele uses them\)/)
+    ).toBeTruthy();
+    expect(calls[0]).toEqual({
+      cmd: 'get_delete_impact',
+      args: { table: 'Alleles', key: ['a'] },
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Delete this row?')).toBeNull();
+    expect(calls.some((c) => c.cmd === 'delete_with_dependents')).toBe(false);
+    expect(deleteRecord).not.toHaveBeenCalled();
+  });
+
+  test('Delete removes the row and its dependents in one call', async () => {
+    const calls = mockBackend([
+      { table: 'strain alleles', count: 1, names: [] },
+    ]);
+    const deleteRecord = vi.fn(async () => {});
+    renderTable({ cascade, deleteRecord });
+    await clickDeleteOfFirstRow();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Delete' })
+    );
+    await waitFor(() => {
+      expect(calls).toContainEqual({
+        cmd: 'delete_with_dependents',
+        args: { table: 'Alleles', key: ['a'] },
+      });
+    });
+    expect(deleteRecord).not.toHaveBeenCalled(); // the plain delete is not used
+    expect(toast.warning).not.toHaveBeenCalled();
+  });
+
+  test('says when nothing else depends on the row', async () => {
+    mockBackend([]);
+    renderTable({ cascade });
+    await clickDeleteOfFirstRow();
+    expect(await screen.findByText('Nothing else depends on it.')).toBeTruthy();
+  });
+
+  test('warns when no row matched', async () => {
+    mockBackend([], 0);
+    renderTable({ cascade });
+    await clickDeleteOfFirstRow();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Delete' })
+    );
+    await waitFor(() => {
+      expect(toast.warning).toHaveBeenCalledWith(
+        'Nothing was deleted: no row in the database matched this one'
+      );
+    });
   });
 });

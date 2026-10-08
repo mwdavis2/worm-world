@@ -165,6 +165,7 @@ interface TableRowsProps<T> {
   // A tooltip for a row that nothing uses (the row is also tinted); undefined
   // for a row that is used
   unusedHint?: (row: T) => string | undefined;
+  requestDelete?: (row: T) => void;
 }
 
 const formatData = (d: any): string => {
@@ -174,6 +175,9 @@ const formatData = (d: any): string => {
 
 interface DeleteCellProps {
   deleteRecord: () => Promise<void>;
+  // When given, the table asks this to confirm and delete (it shows what
+  // else would go) instead of the plain confirm box
+  requestDelete?: () => void;
 }
 
 const DeleteCell = (props: DeleteCellProps): React.JSX.Element => {
@@ -181,6 +185,10 @@ const DeleteCell = (props: DeleteCellProps): React.JSX.Element => {
     <td
       className='text-error hover:cursor-pointer'
       onClick={() => {
+        if (props.requestDelete !== undefined) {
+          props.requestDelete();
+          return;
+        }
         Promise.resolve(
           window.confirm('Are you sure you want to delete this row?')
         )
@@ -259,6 +267,7 @@ const TableRows = <T,>({
   updateRecord,
   customRowActions,
   unusedHint,
+  requestDelete,
 }: TableRowsProps<T>): React.JSX.Element => {
   const rows = data.map((row, rowIndex) => {
     const hint = unusedHint?.(row);
@@ -289,6 +298,13 @@ const TableRows = <T,>({
           <td className='text-center'>{customRowActions(row)}</td>
         )}
         <DeleteCell
+          requestDelete={
+            requestDelete === undefined
+              ? undefined
+              : () => {
+                  requestDelete(row);
+                }
+          }
           deleteRecord={async () => {
             await deleteRecord(row).catch(console.error);
           }}
@@ -315,6 +331,7 @@ export interface TableProps<T, K> {
   deleteRecord: (row: T) => Promise<void>;
   customRowActions?: (row: T) => React.JSX.Element;
   unusedHint?: (row: T) => string | undefined;
+  requestDelete?: (row: T) => void;
 }
 
 type FilterMap<T> = Map<keyof T, Filter[]>;
@@ -397,6 +414,7 @@ export const Table = <T, K>(props: TableProps<T, K>): React.JSX.Element => {
           updateRecord={props.updateRecord}
           customRowActions={props.customRowActions}
           unusedHint={props.unusedHint}
+          requestDelete={props.requestDelete}
         />
       </table>
       <input

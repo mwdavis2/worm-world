@@ -107,6 +107,10 @@ export default function PhenotypeDataTable(): React.JSX.Element {
       getCountFilteredRecords={getCountFilteredPhenotypes}
       insertRecord={insertDbPhenotype}
       insertRecordsFromFile={insertPhenotypesFromFile}
+      cascade={{
+        table: 'Phenotypes',
+        key: (row) => [row.name, String(row.wild)],
+      }}
       deleteRecord={deletePhenotype}
       updateRow={updateDbPhenotype}
       lockedFields={['name', 'wild']}
