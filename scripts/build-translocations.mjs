@@ -91,8 +91,7 @@ const FAMILIES = [
       { chr: 'I', range: [1, 5_245_743] },
       { chr: 'X', range: [14_773_538, 17_718_942] },
     ],
-    note: 'Not sequenced (Maroilley 2021 could not resolve it). X: right end to between dpy-7 and unc-3 (smaller option taken).',
-    verify: 'X half range (smaller option)',
+    note: 'Not sequenced (Maroilley 2021 could not resolve it). X: right end to between dpy-7 and unc-3 (the smaller option, kept by decision: hT3 is used almost entirely for chromosome I, and szT1 is the better X balancer).',
   },
   {
     name: 'mT1',
@@ -594,7 +593,7 @@ aneuploid phenotypes and no positions).
 
 ## Needs confirming
 
-${[...new Set(verifyNotes)].map((n) => `- ${n}`).join('\n')}
+${verifyNotes.length === 0 ? 'Nothing is flagged: every range above is settled or kept by decision.' : [...new Set(verifyNotes)].map((n) => `- ${n}`).join('\n')}
 `;
 writeFileSync(DOC_PATH, doc);
 console.log(`docs/translocations.md written; ${verifyNotes.length} items flagged to verify`);
