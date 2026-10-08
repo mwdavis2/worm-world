@@ -12,6 +12,7 @@ export interface StrainNodeProps {
   id: string;
   xPos: number;
   yPos: number;
+  selected?: boolean;
 }
 
 const StrainNode = memo((props: StrainNodeProps): React.JSX.Element => {
@@ -20,7 +21,11 @@ const StrainNode = memo((props: StrainNodeProps): React.JSX.Element => {
   const lStyling = isHerm ? 'invisible' : '';
 
   return (
-    <div className='strain-node h-fit w-fit'>
+    <div
+      className={`strain-node h-fit w-fit rounded-lg ${
+        props.selected === true ? 'outline outline-4 outline-primary' : ''
+      }`}
+    >
       <Handle
         key='top'
         id='top'

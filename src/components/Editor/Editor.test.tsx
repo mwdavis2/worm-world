@@ -47,7 +47,9 @@ describe('Editor', () => {
     const alleleNames = screen.getAllByText(/ed3/i);
     expect(alleleNames).toHaveLength(5); // title, two heterozygous, one homozygous node
 
-    const plusses = screen.getAllByText(/\+/i);
+    const plusses = screen.getAllByText(
+      (content) => /\+/.test(content) && !/Ctrl\+|Shift\+/.test(content) // not the menu's shortcut hints
+    );
     expect(plusses).toHaveLength(2);
 
     const addNewNodeButton = screen.getByRole('button', {

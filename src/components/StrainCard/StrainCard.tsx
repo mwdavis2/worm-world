@@ -9,7 +9,7 @@ import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { getChromosomeLayout } from 'models/frontend/ChromosomePair/chromosomeLayout';
 import { type ChromosomePair } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { type Strain } from 'models/frontend/Strain/Strain';
-import { memo, useContext, useMemo } from 'react';
+import { memo, useContext, useMemo, useRef } from 'react';
 import { useFitScale } from 'hooks/useFitScale';
 import { BsLightningCharge as MenuIcon } from 'react-icons/bs';
 import { IoMale as MaleIcon, IoMaleFemale as HermIcon } from 'react-icons/io5';
@@ -50,6 +50,7 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
 
   const context = useContext(EditorContext);
   const menuItems = context.getMenuItems?.(props.id) ?? [];
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const strainCardContextValue = useMemo(
     () => ({
@@ -81,6 +82,12 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
     <StrainCardContext.Provider value={strainCardContextValue}>
       <div
         data-testid='strainCard'
+        onContextMenu={(e) => {
+          // Right-click opens the same Actions menu as the lightning icon
+          if (menuItems.length === 0) return;
+          e.preventDefault();
+          menuRef.current?.querySelector('label')?.focus();
+        }}
         className={`flex h-36 flex-col rounded shadow-md ${
           props.strain.lethal === true ? LETHAL_CARD_BACKGROUND : 'bg-base-100'
         } ${props.wide === true ? 'w-full' : 'w-64'}`}
@@ -108,7 +115,10 @@ const StrainCard = memo((props: StrainCardProps): JSX.Element => {
               {filteredProbability}
             </div>
           )}
-          <div className={`${menuItems.length === 0 ? 'invisible' : ''}`}>
+          <div
+            ref={menuRef}
+            className={`${menuItems.length === 0 ? 'invisible' : ''}`}
+          >
             <Menu
               title='Actions'
               top={true}

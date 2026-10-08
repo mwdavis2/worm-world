@@ -96,6 +96,11 @@ import CustomControls from 'components/CustomControls/CustomControls';
 import MiddleNode from 'components/MiddleNode/MiddleNode';
 import FilteredOutModal from 'components/FilteredOutModal/FilteredOutModal';
 
+// The shortcut modifier shown in menu labels: Cmd on a Mac, Ctrl elsewhere
+const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+const modifierKey = isMac ? '⌘' : 'Ctrl+';
+const shiftKey = isMac ? '⇧' : 'Shift+';
+
 interface EditorProps {
   crossDesign: CrossDesign;
   testing?: boolean; // This is used to determine if the context menu should be shown (testing workaround)
@@ -242,8 +247,12 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   // recompute when something a consumer actually reads changes: the allele
   // display mode directly, and nodes/edges/name because scheduleNode (called from
   // getMenuItems) closes over them directly rather than reading live state.
-  // Copies a card's ancestry, as notation text, to the clipboard.
-  const copyNotationToClipboard = (id: string): void => {
+  // Copies a card, with its ancestry or alone, as notation text to the
+  // clipboard.
+  const copyNotationToClipboard = (
+    id: string,
+    ancestry: boolean = true
+  ): void => {
     const node = reactFlowInstance.getNode(id);
     if (node === undefined || node.type !== NodeType.Strain) {
       console.error(
@@ -255,11 +264,13 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     try {
       text = serializeNotation(
         ancestryToNotation(
-          walkAncestry(
-            node as Node<Strain>,
-            reactFlowInstance.getNodes(),
-            reactFlowInstance.getEdges()
-          )
+          ancestry
+            ? walkAncestry(
+                node as Node<Strain>,
+                reactFlowInstance.getNodes(),
+                reactFlowInstance.getEdges()
+              )
+            : { strain: (node as Node<Strain>).data, parents: [] }
         )
       );
     } catch (error) {
@@ -269,12 +280,77 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       return;
     }
     writeText(text)
-      .then(() => toast.success('Copied the notation to the clipboard'))
+      .then(() =>
+        toast.success(
+          ancestry
+            ? 'Copied the ancestor tree to the clipboard'
+            : 'Copied the card to the clipboard'
+        )
+      )
       .catch((error) => {
         console.error(error);
         toast.error('Could not copy to the clipboard');
       });
   };
+
+  // Cmd/Ctrl-C copies the selected card, Shift added copies its ancestor tree.
+  // Text the user is selecting, or typing into, keeps its normal copy.
+  const copySelectedRef = useRef<(ancestry: boolean) => void>(() => {});
+  copySelectedRef.current = (ancestry: boolean): void => {
+    const selected = reactFlowInstance
+      .getNodes()
+      .filter(
+        (node) => node.selected === true && node.type === NodeType.Strain
+      );
+    if (selected.length !== 1) {
+      toast.info('Select one card to copy it');
+      return;
+    }
+    copyNotationToClipboard(selected[0].id, ancestry);
+  };
+  // Cmd/Ctrl-V pastes notation from the clipboard at the centre of the view
+  const pasteAtViewCenterRef = useRef<() => void>(() => {});
+  pasteAtViewCenterRef.current = (): void => {
+    if (!props.crossDesign.editable) return;
+    readText()
+      .then(async (text) => {
+        if (text === null || !looksLikeNotation(text)) {
+          toast.info('The clipboard does not hold a card or ancestor tree');
+          return;
+        }
+        const bounds = flowRef.current?.getBoundingClientRect();
+        const center = reactFlowInstance.project({
+          x: (bounds?.width ?? 0) / 2,
+          y: (bounds?.height ?? 0) / 2,
+        });
+        await pasteNotation(text, center);
+      })
+      .catch(() => toast.error('Could not read the clipboard'));
+  };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const key = event.key.toLowerCase();
+      if ((key !== 'c' && key !== 'v') || event.altKey) return;
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target !== null &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      )
+        return;
+      if (key === 'c' && (window.getSelection()?.toString() ?? '') !== '')
+        return;
+      event.preventDefault();
+      if (key === 'v') pasteAtViewCenterRef.current();
+      else copySelectedRef.current(event.shiftKey);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
 
   const editorContextValue = useMemo(
     () => ({
@@ -386,15 +462,23 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           },
         };
 
+        const copyCard: MenuItem = {
+          icon: <CopyIcon />,
+          text: `Copy this card (${modifierKey}C)`,
+          menuCallback: () => {
+            copyNotationToClipboard(id, false);
+          },
+        };
+
         const copyNotation: MenuItem = {
           icon: <CopyIcon />,
-          text: 'Copy notation',
+          text: `Copy ancestor tree (${modifierKey}${shiftKey}C)`,
           menuCallback: () => {
             copyNotationToClipboard(id);
           },
         };
 
-        const menuOptions = [schedule, copyNotation];
+        const menuOptions = [schedule, copyCard, copyNotation];
         if (!strainNode.data.isParent) menuOptions.push(cross);
         if (
           strainNode.data.sex === Sex.Hermaphrodite &&
@@ -943,12 +1027,16 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     CrossDesign.applyFilteredProbabilities(result.childNodes);
   };
 
-  // Rebuilds the crosses a notation describes, at the last right-click.
-  const pasteNotation = async (text: string): Promise<void> => {
+  // Rebuilds the crosses a notation describes, at the last right-click unless
+  // an origin is given.
+  const pasteNotation = async (
+    text: string,
+    at?: XYPosition
+  ): Promise<void> => {
     try {
       const tree = parseNotation(text);
       const alleles = await resolveAlleles(collectAlleleNames(tree));
-      const origin = getNodePositionFromLastClick();
+      const origin = at ?? getNodePositionFromLastClick();
       let lineages = 0;
       const result = await decodeNotation(tree, alleles, {
         createId: () => props.crossDesign.createId(),
@@ -963,7 +1051,6 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       });
       setNodes((nodes) => addToArray(nodes, ...result.nodes));
       setEdges((edges) => [...edges, ...result.edges]);
-      toast.success('Pasted the notation');
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Could not paste the notation'
@@ -1119,7 +1206,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                 >
                   <button className='flex flex-row' name='paste-notation'>
                     <PasteIcon className='text-xl text-base-content' />
-                    <p>Paste Notation</p>
+                    <p>Paste Notation ({modifierKey}V)</p>
                   </button>
                 </li>
               )}
