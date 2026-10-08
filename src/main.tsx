@@ -11,6 +11,7 @@ import { BrowserRouter as Router, useRoutes } from 'react-router-dom';
 import routes from '~react-pages';
 import Spinner from 'components/Spinner/Spinner';
 import Layout from 'components/Layout/Layout';
+import { disableTextAssist } from 'utils/disableTextAssist';
 
 // The release app shows no browser menu (Back, Reload, Inspect Element...).
 // The app's own menus handle their right-clicks themselves; text fields keep
@@ -68,6 +69,8 @@ const App = (): React.JSX.Element => {
     </>
   );
 };
+
+disableTextAssist();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
