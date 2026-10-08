@@ -4,6 +4,7 @@ import {
   deleteFilteredAlleles,
   getCountFilteredAlleles,
   getFilteredAlleles,
+  getUnusedAlleleNames,
   insertAllelesFromFile,
   insertDbAllele,
 } from 'api/allele';
@@ -65,6 +66,12 @@ export default function AlleleDataTable(): React.JSX.Element {
       deleteRecord={deleteAllele}
       updateRow={updateDbAllele}
       lockedFields={['name']}
+      unused={{
+        fieldName: 'Unused',
+        hint: 'Unused: no strain has this allele',
+        getKeys: getUnusedAlleleNames,
+        rowKey: (row) => row.name,
+      }}
       clearTable={async () => {
         await deleteFilteredAlleles({ filters: [], orderBy: [] });
       }}

@@ -91,3 +91,7 @@ export const deleteVariation = async (
 
   await deleteFilteredVariations(filter);
 };
+
+export const getUnusedVariationNames = async (): Promise<string[]> => {
+  return await invoke('get_unused_variation_names');
+};

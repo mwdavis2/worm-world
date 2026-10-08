@@ -134,3 +134,9 @@ export const deletePhenotype = async (
 
   await deleteFilteredPhenotypes(filter);
 };
+
+export const getUnusedPhenotypeKeys = async (): Promise<
+  Array<[string, boolean]>
+> => {
+  return await invoke('get_unused_phenotype_keys');
+};

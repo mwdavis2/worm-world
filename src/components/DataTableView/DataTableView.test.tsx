@@ -218,3 +218,47 @@ describe('delete row', () => {
     expect(toast.warning).not.toHaveBeenCalled();
   });
 });
+
+describe('unused rows', () => {
+  const unused = {
+    fieldName: 'Unused',
+    hint: 'Unused: nothing uses this row',
+    getKeys: vi.fn(async () => ['b']),
+    rowKey: (row: Row) => row.name,
+  };
+
+  test('tints the unused row with the hint, and not the used one', async () => {
+    renderTable({ unused });
+    await screen.findByText('b');
+    const unusedRow = screen.getByText('b').closest('tr');
+    await waitFor(() => {
+      expect(unusedRow?.getAttribute('data-unused')).toBe('true');
+    });
+    expect(
+      screen.getByText('a').closest('tr')?.hasAttribute('data-unused')
+    ).toBe(false);
+    expect(
+      within(unusedRow as HTMLElement).getAllByTitle(unused.hint)
+    ).toHaveLength(1);
+  });
+
+  test('"Show only unused" adds the Unused filter and returns to page 1', async () => {
+    const { getFilteredRecords } = renderTable({ unused });
+    await screen.findByText('b');
+    await userEvent.click(screen.getByLabelText('Show only unused'));
+    await waitFor(() => {
+      expect(getFilteredRecords).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          offset: 0,
+          filters: [[['Unused', 'True']]],
+        })
+      );
+    });
+  });
+
+  test('has no checkbox on tables without unused flagging', async () => {
+    renderTable();
+    await screen.findByText('b');
+    expect(screen.queryByLabelText('Show only unused')).toBeNull();
+  });
+});

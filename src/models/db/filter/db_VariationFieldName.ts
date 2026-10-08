@@ -8,4 +8,5 @@ export type VariationFieldName =
   | 'RecombSuppressorStart'
   | 'RecombSuppressorEnd'
   | 'IsLocationReference'
-  | 'PercentLoss';
+  | 'PercentLoss'
+  | 'Unused';

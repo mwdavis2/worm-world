@@ -119,6 +119,9 @@ async fn main() {
             get_alleles,
             get_filtered_alleles,
             get_count_filtered_alleles,
+            get_unused_allele_names,
+            get_unused_variation_names,
+            get_unused_phenotype_keys,
             get_filtered_alleles_with_gene_filter,
             insert_allele,
             insert_alleles_from_file,
@@ -601,6 +604,28 @@ async fn get_count_filtered_alleles(
 ) -> Result<u32, DbError> {
     let state_guard = state.0.read().await;
     state_guard.get_count_filtered_alleles(&filter).await
+}
+
+#[tauri::command]
+async fn get_unused_allele_names(state: tauri::State<'_, DbState>) -> Result<Vec<String>, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.get_unused_allele_names().await
+}
+
+#[tauri::command]
+async fn get_unused_variation_names(
+    state: tauri::State<'_, DbState>,
+) -> Result<Vec<String>, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.get_unused_variation_names().await
+}
+
+#[tauri::command]
+async fn get_unused_phenotype_keys(
+    state: tauri::State<'_, DbState>,
+) -> Result<Vec<(String, bool)>, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.get_unused_phenotype_keys().await
 }
 
 #[tauri::command]

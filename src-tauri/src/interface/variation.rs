@@ -5,7 +5,7 @@ use crate::models::filter::{Count, FilterQueryBuilder};
 use crate::models::variation::VariationDb;
 use crate::models::{
     filter::FilterGroup,
-    variation::{Variation, VariationFieldName},
+    variation::{Variation, VariationFieldName, UNUSED_VARIATION_SQL},
 };
 use anyhow::Result;
 use sqlx::{QueryBuilder, Sqlite};
@@ -72,6 +72,18 @@ impl InnerDbState {
                 Err(DbError::Query(e.to_string()))
             }
         }
+    }
+
+    /// Names of the variations no allele uses (see `UNUSED_VARIATION_SQL`)
+    pub async fn get_unused_variation_names(&self) -> Result<Vec<String>, DbError> {
+        let sql = format!("SELECT allele_name FROM variations WHERE {UNUSED_VARIATION_SQL}");
+        sqlx::query_scalar::<_, String>(&sql)
+            .fetch_all(&self.conn_pool)
+            .await
+            .map_err(|e| {
+                eprint!("Get unused variations error: {e}");
+                DbError::Query(e.to_string())
+            })
     }
 
     pub async fn get_count_filtered_variations(
@@ -167,7 +179,9 @@ impl InnerDbState {
             .acquire()
             .await
             .map_err(|e| DbError::BulkInsert(e.to_string()))?;
-        Self::insert_variations_on(&mut conn, bulk).await.map(|_| ())
+        Self::insert_variations_on(&mut conn, bulk)
+            .await
+            .map(|_| ())
     }
 
     /// Inserts on the given connection (so a caller can wrap several tables in

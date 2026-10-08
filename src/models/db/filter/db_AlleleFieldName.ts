@@ -4,4 +4,5 @@ export type AlleleFieldName =
   | 'Name'
   | 'Contents'
   | 'SysGeneName'
-  | 'VariationName';
+  | 'VariationName'
+  | 'Unused';

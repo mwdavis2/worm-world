@@ -1,6 +1,6 @@
 use super::{bulk::Bulk, DbError, InnerDbState, SQLITE_BIND_LIMIT};
 use crate::models::{
-    allele::{Allele, AlleleFieldName},
+    allele::{Allele, AlleleFieldName, UNUSED_ALLELE_SQL},
     filter::{Count, FilterGroup, FilterQueryBuilder},
     gene::{Gene, GeneFieldName},
 };
@@ -45,6 +45,18 @@ impl InnerDbState {
                 Err(DbError::Query(e.to_string()))
             }
         }
+    }
+
+    /// Names of the alleles no strain has (see `UNUSED_ALLELE_SQL`)
+    pub async fn get_unused_allele_names(&self) -> Result<Vec<String>, DbError> {
+        let sql = format!("SELECT name FROM alleles WHERE {UNUSED_ALLELE_SQL}");
+        sqlx::query_scalar::<_, String>(&sql)
+            .fetch_all(&self.conn_pool)
+            .await
+            .map_err(|e| {
+                eprint!("Get unused alleles error: {e}");
+                DbError::Query(e.to_string())
+            })
     }
 
     pub async fn get_count_filtered_alleles(
@@ -735,6 +747,79 @@ oxTi302,[Peft-3::mCherry; cbr-unc-119(+)],,oxTi302"
 
         assert_eq!(alleles.len(), 0);
 
+        Ok(())
+    }
+
+    // Unused rows: alleles no strain has, variations no allele uses, and
+    // phenotypes no allele expression or relation uses.
+    #[sqlx::test]
+    async fn test_unused_rows(pool: Pool<Sqlite>) -> Result<()> {
+        for sql in [
+            "INSERT INTO variations (allele_name) VALUES ('v_used'), ('v_unused')",
+            "INSERT INTO alleles (name, variation_name) VALUES ('a_used', 'v_used'), ('a_unused', NULL)",
+            "INSERT INTO strains (name, genotype) VALUES ('s1', '')",
+            "INSERT INTO strain_alleles (strain_name, allele_name, is_on_top, is_on_bot) VALUES ('s1', 'a_used', 1, 1)",
+            "INSERT INTO phenotypes (name, wild, short_name) VALUES ('p_expr', 0, 'e'), ('p_alt', 0, 'a'), ('p_none', 0, 'n')",
+            "INSERT INTO allele_exprs (allele_name, expressing_phenotype_name, expressing_phenotype_wild, dominance) VALUES ('a_used', 'p_expr', 0, 0)",
+            "INSERT INTO expr_relations (allele_name, expressing_phenotype_name, expressing_phenotype_wild, altering_phenotype_name, altering_phenotype_wild, is_suppressing) VALUES ('a_used', 'p_expr', 0, 'p_alt', 0, 1)",
+        ] {
+            sqlx::query(sql).execute(&pool).await?;
+        }
+        let state = InnerDbState { conn_pool: pool };
+
+        assert_eq!(state.get_unused_allele_names().await?, vec!["a_unused"]);
+        assert_eq!(state.get_unused_variation_names().await?, vec!["v_unused"]);
+        assert_eq!(
+            state.get_unused_phenotype_keys().await?,
+            vec![("p_none".to_string(), false)]
+        );
+
+        // The virtual `Unused` column filters the table the same way, and
+        // combines with limit and offset
+        let unused = FilterGroup::<AlleleFieldName> {
+            filters: vec![vec![(AlleleFieldName::Unused, Filter::True)]],
+            order_by: vec![(AlleleFieldName::Name, Order::Asc)],
+            limit: Some(10),
+            offset: Some(0),
+        };
+        let alleles = state.get_filtered_alleles(&unused).await?;
+        assert_eq!(
+            alleles.into_iter().map(|a| a.name).collect::<Vec<_>>(),
+            vec!["a_unused"]
+        );
+        assert_eq!(state.get_count_filtered_alleles(&unused).await?, 1);
+
+        let unused_variations = FilterGroup::<crate::models::variation::VariationFieldName> {
+            filters: vec![vec![(
+                crate::models::variation::VariationFieldName::Unused,
+                Filter::True,
+            )]],
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        };
+        assert_eq!(
+            state
+                .get_count_filtered_variations(&unused_variations)
+                .await?,
+            1
+        );
+
+        let unused_phenotypes = FilterGroup::<crate::models::phenotype::PhenotypeFieldName> {
+            filters: vec![vec![(
+                crate::models::phenotype::PhenotypeFieldName::Unused,
+                Filter::True,
+            )]],
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        };
+        assert_eq!(
+            state
+                .get_count_filtered_phenotypes(&unused_phenotypes)
+                .await?,
+            1
+        );
         Ok(())
     }
 }

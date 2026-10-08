@@ -51,6 +51,16 @@ interface DataTableProps<T, K> {
   clearBlockedBy?: string;
   // Extra line shown in the clear confirmation (e.g. what can't be undone).
   clearWarning?: string;
+  // Flags rows that nothing else uses: they are tinted with `hint` as a
+  // tooltip, and a "Show only unused" checkbox appears. `fieldName` is the
+  // table's virtual "Unused" filter column, `getKeys` returns the keys of the
+  // unused rows and `rowKey` the key of a row.
+  unused?: {
+    fieldName: K;
+    hint: string;
+    getKeys: () => Promise<string[]>;
+    rowKey: (row: T) => string;
+  };
 }
 
 export const PAGE_SIZES = [25, 50, 100, 200];
@@ -68,6 +78,8 @@ const DataTableView = <T, K>(
   // confirmation is opened; undefined while that dialog is closed.
   const [clearDialogTotal, setClearDialogTotal] = useState<number>();
   const [editingRow, setEditingRow] = useState<T>();
+  const [unusedOnly, setUnusedOnly] = useState(false);
+  const [unusedKeys, setUnusedKeys] = useState<Set<string>>(new Set());
 
   const autoSize = (element: HTMLElement): void => {
     element.style.width = '0';
@@ -180,19 +192,32 @@ const DataTableView = <T, K>(
   // the state set alongside it has been rendered.
   const applyFilters = (
     filterObj: FilterGroup<K>,
-    overrides?: { page?: number; rowsPerPage?: number }
+    overrides?: { page?: number; rowsPerPage?: number; unusedOnly?: boolean }
   ): void => {
     const size = overrides?.rowsPerPage ?? rowsPerPage;
     setCurFilter(filterObj);
+    const queryFilter: FilterGroup<K> =
+      props.unused !== undefined && (overrides?.unusedOnly ?? unusedOnly)
+        ? {
+            ...filterObj,
+            filters: [...filterObj.filters, [[props.unused.fieldName, 'True']]],
+          }
+        : filterObj;
+    props.unused
+      ?.getKeys()
+      .then((keys) => {
+        setUnusedKeys(new Set(keys));
+      })
+      .catch(console.error);
     setPage((currentPage) => {
       const page = overrides?.page ?? currentPage;
       props
-        .getCountFilteredRecords(filterObj)
+        .getCountFilteredRecords(queryFilter)
         .then((c) => {
           if ((page ?? 0) > Math.ceil(c / size)) setPage(undefined);
           props
             .getFilteredRecords({
-              ...filterObj,
+              ...queryFilter,
               limit: size,
               offset: (page ?? 0) * size,
             })
@@ -326,6 +351,23 @@ const DataTableView = <T, K>(
           >
             Import
           </button>
+          {props.unused !== undefined && (
+            <label className='flex cursor-pointer items-center gap-2 px-2 text-sm'>
+              <input
+                type='checkbox'
+                className='checkbox checkbox-sm'
+                checked={unusedOnly}
+                onChange={(e) => {
+                  setUnusedOnly(e.target.checked);
+                  applyFilters(curFilter, {
+                    page: 0,
+                    unusedOnly: e.target.checked,
+                  });
+                }}
+              />
+              Show only unused
+            </label>
+          )}
           {props.clearTable !== undefined && (
             <button
               className='btn btn-ghost text-error'
@@ -389,6 +431,14 @@ const DataTableView = <T, K>(
                 }
           }
           deleteRecord={deleteRecord}
+          unusedHint={
+            props.unused === undefined
+              ? undefined
+              : (row) =>
+                  unusedKeys.has(props.unused?.rowKey(row) ?? '')
+                    ? props.unused?.hint
+                    : undefined
+          }
           customRowActions={
             props.customRowActions === undefined &&
             props.updateRow === undefined

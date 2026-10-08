@@ -1,6 +1,7 @@
 import { type db_Phenotype } from 'models/db/db_Phenotype';
 import { type ColumnDefinitionType } from 'components/Table/Table';
 import {
+  getUnusedPhenotypeKeys,
   deletePhenotype,
   updateDbPhenotype,
   deleteFilteredPhenotypes,
@@ -93,6 +94,15 @@ export default function PhenotypeDataTable(): React.JSX.Element {
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}
+      unused={{
+        fieldName: 'Unused',
+        hint: 'Unused: no allele expression or relation uses this phenotype',
+        getKeys: async () =>
+          (await getUnusedPhenotypeKeys()).map(
+            ([name, wild]) => `${name}\u0000${wild}`
+          ),
+        rowKey: (row) => `${row.name}\u0000${row.wild}`,
+      }}
       getFilteredRecords={getFilteredPhenotypes}
       getCountFilteredRecords={getCountFilteredPhenotypes}
       insertRecord={insertDbPhenotype}

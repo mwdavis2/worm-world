@@ -9,4 +9,5 @@ export type PhenotypeFieldName =
   | 'Lethal'
   | 'FemaleSterile'
   | 'Arrested'
-  | 'MaturationDays';
+  | 'MaturationDays'
+  | 'Unused';

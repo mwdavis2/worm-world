@@ -21,7 +21,13 @@ pub enum AlleleFieldName {
     Contents,
     SysGeneName,
     VariationName,
+    /// Virtual column: true when no strain has the allele (filter it with `Filter::True`)
+    Unused,
 }
+
+/// SQL condition (on the `alleles` table) for an allele no strain has
+pub const UNUSED_ALLELE_SQL: &str =
+    "(alleles.name NOT IN (SELECT allele_name FROM strain_alleles))";
 
 impl FieldNameEnum for AlleleFieldName {
     fn get_col_name(&self) -> String {
@@ -30,6 +36,7 @@ impl FieldNameEnum for AlleleFieldName {
             AlleleFieldName::Contents => "contents".to_owned(),
             AlleleFieldName::SysGeneName => "systematic_gene_name".to_owned(),
             AlleleFieldName::VariationName => "variation_name".to_owned(),
+            AlleleFieldName::Unused => UNUSED_ALLELE_SQL.to_owned(),
         }
     }
 }

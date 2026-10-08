@@ -69,7 +69,13 @@ pub enum PhenotypeFieldName {
     FemaleSterile,
     Arrested,
     MaturationDays,
+    /// Virtual column: true when no allele expression or relation uses the phenotype (filter it with `Filter::True`)
+    Unused,
 }
+
+/// SQL condition (on the `phenotypes` table) for a phenotype nothing uses
+pub const UNUSED_PHENOTYPE_SQL: &str = "(NOT EXISTS (SELECT 1 FROM allele_exprs ae WHERE ae.expressing_phenotype_name = phenotypes.name AND ae.expressing_phenotype_wild = phenotypes.wild) AND NOT EXISTS (SELECT 1 FROM expr_relations er WHERE er.altering_phenotype_name = phenotypes.name AND er.altering_phenotype_wild = phenotypes.wild))";
+
 impl FieldNameEnum for PhenotypeFieldName {
     fn get_col_name(self: &PhenotypeFieldName) -> String {
         match self {
@@ -82,6 +88,7 @@ impl FieldNameEnum for PhenotypeFieldName {
             PhenotypeFieldName::FemaleSterile => "female_sterile".to_owned(),
             PhenotypeFieldName::Arrested => "arrested".to_owned(),
             PhenotypeFieldName::MaturationDays => "maturation_days".to_owned(),
+            PhenotypeFieldName::Unused => UNUSED_PHENOTYPE_SQL.to_owned(),
         }
     }
 }

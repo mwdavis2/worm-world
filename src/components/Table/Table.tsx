@@ -162,6 +162,9 @@ interface TableRowsProps<T> {
   ) => Promise<void>;
   customRowActions?: (row: T) => React.JSX.Element;
   offset?: number;
+  // A tooltip for a row that nothing uses (the row is also tinted); undefined
+  // for a row that is used
+  unusedHint?: (row: T) => string | undefined;
 }
 
 const formatData = (d: any): string => {
@@ -255,11 +258,22 @@ const TableRows = <T,>({
   deleteRecord,
   updateRecord,
   customRowActions,
+  unusedHint,
 }: TableRowsProps<T>): React.JSX.Element => {
   const rows = data.map((row, rowIndex) => {
+    const hint = unusedHint?.(row);
     return (
-      <tr key={`row-${rowIndex}`} className='rounded-none border-none'>
-        <td className='m-1 w-4 border-2 bg-base-200 pr-3 font-bold'>
+      <tr
+        key={`row-${rowIndex}`}
+        className={`rounded-none border-none ${
+          hint !== undefined ? 'bg-warning/20' : ''
+        }`}
+        data-unused={hint !== undefined ? 'true' : undefined}
+      >
+        <td
+          className='m-1 w-4 border-2 bg-base-200 pr-3 font-bold'
+          title={hint}
+        >
           {rowIndex + (offset ?? 0) + 1 /* for 1-based indexing */}
         </td>
         {columns.map((column, columnIndex) => (
@@ -300,6 +314,7 @@ export interface TableProps<T, K> {
   ) => Promise<void>;
   deleteRecord: (row: T) => Promise<void>;
   customRowActions?: (row: T) => React.JSX.Element;
+  unusedHint?: (row: T) => string | undefined;
 }
 
 type FilterMap<T> = Map<keyof T, Filter[]>;
@@ -381,6 +396,7 @@ export const Table = <T, K>(props: TableProps<T, K>): React.JSX.Element => {
           deleteRecord={props.deleteRecord}
           updateRecord={props.updateRecord}
           customRowActions={props.customRowActions}
+          unusedHint={props.unusedHint}
         />
       </table>
       <input

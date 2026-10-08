@@ -99,3 +99,7 @@ export const deleteAllele = async (allele: db_Allele): Promise<void> => {
 
   await deleteFilteredAlleles(filter);
 };
+
+export const getUnusedAlleleNames = async (): Promise<string[]> => {
+  return await invoke('get_unused_allele_names');
+};

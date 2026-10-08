@@ -3,6 +3,7 @@ import {
   updateDbVariation,
   deleteFilteredVariations,
   getCountFilteredVariations,
+  getUnusedVariationNames,
   getFilteredVariations,
   insertDbVariation,
   insertVariationsFromFile,
@@ -115,6 +116,12 @@ export default function VariationDataTable(): React.JSX.Element {
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}
+      unused={{
+        fieldName: 'Unused',
+        hint: 'Unused: no allele uses this variation',
+        getKeys: getUnusedVariationNames,
+        rowKey: (row) => row.alleleName,
+      }}
       getFilteredRecords={getFilteredRows}
       getCountFilteredRecords={getCountFilteredVariations}
       insertRecord={async (row) => {

@@ -2,7 +2,7 @@ use super::{bulk::Bulk, DbError, InnerDbState, SQLITE_BIND_LIMIT};
 use crate::models::{
     expr_relation::ExpressionRelationFieldName,
     filter::{Count, FilterGroup, FilterQueryBuilder},
-    phenotype::{Phenotype, PhenotypeDb, PhenotypeFieldName},
+    phenotype::{Phenotype, PhenotypeDb, PhenotypeFieldName, UNUSED_PHENOTYPE_SQL},
 };
 use anyhow::Result;
 use sqlx::{QueryBuilder, Sqlite};
@@ -69,6 +69,18 @@ impl InnerDbState {
                 Err(DbError::Query(e.to_string()))
             }
         }
+    }
+
+    /// (name, wild) of the phenotypes nothing uses (see `UNUSED_PHENOTYPE_SQL`)
+    pub async fn get_unused_phenotype_keys(&self) -> Result<Vec<(String, bool)>, DbError> {
+        let sql = format!("SELECT name, wild FROM phenotypes WHERE {UNUSED_PHENOTYPE_SQL}");
+        sqlx::query_as::<_, (String, bool)>(&sql)
+            .fetch_all(&self.conn_pool)
+            .await
+            .map_err(|e| {
+                eprint!("Get unused phenotypes error: {e}");
+                DbError::Query(e.to_string())
+            })
     }
 
     pub async fn get_count_filtered_phenotypes(
@@ -201,7 +213,9 @@ impl InnerDbState {
             .acquire()
             .await
             .map_err(|e| DbError::BulkInsert(e.to_string()))?;
-        Self::insert_phenotypes_on(&mut conn, bulk).await.map(|_| ())
+        Self::insert_phenotypes_on(&mut conn, bulk)
+            .await
+            .map(|_| ())
     }
 
     /// Inserts on the given connection (so a caller can wrap several tables in

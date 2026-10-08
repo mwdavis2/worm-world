@@ -71,7 +71,13 @@ pub enum VariationFieldName {
     RecombSuppressorEnd,
     IsLocationReference,
     PercentLoss,
+    /// Virtual column: true when no allele uses the variation (filter it with `Filter::True`)
+    Unused,
 }
+
+/// SQL condition (on the `variations` table) for a variation no allele uses
+pub const UNUSED_VARIATION_SQL: &str = "(variations.allele_name NOT IN (SELECT variation_name FROM alleles WHERE variation_name IS NOT NULL))";
+
 impl FieldNameEnum for VariationFieldName {
     fn get_col_name(self: &VariationFieldName) -> String {
         match self {
@@ -83,6 +89,7 @@ impl FieldNameEnum for VariationFieldName {
             VariationFieldName::RecombSuppressorEnd => "recomb_suppressor_end".to_owned(),
             VariationFieldName::IsLocationReference => "is_location_reference".to_owned(),
             VariationFieldName::PercentLoss => "percent_loss".to_owned(),
+            VariationFieldName::Unused => UNUSED_VARIATION_SQL.to_owned(),
         }
     }
 }
