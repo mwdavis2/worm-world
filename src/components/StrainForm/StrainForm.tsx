@@ -1,5 +1,5 @@
 import { Strain } from 'models/frontend/Strain/Strain';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { leftOffMaleMessage } from 'utils/leftOffMale';
 import StrainCard from 'components/StrainCard/StrainCard';
@@ -22,7 +22,8 @@ export interface StrainFormProps {
   alleleDisplayMode: string;
 }
 
-export type StrainFormSource = 'select' | 'alleles' | 'toggle';
+// 'name': the user typed a name for a new strain (see StrainSelect)
+export type StrainFormSource = 'select' | 'alleles' | 'toggle' | 'name';
 export interface StrainFormState {
   strain: Strain;
   source: StrainFormSource;
@@ -35,6 +36,18 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
   };
   const [state, setState] = useState(defaultState);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  // The last text typed in the strain field: the search text while the strain
+  // is empty, or the name given to a new strain. It becomes the new strain's
+  // name when alleles are added (unless a saved strain with those alleles
+  // already has a name), so adding an allele never wipes what was typed.
+  const typedName = useRef('');
+  const withTypedName = (strain: Strain): StrainFormState => {
+    if (strain.name === '' && typedName.current !== '') {
+      strain.name = typedName.current;
+      return { strain, source: 'name' };
+    }
+    return { strain, source: 'alleles' };
+  };
   const [prevEnforcedSex, setPrevEnforcedSex] = useState<Sex>();
   const [newAlleleModalState, setNewAlleleModalState] = useState<{
     isOpen: boolean;
@@ -78,7 +91,7 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
   }): void => {
     buildStrain(sex, regs, irregs)
       .then((strain) => {
-        setState({ strain, source: 'alleles' });
+        setState(withTypedName(strain));
       })
       .catch(console.error);
   };
@@ -99,7 +112,11 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
       })
         .then((strain) => {
           strain.sex = state.strain.sex;
-          setState({ source: 'toggle', strain });
+          const typed = withTypedName(strain);
+          setState({
+            source: typed.source === 'name' ? 'name' : 'toggle',
+            strain,
+          });
         })
         .catch(console.error);
     },
@@ -113,6 +130,20 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
           },
   };
 
+  // "Add and Save Strain" is for a new strain (made from alleles that match no
+  // saved strain) that has been given a name
+  const isNewStrain =
+    state.strain.getNonWildAlleles().length > 0 &&
+    (state.source === 'name' || state.strain.name === '');
+  const saveBlockedReason: string | undefined =
+    state.strain.getNonWildAlleles().length === 0
+      ? 'Add alleles to make a strain to save.'
+      : !isNewStrain
+      ? 'This strain is already saved.'
+      : state.strain.name === ''
+      ? 'Name the new strain to save it.'
+      : undefined;
+
   return (
     <div className='form-control h-full gap-2'>
       <h1 className='text-lg'>Add Strain</h1>
@@ -121,7 +152,17 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
       </EditorContext.Provider>
       <StrainSelect
         strain={state.strain.generateRecord()}
+        hasAlleles={state.strain.getNonWildAlleles().length > 0}
+        onText={(text) => {
+          typedName.current = text;
+        }}
+        setName={(name) => {
+          const named = state.strain.clone();
+          named.name = name;
+          setState({ strain: named, source: 'name' });
+        }}
         setStrain={(strain) => {
+          typedName.current = '';
           Strain.createFromRecord(strain)
             .then((strain) => {
               strain.sex = state.strain.sex;
@@ -198,11 +239,37 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
         className='btn btn-primary mt-4'
         onClick={() => {
           props.onSubmit(state.strain);
+          typedName.current = '';
           setState(defaultState);
         }}
       >
         Add Strain to Design
       </button>
+      <button
+        className='btn btn-secondary'
+        disabled={saveBlockedReason !== undefined}
+        title={saveBlockedReason}
+        onClick={() => {
+          state.strain
+            .save()
+            .then(() => {
+              toast.success('Saved strain');
+              props.onSubmit(state.strain);
+              typedName.current = '';
+              setState(defaultState);
+            })
+            .catch(() => {
+              toast.error(
+                'Unable to save strain. Make sure a strain with this name/genotype does not already exist.'
+              );
+            });
+        }}
+      >
+        Add and Save Strain
+      </button>
+      {saveBlockedReason !== undefined && (
+        <p className='px-1 text-xs opacity-70'>{saveBlockedReason}</p>
+      )}
       <button
         className='btn btn-ghost mt-auto'
         disabled={irregAlleles.size > 0}
@@ -221,6 +288,12 @@ export interface StrainSelectProps {
   setStrain: (strain: db_Strain) => void;
   clearStrain: () => void;
   source: StrainFormSource;
+  // whether the strain being built carries any alleles yet
+  hasAlleles: boolean;
+  // reports every change of the field's text
+  onText: (text: string) => void;
+  // gives a new strain (one made from alleles) the typed name
+  setName: (name: string) => void;
 }
 
 export const StrainSelect = (props: StrainSelectProps): React.JSX.Element => {
@@ -240,7 +313,29 @@ export const StrainSelect = (props: StrainSelectProps): React.JSX.Element => {
     return await getFilteredStrains(filter);
   };
 
+  // A strain made from alleles that matches no saved strain is new: the field
+  // is then where to give it a name. Otherwise (empty, or a saved strain) the
+  // field searches the saved strains.
+  const nameMode =
+    props.hasAlleles && (props.source === 'name' || props.strain.name === '');
+  const label = nameMode
+    ? 'Name for the new strain'
+    : props.hasAlleles
+    ? 'Saved strain'
+    : 'Find a saved strain';
+  const hint = nameMode
+    ? 'Optional: type a name for this new strain.'
+    : props.hasAlleles
+    ? 'These alleles match this saved strain.'
+    : 'Or add alleles below to make a new strain.';
+
   const onInputChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    props.onText(event.target.value);
+    if (nameMode) {
+      setText(event.target.value);
+      props.setName(event.target.value);
+      return;
+    }
     props.clearStrain();
     setText(event.target.value);
     if (event.target.value === '') {
@@ -253,13 +348,14 @@ export const StrainSelect = (props: StrainSelectProps): React.JSX.Element => {
   return (
     <div>
       <label htmlFor={'strain-select-input'} className='label'>
-        <span className='label-text'>Strain</span>
+        <span className='label-text'>{label}</span>
       </label>
+      <p className='px-1 pb-1 text-xs opacity-70'>{hint}</p>
       <div className='dropdown w-full max-w-md'>
         <input
           type='text'
           id='strain-select-input'
-          placeholder='Strain name'
+          placeholder={nameMode ? 'New strain name' : 'Search saved strains'}
           className='input input-bordered w-full max-w-xs'
           onChange={onInputChange}
           value={text}

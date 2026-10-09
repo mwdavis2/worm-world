@@ -476,7 +476,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           !strainNode.data.isParent && !strainNode.data.isChild;
         const editStrain: MenuItem = {
           icon: <SaveIcon />,
-          text: isFreestanding ? 'Edit strain' : 'Save strain',
+          text: isFreestanding ? 'Edit/Save strain' : 'Save strain',
           menuCallback: () => {
             setEditStrainModalState({
               isOpen: true,
