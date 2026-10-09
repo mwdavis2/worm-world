@@ -19,5 +19,7 @@ oxIs644,[Peft-3::FRT-UTR-FRT::mYFP::unc-54UTR; lin-15(+)],,oxIs644
 oxSi1168,"[Psnt-1:Flp, *ttTi5605]",,oxSi1168
 oxTi302,[Peft-3::mCherry; cbr-unc-119(+)],,oxTi302
 oxTi75,[Peft-3::GFP-NLS; unc-18(+)],,oxTi75
+ttTi5605,,,ttTi5605
+cxTi10882,,,cxTi10882
 tmC5,,,tmC5
 tmC5[F36H1.3(tmIs1220)],[Pmyo-2::YFP],,tmC5[F36H1.3(tmIs1220)]
