@@ -2,7 +2,7 @@ use super::{bulk::Bulk, DbError, InnerDbState, SQLITE_BIND_LIMIT};
 use crate::models::{
     filter::{Count, Filter, FilterGroup, FilterQueryBuilder},
     strain::{Strain, StrainFieldName},
-    strain_allele::StrainAlleleFieldName,
+    strain_allele::{StrainAllele, StrainAlleleFieldName},
 };
 
 use anyhow::Result;
@@ -89,6 +89,97 @@ impl InnerDbState {
                 Err(DbError::Update(e.to_string()))
             }
         }
+    }
+
+    /// Saves a strain and its allele rows in one transaction: all of it or
+    /// none of it.
+    ///
+    /// - `replace_name: None` makes a new strain; a strain with that name
+    ///   already existing is refused.
+    /// - `replace_name: Some(old)` replaces the strain called `old` (and renames
+    ///   it if `strain.name` differs): its row is updated and its allele rows
+    ///   are replaced by `alleles`. Renaming onto another existing strain is
+    ///   refused.
+    ///
+    /// The allele rows must make a possible strain (see `check_locus`); if not,
+    /// nothing is changed.
+    pub async fn save_strain_with_alleles(
+        &self,
+        strain: &Strain,
+        alleles: Vec<StrainAllele>,
+        replace_name: Option<String>,
+    ) -> Result<(), DbError> {
+        let mut tx = self
+            .conn_pool
+            .begin()
+            .await
+            .map_err(|e| DbError::Insert(e.to_string()))?;
+
+        let name_taken = |e: &sqlx::Error| e.to_string().contains("UNIQUE constraint");
+        match &replace_name {
+            None => {
+                sqlx::query("INSERT INTO strains (name, genotype, description) VALUES (?, ?, ?)")
+                    .bind(&strain.name)
+                    .bind(&strain.genotype)
+                    .bind(&strain.description)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| {
+                        if name_taken(&e) {
+                            DbError::Insert(format!(
+                                "A strain named '{}' already exists.",
+                                strain.name
+                            ))
+                        } else {
+                            DbError::Insert(e.to_string())
+                        }
+                    })?;
+            }
+            Some(old_name) => {
+                let result = sqlx::query(
+                    "UPDATE strains SET name = ?, genotype = ?, description = ? WHERE name = ?",
+                )
+                .bind(&strain.name)
+                .bind(&strain.genotype)
+                .bind(&strain.description)
+                .bind(old_name)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    if name_taken(&e) {
+                        DbError::Update(format!("A strain named '{}' already exists.", strain.name))
+                    } else {
+                        DbError::Update(e.to_string())
+                    }
+                })?;
+                if result.rows_affected() == 0 {
+                    return Err(DbError::Update(format!(
+                        "No strain found with name '{old_name}'"
+                    )));
+                }
+                // strain_alleles.strain_name is ON UPDATE CASCADE, so a rename
+                // above already moved the old rows to the new name
+                sqlx::query("DELETE FROM strain_alleles WHERE strain_name = ?")
+                    .bind(&strain.name)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| DbError::Update(e.to_string()))?;
+            }
+        }
+
+        if !alleles.is_empty() {
+            Self::insert_strain_alleles_on(
+                &mut tx,
+                Bulk {
+                    data: alleles,
+                    errors: vec![],
+                },
+            )
+            .await?;
+        }
+        tx.commit()
+            .await
+            .map_err(|e| DbError::Insert(e.to_string()))
     }
 
     pub async fn insert_strain(&self, strain: &Strain) -> Result<(), DbError> {
@@ -559,5 +650,218 @@ mod test {
         assert!(alleles_after.iter().any(|a| a.name == "ed3"));
 
         Ok(())
+    }
+
+    // ---- save_strain_with_alleles: all of it or none of it ----
+
+    use crate::interface::DbError;
+    use crate::models::strain_allele::StrainAllele;
+
+    async fn saving_database(pool: &Pool<Sqlite>) -> InnerDbState {
+        let state = InnerDbState {
+            conn_pool: pool.clone(),
+        };
+        state.seed_reference_data().await.unwrap();
+        // three alleles of unc-119 (M142.1) and one of dpy-10 (T14B4.7)
+        for sql in [
+            "INSERT INTO alleles (name, systematic_gene_name) VALUES ('a1', 'M142.1'), ('a2', 'M142.1'), ('a3', 'M142.1'), ('d1', 'T14B4.7')",
+        ] {
+            sqlx::query(sql).execute(pool).await.unwrap();
+        }
+        state
+    }
+
+    fn strain(name: &str, description: Option<&str>) -> Strain {
+        Strain {
+            name: name.to_string(),
+            genotype: "g".to_string(),
+            description: description.map(str::to_string),
+        }
+    }
+
+    fn sa(strain: &str, allele: &str, top: bool, bot: bool) -> StrainAllele {
+        StrainAllele {
+            strain_name: strain.to_string(),
+            allele_name: allele.to_string(),
+            is_on_top: top,
+            is_on_bot: bot,
+        }
+    }
+
+    async fn alleles_of(pool: &Pool<Sqlite>, strain: &str) -> Vec<String> {
+        sqlx::query_scalar(
+            "SELECT allele_name FROM strain_alleles WHERE strain_name = ? ORDER BY allele_name",
+        )
+        .bind(strain)
+        .fetch_all(pool)
+        .await
+        .unwrap()
+    }
+
+    async fn strain_count(pool: &Pool<Sqlite>, name: &str) -> i64 {
+        sqlx::query_scalar("SELECT COUNT(*) FROM strains WHERE name = ?")
+            .bind(name)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn a_new_strain_is_saved_with_its_alleles(pool: Pool<Sqlite>) {
+        let state = saving_database(&pool).await;
+        state
+            .save_strain_with_alleles(
+                &strain("S1", Some("first")),
+                vec![sa("S1", "a1", true, true), sa("S1", "d1", true, false)],
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(strain_count(&pool, "S1").await, 1);
+        assert_eq!(alleles_of(&pool, "S1").await, vec!["a1", "d1"]);
+    }
+
+    #[sqlx::test]
+    async fn a_new_strain_with_a_taken_name_is_refused_and_changes_nothing(pool: Pool<Sqlite>) {
+        let state = saving_database(&pool).await;
+        state
+            .save_strain_with_alleles(&strain("S1", None), vec![sa("S1", "a1", true, true)], None)
+            .await
+            .unwrap();
+        let result = state
+            .save_strain_with_alleles(&strain("S1", None), vec![sa("S1", "d1", true, true)], None)
+            .await;
+        match result {
+            Err(DbError::Insert(message)) => {
+                assert_eq!(message, "A strain named 'S1' already exists.")
+            }
+            other => panic!("expected the name-taken error, got {other:?}"),
+        }
+        assert_eq!(alleles_of(&pool, "S1").await, vec!["a1"]); // untouched
+    }
+
+    #[sqlx::test]
+    async fn replacing_a_strain_swaps_its_alleles_and_description(pool: Pool<Sqlite>) {
+        let state = saving_database(&pool).await;
+        state
+            .save_strain_with_alleles(
+                &strain("S1", Some("old")),
+                vec![sa("S1", "a1", true, true)],
+                None,
+            )
+            .await
+            .unwrap();
+        state
+            .save_strain_with_alleles(
+                &strain("S1", Some("new")),
+                vec![sa("S1", "d1", true, true)],
+                Some("S1".to_string()),
+            )
+            .await
+            .unwrap();
+        assert_eq!(alleles_of(&pool, "S1").await, vec!["d1"]);
+        let description: Option<String> =
+            sqlx::query_scalar("SELECT description FROM strains WHERE name = 'S1'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(description.as_deref(), Some("new"));
+    }
+
+    #[sqlx::test]
+    async fn replacing_can_rename_and_keeps_the_alleles_under_the_new_name(pool: Pool<Sqlite>) {
+        let state = saving_database(&pool).await;
+        state
+            .save_strain_with_alleles(&strain("S1", None), vec![sa("S1", "a1", true, true)], None)
+            .await
+            .unwrap();
+        state
+            .save_strain_with_alleles(
+                &strain("S2", None),
+                vec![sa("S2", "a1", true, true)],
+                Some("S1".to_string()),
+            )
+            .await
+            .unwrap();
+        assert_eq!(strain_count(&pool, "S1").await, 0);
+        assert_eq!(alleles_of(&pool, "S1").await, Vec::<String>::new());
+        assert_eq!(alleles_of(&pool, "S2").await, vec!["a1"]);
+    }
+
+    #[sqlx::test]
+    async fn renaming_onto_another_strain_is_refused_and_changes_nothing(pool: Pool<Sqlite>) {
+        let state = saving_database(&pool).await;
+        for (name, allele) in [("S1", "a1"), ("S2", "d1")] {
+            state
+                .save_strain_with_alleles(
+                    &strain(name, None),
+                    vec![sa(name, allele, true, true)],
+                    None,
+                )
+                .await
+                .unwrap();
+        }
+        let result = state
+            .save_strain_with_alleles(
+                &strain("S2", None),
+                vec![sa("S2", "a1", true, true)],
+                Some("S1".to_string()),
+            )
+            .await;
+        assert!(
+            matches!(result, Err(DbError::Update(m)) if m == "A strain named 'S2' already exists.")
+        );
+        assert_eq!(alleles_of(&pool, "S1").await, vec!["a1"]);
+        assert_eq!(alleles_of(&pool, "S2").await, vec!["d1"]);
+    }
+
+    #[sqlx::test]
+    async fn replacing_a_strain_that_is_not_there_is_an_error(pool: Pool<Sqlite>) {
+        let state = saving_database(&pool).await;
+        let result = state
+            .save_strain_with_alleles(&strain("S1", None), vec![], Some("nope".to_string()))
+            .await;
+        assert!(matches!(result, Err(DbError::Update(_))));
+        assert_eq!(strain_count(&pool, "S1").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn an_impossible_strain_leaves_no_half_saved_strain(pool: Pool<Sqlite>) {
+        let state = saving_database(&pool).await;
+        // three alleles of one gene cannot be a strain
+        let three = |strain: &str| {
+            vec![
+                sa(strain, "a1", true, true),
+                sa(strain, "a2", true, false),
+                sa(strain, "a3", false, true),
+            ]
+        };
+        let result = state
+            .save_strain_with_alleles(&strain("S1", None), three("S1"), None)
+            .await;
+        assert!(result.is_err());
+        assert_eq!(strain_count(&pool, "S1").await, 0); // rolled back
+        assert_eq!(alleles_of(&pool, "S1").await, Vec::<String>::new());
+
+        // and replacing a good strain with an impossible one keeps the old one
+        state
+            .save_strain_with_alleles(&strain("S2", None), vec![sa("S2", "d1", true, true)], None)
+            .await
+            .unwrap();
+        let result = state
+            .save_strain_with_alleles(
+                &strain("S2", Some("new")),
+                three("S2"),
+                Some("S2".to_string()),
+            )
+            .await;
+        assert!(result.is_err());
+        assert_eq!(alleles_of(&pool, "S2").await, vec!["d1"]); // kept
+        let description: Option<String> =
+            sqlx::query_scalar("SELECT description FROM strains WHERE name = 'S2'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(description, None);
     }
 }

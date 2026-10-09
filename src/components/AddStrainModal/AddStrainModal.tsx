@@ -10,6 +10,9 @@ import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { Strain } from 'models/frontend/Strain/Strain';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import { findSavedStrain } from 'api/strain';
+import ReplaceStrainDialog from 'components/ReplaceStrainDialog/ReplaceStrainDialog';
+import { getErrorMessage } from 'utils/getErrorMessage';
 
 interface AddStrainModalProps {
   isOpen: boolean;
@@ -180,22 +183,40 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
     close();
   };
 
-  const handleSave = (): void => {
+  // The saved strain a new strain would overwrite, while the user is asked
+  const [replacing, setReplacing] = useState<db_Strain>();
+
+  const saveNow = (replaceName?: string): void => {
     strain.name = name;
     strain.description = description;
-    const result =
-      originalName !== undefined ? strain.update(originalName) : strain.save();
-    result
+    (replaceName !== undefined ? strain.update(replaceName) : strain.save())
       .then(() => {
         toast.success('Saved strain');
         props.onSaved(strain);
         close();
       })
-      .catch(() =>
-        toast.error(
-          'Unable to save strain. Make sure a strain with this name/genotype does not already exist.'
-        )
-      );
+      .catch((e) => {
+        toast.error(`Unable to save strain: ${getErrorMessage(e)}`);
+      });
+  };
+
+  const handleSave = (): void => {
+    strain.name = name;
+    strain.description = description;
+    // editing a saved strain replaces it (a rename onto another saved strain is
+    // refused with a clear message); a new strain whose name is taken asks first
+    if (originalName !== undefined) {
+      saveNow(originalName);
+      return;
+    }
+    findSavedStrain(name)
+      .then((existing) => {
+        if (existing === undefined) saveNow();
+        else setReplacing(existing);
+      })
+      .catch((e) => {
+        toast.error(`Unable to save strain: ${getErrorMessage(e)}`);
+      });
   };
 
   return (
@@ -340,6 +361,17 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
           </div>
         </div>
         <label className='modal-backdrop' onClick={close} />
+        <ReplaceStrainDialog
+          existing={replacing}
+          onCancel={() => {
+            setReplacing(undefined);
+          }}
+          onReplace={() => {
+            const replaceName = replacing?.name;
+            setReplacing(undefined);
+            if (replaceName !== undefined) saveNow(replaceName);
+          }}
+        />
       </div>
     </>
   );

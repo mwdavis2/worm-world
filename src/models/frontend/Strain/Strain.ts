@@ -1,9 +1,5 @@
 import { getAllele } from 'api/allele';
-import {
-  deleteFilteredStrainAlleles,
-  getFilteredStrainAlleles,
-  insertDbStrainAllele,
-} from 'api/strainAllele';
+import { getFilteredStrainAlleles } from 'api/strainAllele';
 import {
   Exclude,
   Transform,
@@ -20,7 +16,8 @@ import { type AlleleExpression } from 'models/frontend/AlleleExpression/AlleleEx
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { type Condition } from 'models/frontend/Condition/Condition';
 import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
-import { getStrain, insertStrain, updateStrain } from 'api/strain';
+import { getStrain, saveStrainWithAlleles } from 'api/strain';
+import { type db_StrainAllele } from 'models/db/db_StrainAllele';
 import { getErrorMessage } from 'utils/getErrorMessage';
 import { mapLimit } from 'utils/mapLimit';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
@@ -491,70 +488,71 @@ export class Strain {
     });
   }
 
+  /**
+   * Saves this strain and its allele rows in one transaction (all of it or
+   * none). Refuses a name that is already saved - see `update` to replace one.
+   */
   public async save(): Promise<void> {
     if (this.name === undefined)
       throw new Error('Tried to save strain without name.');
-    await insertStrain(this);
-    await this.insertAllelePairs();
+    await saveStrainWithAlleles(
+      this.generateRecord(),
+      this.strainAlleleRecords()
+    );
   }
 
   /**
-   * Updates an already-saved strain, identified by its previous name (which
-   * may differ from `this.name` if the strain is being renamed). Fully
-   * replaces the strain's `strain_alleles` rows with whatever `this` strain
-   * currently represents, rather than diffing/patching them.
+   * Replaces an already-saved strain, identified by its previous name (which
+   * may differ from `this.name` if the strain is being renamed): its row is
+   * updated and its `strain_alleles` rows are replaced by whatever `this`
+   * strain currently represents, in one transaction.
    */
   public async update(oldName: string): Promise<void> {
     if (this.name === undefined)
       throw new Error('Tried to update strain without name.');
-    await updateStrain(oldName, this.generateRecord());
-    // strain_alleles.strain_name has ON UPDATE CASCADE, so a rename above
-    // already moved any existing rows from oldName to this.name - delete by
-    // the current name (a no-op rename leaves oldName === this.name).
-    await deleteFilteredStrainAlleles({
-      filters: [[['StrainName', { Equal: this.name }]]],
-      orderBy: [],
-    });
-    await this.insertAllelePairs();
+    await saveStrainWithAlleles(
+      this.generateRecord(),
+      this.strainAlleleRecords(),
+      oldName
+    );
   }
 
-  private async insertAllelePairs(): Promise<void> {
-    const simplified = this.simplify();
-    const inserts = simplified.getAllelePairs().flatMap((pair) => {
-      if (pair.isHomo()) {
-        return [
-          insertDbStrainAllele({
-            strainName: this.name ?? '',
-            alleleName: pair.top.name,
-            isOnTop: true,
-            isOnBot: true,
-          }),
-        ];
-      }
-      const pairInserts = [];
-      if (!pair.top.isWild()) {
-        pairInserts.push(
-          insertDbStrainAllele({
-            strainName: this.name ?? '',
+  /** The `strain_alleles` rows that describe this strain's alleles. */
+  public strainAlleleRecords(): db_StrainAllele[] {
+    const strainName = this.name ?? '';
+    return this.simplify()
+      .getAllelePairs()
+      .flatMap((pair): db_StrainAllele[] => {
+        if (pair.isHomo()) {
+          return [
+            {
+              strainName,
+              alleleName: pair.top.name,
+              isOnTop: true,
+              isOnBot: true,
+            },
+          ];
+        }
+        const rows: db_StrainAllele[] = [];
+        if (!pair.top.isWild()) {
+          rows.push({
+            strainName,
             alleleName: pair.top.name,
             isOnTop: true,
             isOnBot: false,
-          })
-        );
-      }
-      if (!pair.bot.isWild() && !pair.bot.isAbsent()) {
-        pairInserts.push(
-          insertDbStrainAllele({
-            strainName: this.name ?? '',
+          });
+        }
+        // a male's missing second X is not an allele to save
+        if (!pair.bot.isWild() && !pair.bot.isAbsent()) {
+          rows.push({
+            strainName,
             alleleName: pair.bot.name,
             isOnTop: false,
             isOnBot: true,
-          })
-        );
-      }
-      return pairInserts;
-    });
-    await Promise.all(inserts);
+          });
+        }
+        return rows;
+      });
   }
 
   public toMale(): Strain {

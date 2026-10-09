@@ -1,5 +1,5 @@
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { toast } from 'react-toastify';
 import user from '@testing-library/user-event';
 import StrainForm from 'components/StrainForm/StrainForm';
@@ -102,8 +102,8 @@ describe('Strain form', () => {
         if (cmd === 'get_filtered_allele_exprs') return [];
         if (cmd === 'get_filtered_strain_alleles') return [];
         if (cmd === 'get_filtered_strains') return [];
-        if (cmd === 'insert_strain' && failInsert)
-          throw new Error('already exists');
+        if (cmd === 'save_strain_with_alleles' && failInsert)
+          throw new Error("A strain named 'NewOne' already exists.");
       });
       vi.spyOn(toast, 'success').mockReturnValue(0);
       vi.spyOn(toast, 'error').mockReturnValue(0);
@@ -158,10 +158,18 @@ describe('Strain form', () => {
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledTimes(1);
       });
-      expect(
-        calls.find((c) => c.cmd === 'insert_strain')?.args.strain.name
-      ).toBe('NewOne');
-      expect(calls.some((c) => c.cmd === 'insert_strain_allele')).toBe(true);
+      const saveCall = calls.find((c) => c.cmd === 'save_strain_with_alleles');
+      expect(saveCall?.args.strain.name).toBe('NewOne');
+      // one transaction carrying the strain and its allele rows; a new strain
+      expect(saveCall?.args.alleles).toEqual([
+        {
+          strainName: 'NewOne',
+          alleleName: 'ed3',
+          isOnTop: true,
+          isOnBot: true,
+        },
+      ]);
+      expect(saveCall?.args.replaceName).toBeNull();
       expect((onSubmit.mock.calls[0][0] as { name: string }).name).toBe(
         'NewOne'
       );
@@ -181,12 +189,93 @@ describe('Strain form', () => {
       await user.click(saveButton());
 
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalled();
+        expect(toast.error).toHaveBeenCalledWith(
+          "Unable to save strain: A strain named 'NewOne' already exists."
+        );
       });
       expect(onSubmit).not.toHaveBeenCalled();
       expect(screen.getByLabelText('Name for the new strain')).toHaveValue(
         'NewOne'
       );
+    });
+
+    describe('when a strain of that name is already saved', () => {
+      beforeEach(() => {
+        mockIPC((cmd, args) => {
+          calls.push({ cmd, args });
+          if (cmd === 'get_filtered_alleles') return [ed3.generateRecord()];
+          if (cmd === 'get_filtered_alleles_with_gene_filter')
+            return [[ed3.generateRecord(), unc119.generateRecord()]];
+          if (cmd === 'get_filtered_genes') return [unc119.generateRecord()];
+          if (cmd === 'get_filtered_allele_exprs') return [];
+          if (cmd === 'get_filtered_strain_alleles') return [];
+          if (cmd === 'get_filtered_strains') {
+            const filters = (args as any).filter?.filters;
+            return filters?.[0]?.[0]?.[1]?.Equal === 'NewOne'
+              ? [
+                  {
+                    name: 'NewOne',
+                    genotype: 'old genotype',
+                    description: null,
+                  },
+                ]
+              : [];
+          }
+        });
+      });
+
+      const startSave = async (): Promise<ReturnType<typeof vi.fn>> => {
+        const onSubmit = renderForm();
+        await addEd3();
+        await user.type(
+          await screen.findByLabelText('Name for the new strain'),
+          'NewOne'
+        );
+        await user.click(saveButton());
+        return onSubmit;
+      };
+
+      test('asks before replacing, and Cancel saves nothing', async () => {
+        const onSubmit = await startSave();
+        expect(
+          await screen.findByText('Replace the saved strain?')
+        ).toBeVisible();
+        expect(screen.getByTestId('replace-strain-dialog')).toHaveTextContent(
+          'NewOne'
+        );
+        await user.click(
+          within(screen.getByTestId('replace-strain-dialog')).getByRole(
+            'button',
+            {
+              name: 'Cancel',
+            }
+          )
+        );
+        expect(screen.queryByText('Replace the saved strain?')).toBeNull();
+        expect(calls.some((c) => c.cmd === 'save_strain_with_alleles')).toBe(
+          false
+        );
+        expect(onSubmit).not.toHaveBeenCalled();
+        // the form keeps its name
+        expect(screen.getByLabelText('Name for the new strain')).toHaveValue(
+          'NewOne'
+        );
+      });
+
+      test('Replace saves over the existing strain, then adds the card', async () => {
+        const onSubmit = await startSave();
+        await user.click(
+          await screen.findByRole('button', { name: 'Replace' })
+        );
+        await waitFor(() => {
+          expect(onSubmit).toHaveBeenCalledTimes(1);
+        });
+        const saveCall = calls.find(
+          (c) => c.cmd === 'save_strain_with_alleles'
+        );
+        expect(saveCall?.args.replaceName).toBe('NewOne');
+        expect(saveCall?.args.strain.name).toBe('NewOne');
+      });
     });
   });
 });

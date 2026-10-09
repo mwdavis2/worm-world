@@ -2,9 +2,11 @@ import { Strain } from 'models/frontend/Strain/Strain';
 import { useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { leftOffMaleMessage } from 'utils/leftOffMale';
+import ReplaceStrainDialog from 'components/ReplaceStrainDialog/ReplaceStrainDialog';
+import { getErrorMessage } from 'utils/getErrorMessage';
 import StrainCard from 'components/StrainCard/StrainCard';
 import { type Sex } from 'models/enums';
-import { getFilteredStrains } from 'api/strain';
+import { findSavedStrain, getFilteredStrains } from 'api/strain';
 import { AlleleMultiSelect } from 'components/AlleleMultiSelect/AlleleMultiSelect';
 import NewAlleleModal from 'components/NewAlleleModal/NewAlleleModal';
 import { type db_Allele } from 'models/db/db_Allele';
@@ -130,6 +132,22 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
           },
   };
 
+  // The saved strain a new strain would overwrite, while the user is asked
+  const [replacing, setReplacing] = useState<db_Strain>();
+  const saveAndAdd = (replaceName?: string): void => {
+    const strain = state.strain;
+    (replaceName !== undefined ? strain.update(replaceName) : strain.save())
+      .then(() => {
+        toast.success('Saved strain');
+        props.onSubmit(strain);
+        typedName.current = '';
+        setState(defaultState);
+      })
+      .catch((e) => {
+        toast.error(`Unable to save strain: ${getErrorMessage(e)}`);
+      });
+  };
+
   // "Add and Save Strain" is for a new strain (made from alleles that match no
   // saved strain) that has been given a name
   const isNewStrain =
@@ -250,18 +268,13 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
         disabled={saveBlockedReason !== undefined}
         title={saveBlockedReason}
         onClick={() => {
-          state.strain
-            .save()
-            .then(() => {
-              toast.success('Saved strain');
-              props.onSubmit(state.strain);
-              typedName.current = '';
-              setState(defaultState);
+          findSavedStrain(state.strain.name)
+            .then((existing) => {
+              if (existing === undefined) saveAndAdd();
+              else setReplacing(existing);
             })
-            .catch(() => {
-              toast.error(
-                'Unable to save strain. Make sure a strain with this name/genotype does not already exist.'
-              );
+            .catch((e) => {
+              toast.error(`Unable to save strain: ${getErrorMessage(e)}`);
             });
         }}
       >
@@ -270,6 +283,17 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
       {saveBlockedReason !== undefined && (
         <p className='px-1 text-xs opacity-70'>{saveBlockedReason}</p>
       )}
+      <ReplaceStrainDialog
+        existing={replacing}
+        onCancel={() => {
+          setReplacing(undefined);
+        }}
+        onReplace={() => {
+          const replaceName = replacing?.name;
+          setReplacing(undefined);
+          if (replaceName !== undefined) saveAndAdd(replaceName);
+        }}
+      />
       <button
         className='btn btn-ghost mt-auto'
         disabled={irregAlleles.size > 0}

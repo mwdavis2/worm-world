@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/tauri';
 import { type db_TableImport } from 'models/db/db_TableImport';
 import { type db_Strain } from 'models/db/db_Strain';
+import { type db_StrainAllele } from 'models/db/db_StrainAllele';
 import { type StrainFieldName } from 'models/db/filter/db_StrainFieldName';
 import {
   type FilterGroup,
@@ -76,4 +77,33 @@ export const deleteStrain = async (strain: db_Strain): Promise<void> => {
   };
 
   await deleteFilteredStrains(filter);
+};
+
+/**
+ * Saves a strain and its allele rows in one transaction - all of it or none of
+ * it. With `replaceName` it replaces the saved strain of that name (renaming it
+ * if `strain.name` differs); without, it makes a new strain and refuses a name
+ * that is taken.
+ */
+export const saveStrainWithAlleles = async (
+  strain: db_Strain,
+  alleles: db_StrainAllele[],
+  replaceName?: string
+): Promise<void> => {
+  await invoke('save_strain_with_alleles', {
+    strain,
+    alleles,
+    replaceName: replaceName ?? null,
+  });
+};
+
+/** The saved strain called `name`, or undefined if there is none. */
+export const findSavedStrain = async (
+  name: string
+): Promise<db_Strain | undefined> => {
+  const found = await getFilteredStrains({
+    filters: [[['Name', { Equal: name }]]],
+    orderBy: [],
+  });
+  return found[0];
 };

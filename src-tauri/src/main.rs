@@ -161,6 +161,7 @@ async fn main() {
             get_filtered_strains,
             get_count_filtered_strains,
             insert_strain,
+            save_strain_with_alleles,
             insert_strains_from_file,
             update_gene,
             update_condition,
@@ -873,6 +874,19 @@ async fn get_filtered_strains(
 ) -> Result<Vec<Strain>, DbError> {
     let state_guard = state.0.read().await;
     state_guard.get_filtered_strains(&filter).await
+}
+
+#[tauri::command]
+async fn save_strain_with_alleles(
+    state: tauri::State<'_, DbState>,
+    strain: Strain,
+    alleles: Vec<StrainAllele>,
+    replace_name: Option<String>,
+) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard
+        .save_strain_with_alleles(&strain, alleles, replace_name)
+        .await
 }
 
 #[tauri::command]
