@@ -21,6 +21,7 @@ import {
 import { SiMicrogenetics as GeneIcon } from 'react-icons/si';
 import EditorContext from 'components/EditorContext/EditorContext';
 import { getErrorMessage } from 'utils/getErrorMessage';
+import { toastSyncFailed, toastSyncPushFailed } from 'utils/syncErrors';
 
 export const ToDoView = (): React.JSX.Element => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -71,9 +72,7 @@ export const ToDoView = (): React.JSX.Element => {
       .catch((e) =>
         toast.error('Unable to update task: ' + getErrorMessage(e))
       );
-    pushTask(record, getTaskStatementText(task)).catch((e) =>
-      toast.error('Unable to sync task: ' + getErrorMessage(e))
-    );
+    pushTask(record, getTaskStatementText(task)).catch(toastSyncPushFailed);
   };
 
   const handleSyncNow = async (): Promise<void> => {
@@ -167,9 +166,9 @@ export const ToDoView = (): React.JSX.Element => {
               <div className='flex gap-2 justify-self-end'>
                 <SyncNowButton
                   onClick={() => {
-                    handleSyncNow().catch((e) =>
-                      toast.error('Unable to sync tasks: ' + getErrorMessage(e))
-                    );
+                    handleSyncNow().catch((e) => {
+                      toastSyncFailed("Couldn't sync with Google Tasks", e);
+                    });
                   }}
                 />
                 <PrintScheduleButton

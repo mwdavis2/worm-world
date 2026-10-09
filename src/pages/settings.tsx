@@ -1,13 +1,12 @@
 import { TopNav } from 'components/TopNav/TopNav';
 import { useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
 import {
   connectGoogleTasks,
   disconnectGoogleTasks,
   getSyncAccounts,
 } from 'api/taskSync';
 import { type db_SyncAccount } from 'models/db/sync/db_SyncAccount';
-import { getErrorMessage } from 'utils/getErrorMessage';
+import { toastSyncFailed } from 'utils/syncErrors';
 import {
   type EdgeStyle,
   type TextExportMode,
@@ -21,9 +20,9 @@ const Settings = (): React.JSX.Element => {
   const [connectingGoogle, setConnectingGoogle] = useState(false);
 
   useEffect(() => {
-    refreshSyncAccounts().catch((e) =>
-      toast.error('Unable to get connected accounts: ' + getErrorMessage(e))
-    );
+    refreshSyncAccounts().catch((e) => {
+      toastSyncFailed("Couldn't check your connected accounts", e);
+    });
   }, []);
 
   const refreshSyncAccounts = async (): Promise<void> => {
@@ -34,9 +33,9 @@ const Settings = (): React.JSX.Element => {
     setConnectingGoogle(true);
     connectGoogleTasks()
       .then(refreshSyncAccounts)
-      .catch((e) =>
-        toast.error('Unable to connect Google Tasks: ' + getErrorMessage(e))
-      )
+      .catch((e) => {
+        toastSyncFailed("Couldn't connect Google Tasks", e);
+      })
       .finally(() => {
         setConnectingGoogle(false);
       });
@@ -45,9 +44,9 @@ const Settings = (): React.JSX.Element => {
   const handleDisconnect = (account: db_SyncAccount): void => {
     disconnectGoogleTasks(account.id)
       .then(refreshSyncAccounts)
-      .catch((e) =>
-        toast.error('Unable to disconnect account: ' + getErrorMessage(e))
-      );
+      .catch((e) => {
+        toastSyncFailed("Couldn't disconnect Google Tasks", e);
+      });
   };
 
   const googleAccount = syncAccounts.find((a) => a.provider === 'google');
