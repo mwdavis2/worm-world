@@ -2,16 +2,8 @@ import { Task } from 'models/frontend/Task/Task';
 import moment from 'moment';
 import TaskItem, { TaskStatement } from 'components/TaskItem/TaskItem';
 import { useState } from 'react';
+import { fromDateInputValue, toDateInputValue } from 'utils/dateInput';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-const getDateStr = (date: Date): string => {
-  const str = [
-    date.getFullYear(),
-    date.getMonth() < 10 ? `0${date.getMonth() + 1}` : date.getMonth() + 1,
-    date.getDate() < 10 ? `0${date.getDate()}` : date.getDate(),
-  ].join('-');
-  return str;
-};
 
 const diffDays = (start: Date, end: Date): number => {
   return (
@@ -117,7 +109,7 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
           </div>
         )}
         {sections.map(([date, section]) => (
-          <div key={date} className='collapse collapse-arrow overflow-visible'>
+          <div key={date} className='collapse-arrow collapse overflow-visible'>
             <input type='checkbox' defaultChecked />
             <div className='collapse-title border-b-2 text-xl'>
               {date}
@@ -210,19 +202,25 @@ const TaskConditionModal = (props: { task: Task }): React.JSX.Element => {
   );
 };
 
-const TaskRescheduleModal = (props: {
+export const TaskRescheduleModal = (props: {
   task: Task;
   updateTask: (task: Task) => void;
   tasks: Task[];
 }): React.JSX.Element => {
   const [preview, setPreview] = useState(false);
   const [date, setDate] = useState<Date>(props.task.dueDate ?? new Date());
+  // What the date field shows: '' while a date is being typed, so a part-typed
+  // date never becomes an invalid one
+  const [dateText, setDateText] = useState(toDateInputValue(date));
   const [prevTaskId, setPrevTaskId] = useState<string>();
   if (prevTaskId !== props.task.id) {
     setPrevTaskId(props.task.id);
     setPreview(false);
-    setDate(props.task.dueDate ?? new Date());
+    const start = props.task.dueDate ?? new Date();
+    setDate(start);
+    setDateText(toDateInputValue(start));
   }
+  const dateIsValid = fromDateInputValue(dateText) !== undefined;
   const delta =
     props.task.dueDate === undefined
       ? undefined
@@ -302,22 +300,24 @@ const TaskRescheduleModal = (props: {
                 <span>Reschedule to </span>
                 <input
                   type='date'
-                  value={getDateStr(date)}
+                  value={dateText}
                   className='border-2 bg-base-100'
                   onChange={(event) => {
-                    const newDate = new Date(event.target.value);
-                    setDate(
-                      new Date(
-                        newDate.getTime() +
-                          newDate.getTimezoneOffset() * 60 * 1000
-                      )
-                    );
+                    setDateText(event.target.value);
+                    const parsed = fromDateInputValue(event.target.value);
+                    if (parsed !== undefined) setDate(parsed);
                   }}
                 />
+                {!dateIsValid && (
+                  <p className='text-sm text-warning'>
+                    Choose a date (past dates are fine).
+                  </p>
+                )}
               </div>
               <div className='modal-action'>
                 <button
                   className='btn btn-primary'
+                  disabled={!dateIsValid}
                   onClick={() => {
                     setPreview(true);
                   }}
