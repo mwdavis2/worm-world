@@ -74,6 +74,14 @@ interface DataTableProps<T, K> {
   };
 }
 
+// "1 strain alleles" reads wrong: the dependent tables are named in the plural
+export const singularRows = (rows: string): string =>
+  rows.endsWith('ies')
+    ? `${rows.slice(0, -3)}y`
+    : rows.endsWith('s')
+    ? rows.slice(0, -1)
+    : rows;
+
 export const PAGE_SIZES = [25, 50, 100, 200];
 
 const DataTableView = <T, K>(
@@ -442,7 +450,10 @@ const DataTableView = <T, K>(
                 <ul className='list-inside list-disc pb-4'>
                   {pendingDelete.impact.map((dependent) => (
                     <li key={dependent.table}>
-                      {dependent.count.toLocaleString()} {dependent.table}
+                      {dependent.count.toLocaleString()}{' '}
+                      {dependent.count === 1
+                        ? singularRows(dependent.table)
+                        : dependent.table}
                       {dependent.names.length > 0 &&
                         ` (${dependent.names.slice(0, 5).join(', ')}${
                           dependent.names.length > 5

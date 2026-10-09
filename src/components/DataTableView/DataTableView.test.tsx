@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { toast } from 'react-toastify';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
-import DataTableView from './DataTableView';
+import DataTableView, { singularRows } from './DataTableView';
 import { type Field } from 'components/ColumnFilter/ColumnFilter';
 import { type ColumnDefinitionType } from 'components/Table/Table';
 
@@ -303,7 +303,7 @@ describe('cascading delete', () => {
     expect(await screen.findByText('Delete this row?')).toBeTruthy();
     expect(screen.getByText(/2 strain alleles/)).toBeTruthy();
     expect(
-      screen.getByText(/1 variations \(ox11000; no other allele uses them\)/)
+      screen.getByText(/1 variation \(ox11000; no other allele uses them\)/)
     ).toBeTruthy();
     expect(calls[0]).toEqual({
       cmd: 'get_delete_impact',
@@ -355,5 +355,32 @@ describe('cascading delete', () => {
         'Nothing was deleted: no row in the database matched this one'
       );
     });
+  });
+
+  test('says "1 strain allele" for one and "2 strain alleles" for two', async () => {
+    mockBackend([
+      { table: 'strain alleles', count: 1, names: [] },
+      { table: 'expression relations', count: 2, names: [] },
+      { table: 'allele expressions', count: 1, names: [] },
+    ]);
+    renderTable({ cascade });
+    await clickDeleteOfFirstRow();
+    expect(await screen.findByText(/1 strain allele$/)).toBeTruthy();
+    expect(screen.getByText(/2 expression relations/)).toBeTruthy();
+    expect(screen.getByText(/1 allele expression$/)).toBeTruthy();
+  });
+});
+
+describe('singularRows', () => {
+  test.each([
+    ['strain alleles', 'strain allele'],
+    ['alleles', 'allele'],
+    ['variations', 'variation'],
+    ['allele expressions', 'allele expression'],
+    ['expression relations', 'expression relation'],
+    ['categories', 'category'],
+    ['phenotype', 'phenotype'],
+  ])('%s -> %s', (plural, singular) => {
+    expect(singularRows(plural)).toBe(singular);
   });
 });
