@@ -18,10 +18,19 @@ import { type MenuItem } from 'components/Menu/Menu';
 import NoteForm from 'components/NoteForm/NoteForm';
 import StrainForm from 'components/StrainForm/StrainForm';
 import { NodeType, Sex } from 'models/enums';
-import { type Allele } from 'models/frontend/Allele/Allele';
+import { Allele } from 'models/frontend/Allele/Allele';
 import { useAlleleDisplayMode } from 'hooks/useAlleleDisplayMode';
 import { getAlleles } from 'api/allele';
 import { refreshAlleleContents } from 'utils/refreshAlleleContents';
+import {
+  allelesInDesign,
+  applyFreshExpressions,
+  loadFreshExpressions,
+} from 'utils/refreshAlleleExpressions';
+import {
+  refreshCardInfoOfChild,
+  refreshCardInfoOfChildren,
+} from 'models/frontend/CrossDesign/refreshCardInfo';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import CrossDesign, {
   addToArray,
@@ -129,34 +138,13 @@ interface StrainModalState {
 // for a design loaded from storage - these are only otherwise set when a cross
 // is created or its filter changes, so older designs would show neither. Only
 // updates what the cards display; never touches visibility or filters.
-const refreshLoadedCardInfo = (
-  nodes: Array<Node<any>>,
-  edges: Edge[]
-): void => {
-  nodes
-    .filter((node) => node.type === NodeType.Self || node.type === NodeType.X)
-    .forEach((middleNode: Node<StrainFilter>) => {
-      const parentAlleles = getIncomers(middleNode, nodes, edges).flatMap(
-        (parent: Node<Strain>) => parent.data.getNonWildAlleles()
-      );
-      nodes
-        .filter((node) => node.parentNode === middleNode.id)
-        .forEach((child: Node<Strain>) => {
-          child.data.refreshCardInfo(
-            parentAlleles,
-            middleNode.data.activeConditions
-          );
-        });
-    });
-};
-
 const Editor = (props: EditorProps): React.JSX.Element => {
   const navigate = useNavigate();
   const reactFlowInstance = useReactFlow();
   const onConnectParams = useRef<OnConnectStartParams | null>(null);
   const [name, setName] = useState(props.crossDesign.name);
   const [nodes, setNodes] = useState(() => {
-    refreshLoadedCardInfo(props.crossDesign.nodes, props.crossDesign.edges);
+    refreshCardInfoOfChildren(props.crossDesign.nodes, props.crossDesign.edges);
     return props.crossDesign.nodes;
   });
   const [edges, setEdges] = useState(props.crossDesign.edges);
@@ -205,6 +193,33 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           records.map((record) => [record.name, record.contents ?? undefined])
         );
         setNodes((current) => refreshAlleleContents(current, contentsByName));
+      })
+      .catch(console.error);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // The same goes for the alleles' expression rows (phenotypes, dominance):
+  // reload them from the data tables so a design opened after an allele's
+  // data was corrected computes phenotypes from the current rows.
+  useEffect(() => {
+    let cancelled = false;
+    loadFreshExpressions(
+      allelesInDesign(props.crossDesign.nodes),
+      Allele.loadAlleleExpressions
+    )
+      .then((fresh) => {
+        if (cancelled) return;
+        setNodes((current) => {
+          const result = applyFreshExpressions(current, fresh);
+          if (result.changed)
+            refreshCardInfoOfChildren(
+              result.nodes,
+              reactFlowInstance.getEdges()
+            );
+          return result.nodes;
+        });
       })
       .catch(console.error);
     return () => {
@@ -376,12 +391,18 @@ const Editor = (props: EditorProps): React.JSX.Element => {
             'Male offspring from a self-cross are rare unless in a Him background or after a heat shock.'
           );
         }
-        setNodes((nodes) =>
-          addToArray(nodes, {
-            ...node,
-            data: strainNode.data.toggleSex(),
-          })
+        const toggledNode: Node<Strain> = {
+          ...strainNode,
+          data: strainNode.data.toggleSex(),
+        };
+        // A male has one X, so what the card expresses can change: refresh
+        // its stored info against its cross
+        refreshCardInfoOfChild(
+          toggledNode,
+          reactFlowInstance.getNodes(),
+          reactFlowInstance.getEdges()
         );
+        setNodes((nodes) => addToArray(nodes, toggledNode));
       },
       toggleHetPair: (id: string, pair: AllelePair): void => {
         const node = reactFlowInstance.getNode(id);

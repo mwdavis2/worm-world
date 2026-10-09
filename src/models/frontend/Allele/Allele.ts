@@ -110,6 +110,18 @@ export class Allele {
     partialAllele.variation = Variation.createFromRecord(res);
   }
 
+  /** The allele's expression rows as the database holds them now. */
+  static async loadAlleleExpressions(
+    alleleName: string
+  ): Promise<AlleleExpression[]> {
+    const res = await getFilteredAlleleExpressions(
+      Allele.setAlleleExpressionsFilter(alleleName)
+    );
+    return await Promise.all(
+      res.map(async (record) => await AlleleExpression.createFromRecord(record))
+    );
+  }
+
   private static async setAlleleExpressions(
     partialAllele: AlleleState,
     alleleName: string

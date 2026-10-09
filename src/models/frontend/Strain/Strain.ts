@@ -52,6 +52,9 @@ interface IStrain {
   isChild?: boolean;
   probability?: number;
   filteredProbability?: number;
+  // Stored card info (see refreshCardInfo), carried over when a card is copied
+  lethal?: boolean;
+  exprPhenotypeNames?: string[];
 }
 
 /**
@@ -126,6 +129,10 @@ export class Strain {
     this.description = params.description;
     this.probability = params.probability ?? 1;
     this.filteredProbability = params.filteredProbability;
+    // Copying a card (clone, marking it a parent, ...) must not blank what it
+    // displays; whatever changes the genotype refreshes it again
+    this.lethal = params.lethal;
+    this.exprPhenotypeNames = params.exprPhenotypeNames;
 
     if (params.allelePairs !== undefined && params.chromPairMap === undefined)
       this.addPairsToStrain(params.allelePairs);
