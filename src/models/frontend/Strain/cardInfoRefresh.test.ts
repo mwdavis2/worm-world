@@ -115,14 +115,13 @@ describe('refreshing a child card against its cross', () => {
     expect(toggled.data.lethal).toBe(true);
     expect(toggled.data.exprPhenotypeNames).toEqual(['unc']);
 
-    // and toggled again: whatever it is now, its stored info matches it
-    // (note the toggle is not an undo: the male's single X becomes both of a
-    // hermaphrodite's, so x1/+ -> x1/0 -> x1/x1)
+    // and toggled again it is the original x1/+ hermaphrodite again
     const again: Node<Strain> = { ...toggled, data: toggled.data.toggleSex() };
     refreshCardInfoOfChild(again, nodes, edges);
-    expect(again.data.lethal).toBe(again.data.isLethal());
     expect(again.data.sex).toBe(Sex.Hermaphrodite);
-    expect(again.data.toString()).not.toBe(child.toString());
+    expect(again.data.toString()).toBe(child.toString());
+    expect(again.data.lethal).toBe(false);
+    expect(again.data.exprPhenotypeNames).toEqual([]);
   });
 
   test('a card that is not a child of a cross is left alone', () => {

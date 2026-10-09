@@ -28,6 +28,7 @@ import {
   type ChromosomeOption,
   type ChromosomePairOption,
   ChromosomePair,
+  chromsEqual,
 } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { chromosomes } from 'models/frontend/Chromosome';
 import {
@@ -55,6 +56,7 @@ interface IStrain {
   // Stored card info (see refreshCardInfo), carried over when a card is copied
   lethal?: boolean;
   exprPhenotypeNames?: string[];
+  hermXPair?: ChromosomePair;
 }
 
 /**
@@ -99,6 +101,17 @@ export class Strain {
   // Short names of the non-wild phenotypes this genotype expresses, as last
   // resolved alongside `lethal` (see refreshCardInfo). Shown on the card.
   public exprPhenotypeNames?: string[];
+  // The X pair this male had as a hermaphrodite, kept so that toggling back
+  // restores it (x1/+ -> x1/0 -> x1/+) instead of doubling the one X it kept.
+  // Only set on a male that was toggled from a hermaphrodite.
+  @Transform(
+    ({ value }) =>
+      value === undefined || value === null
+        ? undefined
+        : ChromosomePair.fromJSON(JSON.stringify(value)),
+    { toClassOnly: true }
+  )
+  public hermXPair?: ChromosomePair;
 
   // Make sure that chromosome pairs in map are correctly deserialized
   @Transform(
@@ -133,6 +146,7 @@ export class Strain {
     // displays; whatever changes the genotype refreshes it again
     this.lethal = params.lethal;
     this.exprPhenotypeNames = params.exprPhenotypeNames;
+    this.hermXPair = params.hermXPair;
 
     if (params.allelePairs !== undefined && params.chromPairMap === undefined)
       this.addPairsToStrain(params.allelePairs);
@@ -220,14 +234,30 @@ export class Strain {
     strain.sex =
       strain.sex === Sex.Hermaphrodite ? Sex.Male : Sex.Hermaphrodite;
     const xChromPair = strain.chromPairMap.get('X');
-    if (xChromPair !== undefined)
+    if (xChromPair === undefined) return strain;
+    if (strain.sex === Sex.Male) {
+      // A hermaphrodite becoming a male keeps its top X; remember the pair
+      strain.hermXPair = xChromPair.clone();
       strain.chromPairMap.set(
         'X',
-        ChromosomePair.buildFromChroms(
-          xChromPair.getTop(),
-          strain.sex === Sex.Hermaphrodite ? xChromPair.getTop() : undefined
-        )
+        ChromosomePair.buildFromChroms(xChromPair.getTop(), undefined)
       );
+    } else {
+      // A male becoming a hermaphrodite gets its original pair back, if it
+      // has one that still matches its X; otherwise it is homozygous
+      const remembered = strain.hermXPair;
+      strain.chromPairMap.set(
+        'X',
+        remembered !== undefined &&
+          chromsEqual(remembered.getTop(), xChromPair.getTop())
+          ? remembered.clone()
+          : ChromosomePair.buildFromChroms(
+              xChromPair.getTop(),
+              xChromPair.getTop()
+            )
+      );
+      strain.hermXPair = undefined;
+    }
     return strain;
   }
 

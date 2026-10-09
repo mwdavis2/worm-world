@@ -33,6 +33,19 @@ export const fixNodeDeserialization = (crossDesign: CrossDesign): void => {
         );
       }
       strainNode.data.chromPairMap = chromPairMap;
+      // The X pair a toggled male remembers (see Strain.toggleSex)
+      const hermX = strainNode.data.hermXPair as unknown as
+        | { allelePairs: unknown[] }
+        | undefined
+        | null;
+      strainNode.data.hermXPair =
+        hermX === undefined || hermX === null
+          ? undefined
+          : new ChromosomePair(
+              hermX.allelePairs.map((pair: unknown) =>
+                AllelePair.fromJSON(JSON.stringify(pair))
+              )
+            );
     }
     if (node.type === NodeType.X || node.type === NodeType.Self) {
       const middleNode: Node<StrainFilter> = node;
