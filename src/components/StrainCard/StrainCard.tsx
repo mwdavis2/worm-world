@@ -225,6 +225,8 @@ const ChromPairBox = (props: {
   const context = useContext(StrainCardContext);
   const layout = getChromosomeLayout(props.chromPair);
   const pairItems = layout.filter((item) => item.kind === 'pair');
+  // A male's X is drawn with one "0" under the whole chromosome, not one per allele
+  const isMaleX = context.strain.sex === Sex.Male && props.chromPair.isX();
   const mutationBoxes = layout.map((item, itemIdx) => {
     // A rearrangement's region is marked with a bracket pair in the gaps
     // between columns, level with the rule - like the ';' between chromosomes.
@@ -251,6 +253,7 @@ const ChromPairBox = (props: {
         key={itemIdx}
         toggleEnabled={toggleEnabled}
         isX={props.chromPair.isX()}
+        singleX={isMaleX}
       />
     );
   });
@@ -262,7 +265,14 @@ const ChromPairBox = (props: {
       className='mx-2 flex flex-col items-center justify-start text-lg'
     >
       <div className='font-bold'>{chromName}</div>
-      <div className='my-auto flex flex-row'>{mutationBoxes}</div>
+      {isMaleX ? (
+        <div className='my-auto flex flex-col items-center'>
+          <div className='flex flex-row'>{mutationBoxes}</div>
+          <div className='text-align w-full px-2 text-center'>0</div>
+        </div>
+      ) : (
+        <div className='my-auto flex flex-row'>{mutationBoxes}</div>
+      )}
     </div>
   );
 };
@@ -288,6 +298,8 @@ const MutationBox = (props: {
   allelePair: AllelePair;
   toggleEnabled: boolean;
   isX: boolean;
+  // a male's X: only the top row here, the single "0" is drawn under the row
+  singleX?: boolean;
 }): React.JSX.Element => {
   const context = useContext(StrainCardContext);
 
@@ -337,29 +349,31 @@ const MutationBox = (props: {
           )}
         </div>
         <hr className={`border-base-content ${hiddenStyling}`} />
-        <div
-          className='text-align w-full px-2 text-center'
-          title={
-            context.strain.sex === Sex.Male && props.isX
-              ? undefined
-              : fullLabel(
-                  props.allelePair.bot,
-                  context.alleleDisplayMode,
-                  props.allelePair.top
-                )
-          }
-        >
-          {context.strain.sex === Sex.Male && props.isX
-            ? '0'
-            : cellText(
-                formatAlleleLabel(
-                  props.allelePair.bot,
-                  context.alleleDisplayMode,
-                  true,
-                  props.allelePair.top
-                )
-              )}
-        </div>
+        {props.singleX === true ? null : (
+          <div
+            className='text-align w-full px-2 text-center'
+            title={
+              context.strain.sex === Sex.Male && props.isX
+                ? undefined
+                : fullLabel(
+                    props.allelePair.bot,
+                    context.alleleDisplayMode,
+                    props.allelePair.top
+                  )
+            }
+          >
+            {context.strain.sex === Sex.Male && props.isX
+              ? '0'
+              : cellText(
+                  formatAlleleLabel(
+                    props.allelePair.bot,
+                    context.alleleDisplayMode,
+                    true,
+                    props.allelePair.top
+                  )
+                )}
+          </div>
+        )}
       </div>
     );
   }

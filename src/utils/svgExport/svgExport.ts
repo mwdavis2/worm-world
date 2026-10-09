@@ -198,8 +198,9 @@ const measureAlleleColumn = (
     true,
     pair.bot
   );
+  // A male's X has one "0" under the whole chromosome, drawn by the caller
   const botName = isMaleX
-    ? '0'
+    ? ''
     : formatAlleleLabel(pair.bot, alleleDisplayMode, true, pair.top);
   const topWidth = tr.measureWidth(topName, ALLELE_TEXT_SIZE, 'normal');
   const botWidth = tr.measureWidth(botName, ALLELE_TEXT_SIZE, 'normal');
@@ -313,6 +314,7 @@ const renderStrainCard = (
         cols,
         boxWidth: boxWidthOf(name, cols),
         isEca: cp.isEca(),
+        isMaleX,
       };
     });
     const semicolonWidth = tr.measureWidth(';', ALLELE_TEXT_SIZE, 'normal');
@@ -449,6 +451,19 @@ const renderStrainCard = (
         }
         colX += c.width + COLUMN_GAP;
       });
+
+      if (m.isMaleX) {
+        // the single "0" for the male's one X, centred under all its alleles
+        layoutItems.push({
+          kind: 'centeredText',
+          text: '0',
+          naturalCenterX: boxCenterX,
+          naturalBaselineY: contentTop + 70,
+          naturalFontSize: ALLELE_TEXT_SIZE,
+          weight: 'normal',
+          color: colors.contentText,
+        });
+      }
 
       cursorX += m.boxWidth;
       if (i < measured.length - 1) {

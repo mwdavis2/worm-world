@@ -1,3 +1,4 @@
+import { type Node } from 'reactflow';
 import { readFileSync } from 'fs';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { simpleCrossDesign } from 'models/frontend/CrossDesign/CrossDesign.mock';
@@ -569,5 +570,39 @@ describe('buildCrossDesignSvg', () => {
       expect(parsed.querySelectorAll('path').length).toBeGreaterThan(0);
       expect(svgString).not.toContain('ww-export-text');
     });
+  });
+});
+
+describe("a male's X in the exported image", () => {
+  const xAllele = (name: string, loc: number): Allele =>
+    new Allele({
+      name,
+      variation: new Variation({ name, chromosome: 'X', geneticLoc: loc }),
+    });
+  const maleNode = (): Node<Strain> => ({
+    id: 'm',
+    type: NodeType.Strain,
+    position: { x: 0, y: 0 },
+    data: new Strain({
+      allelePairs: [
+        xAllele('e678', -6.7).toTopHet(),
+        xAllele('md299', -1.3).toTopHet(),
+      ],
+    }).toggleSex(),
+  });
+
+  test('has one 0 under the whole chromosome', async () => {
+    const svgString = await buildCrossDesignSvg(
+      [maleNode()],
+      [],
+      'default',
+      'gene-name',
+      'text'
+    );
+    const parsed = new DOMParser().parseFromString(svgString, 'image/svg+xml');
+    const zeros = [...parsed.querySelectorAll('text')].filter(
+      (t) => t.textContent === '0'
+    );
+    expect(zeros).toHaveLength(1);
   });
 });

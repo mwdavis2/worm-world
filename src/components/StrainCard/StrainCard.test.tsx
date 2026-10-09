@@ -184,4 +184,40 @@ describe('StrainCard', () => {
       expect(card.querySelectorAll('.text-primary')).toHaveLength(3);
     });
   });
+
+  describe("a male's X", () => {
+    const xAllele = (name: string, loc: number): Allele =>
+      new Allele({
+        name,
+        variation: new Variation({ name, chromosome: 'X', geneticLoc: loc }),
+      });
+    const e678 = xAllele('e678', -6.7);
+    const md299 = xAllele('md299', -1.3);
+    const hermStrain = new Strain({
+      allelePairs: [e678.toTopHet(), md299.toTopHet()],
+    });
+    const countZeros = (): number =>
+      screen.getAllByText('0', { selector: 'div' }).length;
+
+    test('has one 0 under the whole chromosome, not one per allele', () => {
+      render(<StrainCard strain={hermStrain.toggleSex()} id={''} />);
+      const card = screen.getByTestId('strainCard');
+      expect(card).toHaveTextContent('e678');
+      expect(card).toHaveTextContent('md299');
+      expect(countZeros()).toBe(1);
+    });
+
+    test('a hermaphrodite X shows its second alleles, no 0', () => {
+      render(<StrainCard strain={hermStrain} id={''} />);
+      expect(screen.queryAllByText('0', { selector: 'div' })).toHaveLength(0);
+    });
+
+    test('a male with a single X allele has one 0', () => {
+      const single = new Strain({
+        allelePairs: [e678.toTopHet()],
+      }).toggleSex();
+      render(<StrainCard strain={single} id={''} />);
+      expect(countZeros()).toBe(1);
+    });
+  });
 });
