@@ -20,6 +20,7 @@ import NoteForm from 'components/NoteForm/NoteForm';
 import StrainForm from 'components/StrainForm/StrainForm';
 import { NodeType, Sex } from 'models/enums';
 import { Allele } from 'models/frontend/Allele/Allele';
+import { leftOffMaleMessage } from 'utils/leftOffMale';
 import { useAlleleDisplayMode } from 'hooks/useAlleleDisplayMode';
 import { getAlleles } from 'api/allele';
 import { refreshAlleleContents } from 'utils/refreshAlleleContents';
@@ -392,6 +393,8 @@ const Editor = (props: EditorProps): React.JSX.Element => {
             'Male offspring from a self-cross are rare unless in a Him background or after a heat shock.'
           );
         }
+        const leftOff = leftOffMaleMessage(strainNode.data);
+        if (leftOff !== undefined) toast.info(leftOff);
         const toggledNode: Node<Strain> = {
           ...strainNode,
           data: strainNode.data.toggleSex(),

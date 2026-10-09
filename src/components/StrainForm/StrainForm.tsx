@@ -1,5 +1,7 @@
 import { Strain } from 'models/frontend/Strain/Strain';
 import { useState } from 'react';
+import { toast } from 'react-toastify';
+import { leftOffMaleMessage } from 'utils/leftOffMale';
 import StrainCard from 'components/StrainCard/StrainCard';
 import { type Sex } from 'models/enums';
 import { getFilteredStrains } from 'api/strain';
@@ -105,6 +107,8 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
       props.enforcedSex !== undefined
         ? undefined
         : (id: string) => {
+            const leftOff = leftOffMaleMessage(state.strain);
+            if (leftOff !== undefined) toast.info(leftOff);
             setState({ strain: state.strain.toggleSex(), source: 'toggle' });
           },
   };
@@ -263,7 +267,7 @@ export const StrainSelect = (props: StrainSelectProps): React.JSX.Element => {
         {searchRes.length === 0 ? (
           <></>
         ) : (
-          <ul className='dropdown-content menu rounded-box z-50 my-2 max-h-80 w-52 overflow-auto bg-base-100 p-2 shadow'>
+          <ul className='menu dropdown-content rounded-box z-50 my-2 max-h-80 w-52 overflow-auto bg-base-100 p-2 shadow'>
             {searchRes.map((strain, idx) => {
               return (
                 <li
