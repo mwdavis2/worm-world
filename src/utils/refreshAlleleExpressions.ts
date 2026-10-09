@@ -23,7 +23,7 @@ export const allelesInDesign = (nodes: Array<Node<any>>): string[] => [
     strainNodes(nodes).flatMap((node) =>
       node.data
         .getAlleles()
-        .filter((allele) => !allele.isWild())
+        .filter((allele) => !allele.isWild() && !allele.isAbsent())
         .map((allele) => allele.name)
     )
   ),
@@ -64,7 +64,7 @@ export const applyFreshExpressions = (
   let changed = false;
   strainNodes(nodes).forEach((node) => {
     node.data.getAlleles().forEach((allele: Allele) => {
-      if (allele.isWild()) return;
+      if (allele.isWild() || allele.isAbsent()) return;
       const rows = fresh.get(allele.name);
       if (rows === undefined) return;
       if (rowsKey(rows) !== rowsKey(allele.alleleExpressions)) {

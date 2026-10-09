@@ -3,7 +3,6 @@
 import { Sex } from 'models/enums';
 import { type Allele } from 'models/frontend/Allele/Allele';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
-import { ChromosomePair } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { Strain } from 'models/frontend/Strain/Strain';
 import { type NotationLocus } from './notationText';
 
@@ -109,15 +108,6 @@ export const lociToStrain = (
   return strain.toggleSex();
 };
 
-const nonWildNames = (alleles: Allele[]): string[] =>
-  alleles
-    .filter((allele) => !allele.isWild())
-    .map((allele) => allele.name)
-    .sort();
-
-const sameNames = (a: string[], b: string[]): boolean =>
-  a.length === b.length && a.every((name, i) => name === b[i]);
-
 /** A copy of the strain without its X pair, to compare everything else. */
 const withoutX = (strain: Strain): Strain => {
   const copy = strain.clone();
@@ -125,56 +115,36 @@ const withoutX = (strain: Strain): Strain => {
   return copy;
 };
 
-/** A copy whose X pair has its two homologs swapped. */
-const withFlippedX = (strain: Strain): Strain => {
-  const copy = strain.clone();
-  const x = copy.chromPairMap.get('X');
-  if (x !== undefined)
-    copy.chromPairMap.set(
-      'X',
-      new ChromosomePair(
-        x.allelePairs.map((pair) => {
-          const flipped = pair.clone();
-          flipped.flip();
-          return flipped;
-        })
-      )
-    );
-  return copy;
-};
+/** Whether the strain's X carries any allele that is not wild-type. */
+const tracksX = (strain: Strain): boolean =>
+  !(strain.chromPairMap.get('X')?.isWild() ?? true);
 
 /**
  * Which of the children of a re-run cross is the one a notation describes?
- * A re-run cross produces hermaphrodites only, so sex is ignored in the match:
- * - a hermaphrodite target matches the child with the same genotype;
- * - a male target (hemizygous X) matches a child whose autosomes match and
- *   whose X has one homolog carrying exactly the target's X alleles; that
- *   homolog is put on top and the child is made a male, as `toggleSex()` does.
- * The first match wins. Returns the child's index and the strain to use for it
- * (the child itself, or its male version), or undefined when no child fits.
+ * A cross produces hermaphrodite and male children (a male's X is his mother's
+ * X alone), so the target is matched on sex and genotype:
+ * - the child with the same sex and genotype, the first one if several;
+ * - a male target that tracks nothing on its X, when the cross has no X data at
+ *   all (so its children carry no sex): the child with the same autosomes,
+ *   made a male.
+ * Returns the child's index and the strain to use for it, or undefined when no
+ * child fits.
  */
 export const matchChild = (
   children: Strain[],
   target: Strain
 ): { index: number; strain: Strain } | undefined => {
-  if (target.sex !== Sex.Male) {
-    const index = children.findIndex((child) => child.equals(target));
-    return index === -1 ? undefined : { index, strain: children[index] };
-  }
+  const exact = children.findIndex((child) => child.equals(target));
+  if (exact !== -1) return { index: exact, strain: children[exact] };
 
-  const wantedX = nonWildNames(
-    target.chromPairMap.get('X')?.allelePairs.map((pair) => pair.top) ?? []
-  );
-  const targetRest = withoutX(target);
-  for (let index = 0; index < children.length; index++) {
-    const child = children[index];
-    if (!withoutX(child).equals(targetRest)) continue;
-    const x = child.chromPairMap.get('X');
-    const top = nonWildNames(x?.getTop() ?? []);
-    const bot = nonWildNames(x?.getBot() ?? []);
-    if (sameNames(top, wantedX)) return { index, strain: child.toggleSex() };
-    if (sameNames(bot, wantedX))
-      return { index, strain: withFlippedX(child).toggleSex() };
+  if (target.sex === Sex.Male && !tracksX(target)) {
+    const targetRest = withoutX(target);
+    const index = children.findIndex(
+      (child) =>
+        !child.chromPairMap.has('X') &&
+        withoutX(child).equals(targetRest, false, true)
+    );
+    if (index !== -1) return { index, strain: children[index].toggleSex() };
   }
   return undefined;
 };

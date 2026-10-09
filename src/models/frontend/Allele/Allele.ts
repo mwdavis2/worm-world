@@ -12,6 +12,11 @@ import { Variation } from 'models/frontend/Variation/Variation';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 
 export const WILD_ALLELE_NAME = '+';
+// Stands for the missing second X of a male (the "0" of `x1/0`): a real Allele
+// object (so pairs and chromosomes keep working) that is not wild, carries no
+// mutation and is never a copy to cross with. It keeps its locus's gene or
+// variation, like a wild allele does, so a pair knows which locus it is.
+export const ABSENT_ALLELE_NAME = '0';
 
 interface IAllele {
   name: string;
@@ -245,6 +250,20 @@ export class Allele {
 
   public isWild(): boolean {
     return this.name === WILD_ALLELE_NAME;
+  }
+
+  /** The placeholder for a male's missing second X at this allele's locus. */
+  public toAbsent(): Allele {
+    return new Allele({
+      name: ABSENT_ALLELE_NAME,
+      variation: this.variation,
+      gene: this.gene,
+    });
+  }
+
+  /** True for a male's missing second X (see ABSENT_ALLELE_NAME). */
+  public isAbsent(): boolean {
+    return this.name === ABSENT_ALLELE_NAME;
   }
 
   public toJSON(): string {

@@ -20,7 +20,12 @@ export const refreshAlleleContents = (
     const strain = node.data as Strain;
     let changed = false;
     strain.getAlleles().forEach((allele) => {
-      if (allele.isWild() || !contentsByAlleleName.has(allele.name)) return;
+      if (
+        allele.isWild() ||
+        allele.isAbsent() ||
+        !contentsByAlleleName.has(allele.name)
+      )
+        return;
       const current = contentsByAlleleName.get(allele.name);
       if ((allele.contents ?? undefined) !== current) {
         allele.contents = current;

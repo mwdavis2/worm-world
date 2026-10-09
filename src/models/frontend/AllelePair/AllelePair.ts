@@ -101,7 +101,15 @@ export class AllelePair implements IAllelePair {
    * Checks if this pair is only made up of wild alleles
    */
   public isWild(): boolean {
-    return this.top.isWild() && this.bot.isWild();
+    return (
+      (this.top.isWild() && (this.bot.isWild() || this.bot.isAbsent())) ||
+      (this.top.isAbsent() && this.bot.isWild())
+    );
+  }
+
+  /** True for a male's X pair: one X (the other side is absent) */
+  public isHemizygous(): boolean {
+    return this.top.isAbsent() || this.bot.isAbsent();
   }
 
   /** Returns true if pair is homozygous (false for heterozygous) */
@@ -115,7 +123,11 @@ export class AllelePair implements IAllelePair {
 
   /** Returns true if the pair is heterozygous, with one allele being wild */
   public isWildHet(): boolean {
-    return !this.isHomo() && (this.top.isWild() || this.bot.isWild());
+    return (
+      !this.isHomo() &&
+      !this.isHemizygous() &&
+      (this.top.isWild() || this.bot.isWild())
+    );
   }
 
   /**

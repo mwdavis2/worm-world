@@ -39,14 +39,15 @@ export class ChromosomePair {
     if (top.length > 0 && top[0].isEca()) {
       return ChromosomePair.ecaBuildFromChroms(top, bot);
     }
+    // No second chromosome (a male's single X) is the absent placeholder, not
+    // a wild copy; a gamete with no X ("absent" alleles) is kept on the bottom
     return new ChromosomePair(
-      top.map(
-        (topAllele, idx) =>
-          new AllelePair({
-            top: topAllele,
-            bot: bot?.[idx] ?? topAllele.toWild(),
-          })
-      )
+      top.map((topAllele, idx) => {
+        const botAllele = bot?.[idx] ?? topAllele.toAbsent();
+        return topAllele.isAbsent() && !botAllele.isAbsent()
+          ? new AllelePair({ top: botAllele, bot: topAllele })
+          : new AllelePair({ top: topAllele, bot: botAllele });
+      })
     );
   }
 
@@ -68,9 +69,10 @@ export class ChromosomePair {
 
   /** Return a new, equivalent chromosome pair without any wild allele pairs */
   public simplify(): ChromosomePair {
-    const allelePairs = this.allelePairs.filter(
-      (allelePair) => !allelePair.isWild()
-    );
+    // Copies, so flipping never swaps the pairs of the strain this came from
+    const allelePairs = this.allelePairs
+      .filter((allelePair) => !allelePair.isWild())
+      .map((allelePair) => allelePair.clone());
     if (allelePairs.length > 0 && allelePairs[0].top.isWild())
       allelePairs.forEach((allelePair) => {
         allelePair.flip();
@@ -129,6 +131,7 @@ export class ChromosomePair {
   public isWildHet(): boolean {
     return (
       !this.isHomo() &&
+      !this.allelePairs.some((pair) => pair.isHemizygous()) &&
       (this.getTop().every((allele) => allele.isWild()) ||
         this.getBot().every((allele) => allele.isWild()))
     );
@@ -145,15 +148,23 @@ export class ChromosomePair {
   private static getChromosomeString(chrom: Allele[]): string {
     return chrom
       .map((allele) => {
-        return allele.isWild() ? allele.name : allele.getQualifiedName();
+        return allele.isWild() || allele.isAbsent()
+          ? allele.name
+          : allele.getQualifiedName();
       })
       .join(' ');
   }
 
-  public equals(other: ChromosomePair): boolean {
+  /**
+   * @param absentAsWild count a male's missing second X like a wild copy (to
+   * compare a male with a saved hermaphrodite strain that has the same alleles)
+   */
+  public equals(other: ChromosomePair, absentAsWild = false): boolean {
+    const ignored = (allele: Allele): boolean =>
+      allele.isWild() || (absentAsWild && allele.isAbsent());
     function chromsEqual(chrom1: Allele[], chrom2: Allele[]): boolean {
-      const chrom1NoWilds = chrom1.filter((allele) => !allele.isWild());
-      const chrom2NoWilds = chrom2.filter((allele) => !allele.isWild());
+      const chrom1NoWilds = chrom1.filter((allele) => !ignored(allele));
+      const chrom2NoWilds = chrom2.filter((allele) => !ignored(allele));
 
       return (
         chrom1NoWilds.length === chrom2NoWilds.length &&
@@ -228,6 +239,8 @@ export class ChromosomePair {
     pair2: AllelePair,
     suppressors: Array<[number, number]> = []
   ): number {
+    // A male's single X has no homolog to cross over with
+    if (pair1.isHemizygous() || pair2.isHemizygous()) return 0;
     const genPos1 = pair1.top.getGenPosition();
     const genPos2 = pair2.top.getGenPosition();
     if (genPos1 === undefined || genPos2 === undefined) return 0;
@@ -273,7 +286,7 @@ export class ChromosomePair {
     this.allelePairs.filter(includePair).forEach((pair) => {
       [pair.top, pair.bot].forEach((allele) => {
         const range = allele.variation?.recombination;
-        if (range !== undefined && !allele.isWild())
+        if (range !== undefined && !allele.isWild() && !allele.isAbsent())
           ranges.push([Math.min(...range), Math.max(...range)]);
       });
     });
@@ -345,7 +358,11 @@ export class ChromosomePair {
       suppressors
     );
 
-    const totalRecombOptions = topRecombOptions.concat(botRecombOptions);
+    // A mixture that has probability 0 (a "crossover" on a chromosome with
+    // nothing to cross over with) is not a possible gamete
+    const totalRecombOptions = topRecombOptions
+      .concat(botRecombOptions)
+      .filter((option) => option.prob > 0);
     ChromosomePair.reduceChromOptions(totalRecombOptions);
 
     return totalRecombOptions;
@@ -367,10 +384,14 @@ export class ChromosomePair {
    * @param otherPair Pair from other strain that will be represented as wild pair
    */
   private insertWildOfPair(otherPair: AllelePair): void {
+    // On a male's X (every pair has one X) the wild X has no second copy
+    const hemizygous =
+      this.allelePairs.length > 0 &&
+      this.allelePairs.every((pair) => pair.isHemizygous());
     this.insertPair(
       new AllelePair({
         top: otherPair.top.toWild(),
-        bot: otherPair.top.toWild(),
+        bot: hemizygous ? otherPair.top.toAbsent() : otherPair.top.toWild(),
       })
     );
   }

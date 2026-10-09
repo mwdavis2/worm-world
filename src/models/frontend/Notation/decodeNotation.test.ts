@@ -134,10 +134,18 @@ describe('decodeNotation', () => {
     ]);
   });
 
-  test('a male offspring is the matching child made a male', async () => {
+  test("a male offspring is the matching male child, which has its mother's X", async () => {
     const { deps } = makeDeps();
-    const result = await decode('{{a1/+ +/+}{x1/0}{a1/+ x1/0}}', deps);
+    // the mother's X is wild, the father's x1 goes to his daughters only
+    const result = await decode('{{a1/+ +/+}{x1/0}{a1/+ +/0}}', deps);
     expect(result.card.data.sex).toBe(Sex.Male);
+  });
+
+  test("a son cannot have his father's X: an error", async () => {
+    const { deps } = makeDeps();
+    await expect(decode('{{a1/+ +/+}{x1/0}{a1/+ x1/0}}', deps)).rejects.toThrow(
+      /not one of the possible offspring/
+    );
   });
 
   test('a self-cross of a cross child: one root, no second placement', async () => {
@@ -158,7 +166,7 @@ describe('decodeNotation', () => {
     // The male parent is itself the male child of an earlier cross; the herm
     // parent is a new founder.
     const result = await decode(
-      '{{a1/+ +/+}{{a2/+ +/+}{x1/0}{a2/+ x1/0}}{a1/+ a2/+ x1/+}}',
+      '{{a1/+ +/+}{{a2/+ +/+}{x1/0}{a2/+ +/0}}{a1/+ a2/+ +/+}}',
       deps
     );
     expect(calls).toHaveLength(3);

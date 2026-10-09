@@ -14,7 +14,8 @@ export type ChromosomeLayoutItem =
 
 const isRearrangementPair = (pair: AllelePair): boolean =>
   [pair.top, pair.bot].some(
-    (allele) => !allele.isWild() && allele.hasRearrangementRange()
+    (allele) =>
+      !allele.isWild() && !allele.isAbsent() && allele.hasRearrangementRange()
   );
 
 // Where a rearrangement's own column belongs: the left edge (start) of the
@@ -22,7 +23,12 @@ const isRearrangementPair = (pair: AllelePair): boolean =>
 const rangeStartOf = (pair: AllelePair): number =>
   Math.min(
     ...[pair.top, pair.bot]
-      .filter((allele) => !allele.isWild() && allele.hasRearrangementRange())
+      .filter(
+        (allele) =>
+          !allele.isWild() &&
+          !allele.isAbsent() &&
+          allele.hasRearrangementRange()
+      )
       .map((allele) =>
         Math.min(...(allele.variation?.recombination ?? [Infinity]))
       )

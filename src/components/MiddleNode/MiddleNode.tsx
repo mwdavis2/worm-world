@@ -7,7 +7,7 @@ import type StrainFilter from 'models/frontend/StrainFilter/StrainFilter';
 import { TbArrowLoopLeft as SelfIcon } from 'react-icons/tb';
 import { Handle, Position, useStore } from 'reactflow';
 import { BiX as CloseIcon } from 'react-icons/bi';
-import { NodeType } from 'models/enums';
+import { NodeType, Sex } from 'models/enums';
 
 export interface MiddleNodeProps {
   id: string;
@@ -30,7 +30,12 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
       (node) => node.parentNode === props.id && node.data?.lethal === true
     )
   );
-  const filterSummary = props.data.describe(hasLethalChild);
+  const hasMaleChild = useStore((state) =>
+    [...state.nodeInternals.values()].some(
+      (node) => node.parentNode === props.id && node.data?.sex === Sex.Male
+    )
+  );
+  const filterSummary = props.data.describe(hasLethalChild, hasMaleChild);
   if (filterSummary.length === 0) filterSummary.push('No filters');
   return (
     // Sized to span both the circle and the icons above/right of it, so the

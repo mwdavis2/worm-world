@@ -9,6 +9,7 @@ import {
 } from 'components/ContextMenu/ContextMenu';
 import {
   LETHAL,
+  MALE,
   StrainFilter,
   type StrainFilterUpdate,
 } from 'models/frontend/StrainFilter/StrainFilter';
@@ -1043,6 +1044,8 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       // A lethal child is hidden by the viability filter; showing it needs
       // lethal strains in the filter too.
       if (child.data.lethal === true) middleNode.data.viability.add(LETHAL);
+      // ...and a male child by the sex filter
+      if (child.data.sex === Sex.Male) middleNode.data.sex.add(MALE);
       repositionVisibleChildren(middleNode, result.childNodes);
     }
     CrossDesign.applyFilteredProbabilities(result.childNodes);

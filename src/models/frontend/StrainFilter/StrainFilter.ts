@@ -1,4 +1,5 @@
 import { instanceToPlain, plainToInstance, Transform } from 'class-transformer';
+import { Sex } from 'models/enums';
 import { type Allele } from 'models/frontend/Allele/Allele';
 import { type Strain } from 'models/frontend/Strain/Strain';
 import { type Node } from 'reactflow';
@@ -13,6 +14,9 @@ export interface StrainFilterUpdate {
 // Members of IStrainFilter.viability. A genotype is in exactly one.
 export const LETHAL = 'Lethal';
 export const NON_LETHAL = 'Non-lethal';
+// Members of IStrainFilter.sex. A child is in exactly one.
+export const HERMAPHRODITE = 'Hermaphrodite';
+export const MALE = 'Male';
 export interface IStrainFilter {
   alleleNames: Set<string>;
   exprPhenotypes: Set<string>;
@@ -33,6 +37,11 @@ export interface IStrainFilter {
   // (never dropped from the cross); JSON saved before this existed loads
   // empty so old designs keep showing every child.
   viability: Set<string>;
+  // Narrows to children of the listed sex(es) - HERMAPHRODITE and/or MALE;
+  // empty means no narrowing. A new cross starts as {HERMAPHRODITE}: the male
+  // children (a male has his mother's X alone) are there but hidden until asked
+  // for; JSON saved before this existed loads empty.
+  sex: Set<string>;
 }
 
 export class StrainFilter implements IStrainFilter {
@@ -59,6 +68,9 @@ export class StrainFilter implements IStrainFilter {
   @Transform((data: any) => new Set(data?.obj?.viability))
   public viability = new Set<string>([NON_LETHAL]);
 
+  @Transform((data: any) => new Set(data?.obj?.sex))
+  public sex = new Set<string>([HERMAPHRODITE]);
+
   constructor(props?: Partial<IStrainFilter>) {
     if (props !== undefined) Object.assign(this, props);
   }
@@ -72,6 +84,7 @@ export class StrainFilter implements IStrainFilter {
       hiddenNodes: new Set(this.hiddenNodes),
       activeConditions: new Set(this.activeConditions),
       viability: new Set(this.viability),
+      sex: new Set(this.sex),
     });
   }
 
@@ -82,7 +95,7 @@ export class StrainFilter implements IStrainFilter {
    * has no lethal child (`hasLethalChild` false) that default hides nothing,
    * so it is left out; a viability filter the user chose always shows.
    */
-  public describe(hasLethalChild = true): string[] {
+  public describe(hasLethalChild = true, hasMaleChild = false): string[] {
     const list = (names: Set<string>): string => [...names].join(', ');
     const isDefaultViability =
       this.viability.size === 1 && this.viability.has(NON_LETHAL);
@@ -90,11 +103,19 @@ export class StrainFilter implements IStrainFilter {
       isDefaultViability && !hasLethalChild
         ? []
         : [LETHAL, NON_LETHAL].filter((group) => this.viability.has(group));
+    // Like the default viability filter, the default sex filter is left out
+    // when it hides nothing (the cross has no male child)
+    const isDefaultSex = this.sex.size === 1 && this.sex.has(HERMAPHRODITE);
+    const sex =
+      isDefaultSex && !hasMaleChild
+        ? []
+        : [HERMAPHRODITE, MALE].filter((group) => this.sex.has(group));
     return [
       this.alleleNames.size > 0 && `Alleles: ${list(this.alleleNames)}`,
       this.exprPhenotypes.size > 0 &&
         `Phenotypes: ${list(this.exprPhenotypes)}`,
       viability.length > 0 && `Viability: ${viability.join(', ')}`,
+      sex.length > 0 && `Sex: ${sex.join(', ')}`,
       this.activeConditions.size > 0 &&
         `Conditions present: ${list(this.activeConditions)}`,
       this.hiddenNodes.size > 0 &&
@@ -116,7 +137,8 @@ export class StrainFilter implements IStrainFilter {
       this.supConditions.size === 0 &&
       this.hiddenNodes.size === 0 &&
       this.activeConditions.size === 0 &&
-      !this.viability.has(LETHAL)
+      !this.viability.has(LETHAL) &&
+      !this.sex.has(MALE)
     );
   }
 
@@ -134,7 +156,10 @@ export class StrainFilter implements IStrainFilter {
     );
     return {
       alleleNames: new Set(
-        strainNode.data.getAlleles().map((allele) => allele.getQualifiedName())
+        strainNode.data
+          .getAlleles()
+          .filter((allele) => !allele.isAbsent())
+          .map((allele) => allele.getQualifiedName())
       ),
       exprPhenotypes: new Set(
         [
@@ -158,6 +183,7 @@ export class StrainFilter implements IStrainFilter {
       )
         ? new Set([LETHAL, NON_LETHAL])
         : new Set(),
+      sex: new Set([strainNode.data.sex === Sex.Male ? MALE : HERMAPHRODITE]),
     };
   }
 
@@ -167,7 +193,7 @@ export class StrainFilter implements IStrainFilter {
     parentAlleles: Allele[] = [],
     activeConditionsInEffect = new Set<string>()
   ): IStrainFilter {
-    return strainNodes.reduce<IStrainFilter>(
+    const options = strainNodes.reduce<IStrainFilter>(
       (allOptions, strainNode) => {
         const options = this.getSingleFilterOptions(
           strainNode,
@@ -202,6 +228,7 @@ export class StrainFilter implements IStrainFilter {
           ...allOptions.viability,
           ...options.viability,
         ]);
+        allOptions.sex = new Set([...allOptions.sex, ...options.sex]);
         return allOptions;
       },
       {
@@ -212,8 +239,12 @@ export class StrainFilter implements IStrainFilter {
         hiddenNodes: new Set(),
         activeConditions: new Set(),
         viability: new Set(),
+        sex: new Set(),
       }
     );
+    // Offer the sex filter only when the cross has both sexes to choose between
+    if (options.sex.size < 2) options.sex = new Set();
+    return options;
   }
 
   public update(update: StrainFilterUpdate): void {
@@ -245,6 +276,8 @@ export class StrainFilter implements IStrainFilter {
       filter.viability =
         showLethal === false ? new Set([NON_LETHAL]) : new Set<string>();
     }
+    // Likewise a design saved before the sex filter: no narrowing
+    if (plain.sex === undefined) filter.sex = new Set<string>();
     delete (filter as unknown as Record<string, unknown>).showLethal;
     delete (filter as unknown as Record<string, unknown>).hideLethal;
     return filter;

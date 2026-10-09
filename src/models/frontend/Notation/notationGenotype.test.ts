@@ -186,9 +186,10 @@ describe('lociToStrain', () => {
 });
 
 describe('findMatchingChild', () => {
-  // The children of a re-run cross are hermaphrodites.
+  // The children of a cross are hermaphrodites and males.
   const herm = (...pairs: AllelePair[]): Strain =>
     new Strain({ allelePairs: pairs });
+  const male = (...pairs: AllelePair[]): Strain => herm(...pairs).toggleSex();
 
   test('a hermaphrodite target matches the child with that genotype', () => {
     const children = [
@@ -205,12 +206,14 @@ describe('findMatchingChild', () => {
   });
 
   describe('a male target', () => {
-    const maleTarget = (...pairs: AllelePair[]): Strain =>
-      herm(...pairs).toggleSex();
-
-    test('matches a child whose X carries the allele on the top', () => {
-      const child = herm(het(a1), het(x1));
-      const found = findMatchingChild([child], maleTarget(het(a1), het(x1)));
+    test('matches the male child with the same X, not the hermaphrodite', () => {
+      const hermChild = herm(het(a1), het(x1));
+      const maleChild = male(het(a1), het(x1));
+      const found = findMatchingChild(
+        [hermChild, maleChild],
+        male(het(a1), het(x1))
+      );
+      expect(found).toBe(maleChild);
       expect(found?.sex).toBe(Sex.Male);
       expect(strainToLoci(found as Strain)).toEqual([
         { top: 'a1', bot: '+' },
@@ -218,19 +221,24 @@ describe('findMatchingChild', () => {
       ]);
     });
 
-    test('matches a child whose X carries the allele on the bottom, putting it on top', () => {
-      const child = herm(het(a1), transHet(x1));
-      const found = findMatchingChild([child], maleTarget(het(a1), het(x1)));
-      expect(found?.sex).toBe(Sex.Male);
-      expect(strainToLoci(found as Strain)).toEqual([
-        { top: 'a1', bot: '+' },
-        { top: 'x1', bot: '0' },
-      ]);
+    test('no male child with that X means no match', () => {
+      const hermChild = herm(het(a1), het(x1));
+      expect(
+        findMatchingChild([hermChild], male(het(a1), het(x1)))
+      ).toBeUndefined();
     });
 
-    test('a male with nothing tracked on X matches the X homolog that carries nothing', () => {
-      const child = herm(het(a1), het(x1));
-      const found = findMatchingChild([child], maleTarget(het(a1)));
+    test('a male with nothing tracked on X matches a male child with a wild X', () => {
+      const maleChild = male(het(a1), het(x1)); // carries x1
+      const wildXMale = male(het(a1), x1.toWild().toHomo());
+      expect(findMatchingChild([maleChild, wildXMale], male(het(a1)))).toBe(
+        wildXMale
+      );
+    });
+
+    test('with no X data in the cross, a male target matches the child with the same autosomes, made a male', () => {
+      const child = herm(het(a1));
+      const found = findMatchingChild([child], male(het(a1)));
       expect(found?.sex).toBe(Sex.Male);
       expect(strainToLoci(found as Strain)).toEqual([
         { top: 'a1', bot: '+' },
@@ -238,29 +246,30 @@ describe('findMatchingChild', () => {
       ]);
     });
 
-    test('several alleles on one X must be on the same homolog', () => {
-      const cis = herm(het(x1), het(x2));
-      const trans = herm(het(x1), transHet(x2));
-      const target = maleTarget(het(x1), het(x2));
-      expect(findMatchingChild([trans], target)).toBeUndefined();
-      expect(findMatchingChild([trans, cis], target)?.sex).toBe(Sex.Male);
+    test('several alleles on one X must be on the same X', () => {
+      const cisMale = male(het(x1), het(x2));
+      const onlyX1 = male(het(x1));
+      expect(
+        findMatchingChild([onlyX1], male(het(x1), het(x2)))
+      ).toBeUndefined();
+      expect(findMatchingChild([onlyX1, cisMale], male(het(x1), het(x2)))).toBe(
+        cisMale
+      );
     });
 
     test('the autosomes must match too', () => {
-      const child = herm(het(a2), het(x1));
+      const child = male(het(a2), het(x1));
       expect(
-        findMatchingChild([child], maleTarget(het(a1), het(x1)))
+        findMatchingChild([child], male(het(a1), het(x1)))
       ).toBeUndefined();
     });
 
     test('the first matching child wins', () => {
-      const first = herm(het(a1), het(x1));
-      const second = herm(het(a1), transHet(x1));
-      const found = findMatchingChild(
-        [first, second],
-        maleTarget(het(a1), het(x1))
+      const first = male(het(a1), het(x1));
+      const second = male(het(a1), het(x1));
+      expect(findMatchingChild([first, second], male(het(a1), het(x1)))).toBe(
+        first
       );
-      expect(found?.chromPairMap.get('X')?.getTop()[0].name).toBe('x1');
     });
   });
 });

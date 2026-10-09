@@ -169,10 +169,11 @@ const ViabilityLine = (props: { strain: Strain }): React.JSX.Element => {
 
 const SexButton = (): React.JSX.Element => {
   const context = useContext(StrainCardContext);
-  const buttonIsDisabled =
-    context.strain.isParent || context.toggleSex === undefined;
-  const iconStyling =
-    'text-base ' + (context.strain.isParent ? 'opacity-50' : '');
+  // A card in a cross has the sex the cross gave it (the male children are
+  // there, filtered by sex); only a freestanding card can be toggled
+  const inCross = context.strain.isParent || context.strain.isChild;
+  const buttonIsDisabled = inCross || context.toggleSex === undefined;
+  const iconStyling = 'text-base ' + (inCross ? 'opacity-50' : '');
   return (
     <button
       className={
@@ -182,7 +183,7 @@ const SexButton = (): React.JSX.Element => {
           : '')
       }
       onClick={() => {
-        if (!context.strain.isParent && context.toggleSex !== undefined) {
+        if (!inCross && context.toggleSex !== undefined) {
           context.toggleSex();
         }
       }}
@@ -242,6 +243,7 @@ const ChromPairBox = (props: {
       !context.strain.isParent &&
       !context.strain.isChild &&
       !allelePair.isHomo() &&
+      !allelePair.isHemizygous() &&
       pairItems.indexOf(item) !== 0;
     return (
       <MutationBox

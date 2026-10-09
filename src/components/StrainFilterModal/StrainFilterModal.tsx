@@ -101,6 +101,14 @@ export const StrainFilterModal = (
             filter={props.filter}
             updateFilter={props.updateFilter}
           />
+          <FilterList
+            title='Filter by sex'
+            filterId={props.filterId}
+            options={options.sex}
+            field='sex'
+            filter={props.filter}
+            updateFilter={props.updateFilter}
+          />
           <ActiveConditionsList
             options={options.activeConditions}
             filterId={props.filterId}

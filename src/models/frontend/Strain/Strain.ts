@@ -32,7 +32,9 @@ import {
 } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { chromosomes } from 'models/frontend/Chromosome';
 import {
+  HERMAPHRODITE,
   LETHAL,
+  MALE,
   NON_LETHAL,
   type StrainFilter,
 } from 'models/frontend/StrainFilter/StrainFilter';
@@ -132,7 +134,17 @@ export class Strain {
     if (params === undefined || params === null) return;
 
     this.name = params.name ?? '';
-    this.sex = params.sex ?? Sex.Hermaphrodite;
+    // A strain whose X has a missing second copy is a male, whatever it was
+    // asked to be: the genotype is what says so
+    const hasSingleX = [
+      ...(params.allelePairs ?? []),
+      // (a design read back from JSON holds the map as a plain object until
+      // fixNodeDeserialization rebuilds it)
+      ...(params.chromPairMap instanceof Map
+        ? params.chromPairMap.get('X')?.allelePairs ?? []
+        : []),
+    ].some((pair) => pair.isHemizygous());
+    this.sex = hasSingleX ? Sex.Male : params.sex ?? Sex.Hermaphrodite;
     this.isParent = params.isParent ?? false;
     this.isChild = params.isChild ?? false;
     this.chromPairMap =
@@ -150,6 +162,8 @@ export class Strain {
 
     if (params.allelePairs !== undefined && params.chromPairMap === undefined)
       this.addPairsToStrain(params.allelePairs);
+    if (this.sex === Sex.Male && this.chromPairMap instanceof Map)
+      this.makeXHemizygous();
     this.genotype =
       params.genotype ?? this.toString({ simplify: true, excludeEca: false });
   }
@@ -220,13 +234,44 @@ export class Strain {
           : NON_LETHAL
       );
 
+    const passesSex =
+      filter.sex.size === 0 ||
+      filter.sex.has(this.sex === Sex.Male ? MALE : HERMAPHRODITE);
+
     return (
       passesAlleleNames &&
       passesReqConds &&
       passesSupConds &&
       passesExprPhens &&
-      passesViability
+      passesViability &&
+      passesSex
     );
+  }
+
+  /**
+   * A male has one X: every pair of his X is one allele over the absent
+   * placeholder (`x1/0`). Whatever the second side holds (a wild copy a form or
+   * an older caller put there) becomes absent; two different alleles cannot
+   * both be on a single X.
+   */
+  private makeXHemizygous(): void {
+    const xChromPair = this.chromPairMap.get('X');
+    if (xChromPair === undefined) return;
+    let changed = false;
+    const pairs = xChromPair.allelePairs.map((pair) => {
+      if (pair.isHemizygous() && !pair.top.isAbsent()) return pair;
+      changed = true;
+      if (pair.isHemizygous())
+        return new AllelePair({ top: pair.bot, bot: pair.top });
+      const alleles = [pair.top, pair.bot].filter((allele) => !allele.isWild());
+      if (new Set(alleles.map((allele) => allele.name)).size > 1)
+        throw new Error(
+          `A male has a single X chromosome, so it cannot carry both ${alleles[0].name} and ${alleles[1].name} on it`
+        );
+      const kept = alleles[0] ?? pair.top;
+      return new AllelePair({ top: kept, bot: kept.toAbsent() });
+    });
+    if (changed) this.chromPairMap.set('X', new ChromosomePair(pairs));
   }
 
   public toggleSex(): Strain {
@@ -308,7 +353,7 @@ export class Strain {
       (strain): strain is Strain => strain !== undefined
     );
     for (const candidate of matchCandidates) {
-      if (this.equals(candidate)) {
+      if (this.equals(candidate, false, true)) {
         this.name = candidate.name;
         this.description = candidate.description;
         break;
@@ -497,7 +542,7 @@ export class Strain {
           })
         );
       }
-      if (!pair.bot.isWild()) {
+      if (!pair.bot.isWild() && !pair.bot.isAbsent()) {
         pairInserts.push(
           insertDbStrainAllele({
             strainName: this.name ?? '',
@@ -513,9 +558,11 @@ export class Strain {
   }
 
   public toMale(): Strain {
-    const male = this.clone();
-    male.sex = Sex.Male;
-    return male;
+    return new Strain({
+      ...this,
+      sex: Sex.Male,
+      chromPairMap: new Map(this.chromPairMap),
+    });
   }
 
   public toHerm(): Strain {
@@ -555,7 +602,7 @@ export class Strain {
       .filter((allelePair) => !allelePair.isEca() && !allelePair.isHomo())
       .map((allelePair) => [allelePair.top, allelePair.bot])
       .flat()
-      .filter((allele) => !allele.isWild());
+      .filter((allele) => !allele.isWild() && !allele.isAbsent());
   }
 
   public getEcaAlleles(): Allele[] {
@@ -568,7 +615,11 @@ export class Strain {
    * Checks if both strains represent the same genetic profile (ignoring explicitly represented wilds)
    * @param other strain to compare against
    */
-  public equals(other: Strain, excludeEca = false): boolean {
+  public equals(other: Strain, excludeEca = false, ignoreSex = false): boolean {
+    // A male and a hermaphrodite are different strains even where the X data
+    // reads alike (a wild X); `ignoreSex` compares just the alleles, as when
+    // naming a cross child after a saved strain
+    if (!ignoreSex && this.sex !== other.sex) return false;
     const nonWildChromNames = Array.from(this.chromPairMap.entries())
       .filter(
         ([_, chromPair]) =>
@@ -591,7 +642,8 @@ export class Strain {
 
       if (chromPair === undefined || otherChromPair === undefined) {
         allPairsMatch = false;
-      } else if (!chromPair.equals(otherChromPair)) allPairsMatch = false;
+      } else if (!chromPair.equals(otherChromPair, ignoreSex))
+        allPairsMatch = false;
     });
 
     return allPairsMatch;
@@ -730,7 +782,9 @@ export class Strain {
   }
 
   public getNonWildAlleles(): Allele[] {
-    return this.getAlleles().filter((allele) => !allele.isWild());
+    return this.getAlleles().filter(
+      (allele) => !allele.isWild() && !allele.isAbsent()
+    );
   }
 
   public getAlleles(): Allele[] {
@@ -756,6 +810,8 @@ export class Strain {
       (p) => p.top.name === alleleName || p.bot.name === alleleName
     );
     if (pair === undefined) return '0';
+    // A male's one X: a mutant copy is all he has, so it counts as two
+    if (pair.isHemizygous()) return pair.top.isWild() ? '0' : '2';
     if (pair.isHomo()) return pair.isWild() ? '0' : '2';
     if (pair.isWildHet()) {
       const mutantAllele = pair.top.isWild() ? pair.bot : pair.top;
@@ -779,6 +835,7 @@ export class Strain {
       (p) => p.top.name === expr.alleleName || p.bot.name === expr.alleleName
     );
     if (pair === undefined) return false;
+    if (pair.isHemizygous()) return !pair.top.isWild();
     if (pair.isHomo()) return !pair.isWild();
     const otherSide = pair.top.name === expr.alleleName ? pair.bot : pair.top;
     if (otherSide.isWild()) return false;
@@ -1066,6 +1123,8 @@ export class Strain {
 
       chromPair.fillWildsFrom(otherChromPair);
     });
+    // wild loci added to a male's X are single-copy too
+    if (this.sex === Sex.Male) this.makeXHemizygous();
   }
 
   /**
@@ -1077,18 +1136,6 @@ export class Strain {
     if (chromPair === undefined) {
       chromPair = new ChromosomePair([]);
       this.chromPairMap.set(chromName, chromPair);
-    }
-
-    // Prevent homozygous X alleles for males (only one X chromosome)
-    if (
-      this.sex === Sex.Male &&
-      chromPair.isX() &&
-      !allelePair.top.isWild() &&
-      allelePair.isWildHet()
-    ) {
-      throw new Error(
-        `Cannot add allele pair ${allelePair} because it is on the X chromosome, and males have only one X chromosome`
-      );
     }
 
     // Prevent duplicated genes
