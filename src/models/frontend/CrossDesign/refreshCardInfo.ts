@@ -14,14 +14,33 @@ import { getIncomers, type Edge, type Node } from 'reactflow';
  * conditions. Anything that changes one of those must call one of these.
  */
 
-/** Refreshes one card's stored info; does nothing for a card that is not a child of a cross. */
+/**
+ * A card that no cross made (added, pasted, or loaded from a saved strain) has
+ * no parents, conditions or mother to resolve against: it shows what its own
+ * genotype expresses.
+ */
+export const refreshFounderCardInfo = (nodes: Array<Node<any>>): void => {
+  nodes
+    .filter(
+      (node) => node.type === NodeType.Strain && node.parentNode === undefined
+    )
+    .forEach((founder: Node<Strain>) => {
+      founder.data.refreshCardInfo();
+    });
+};
+
+/** Refreshes one card's stored info against the cross that made it, or on its own if no cross did; ignores anything that is not a strain card. */
 export const refreshCardInfoOfChild = (
   child: Node<Strain>,
   nodes: Array<Node<any>>,
   edges: Edge[],
   cache: PhenotypeCache = new Map()
 ): void => {
-  if (child.parentNode === undefined) return;
+  if (child.type !== NodeType.Strain) return;
+  if (child.parentNode === undefined) {
+    child.data.refreshCardInfo();
+    return;
+  }
   const middleNode = nodes.find((node) => node.id === child.parentNode) as
     | Node<StrainFilter>
     | undefined;
@@ -46,6 +65,7 @@ export const refreshCardInfoOfChildren = (
   edges: Edge[]
 ): void => {
   const cache: PhenotypeCache = new Map();
+  refreshFounderCardInfo(nodes);
   nodes
     .filter((node) => node.parentNode !== undefined)
     .forEach((child: Node<Strain>) => {

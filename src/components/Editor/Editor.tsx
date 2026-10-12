@@ -32,6 +32,7 @@ import {
 import {
   refreshCardInfoOfChild,
   refreshCardInfoOfChildren,
+  refreshFounderCardInfo,
 } from 'models/frontend/CrossDesign/refreshCardInfo';
 import {
   getCardPhenotypes,
@@ -259,8 +260,15 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   // first, which AddStrainModal itself already handles.
   const applyEditedStrainToNode = (editedStrain: Strain): void => {
     const node = reactFlowInstance.getNode(editStrainModalState.id ?? '');
-    if (node !== undefined)
-      setNodes((nodes) => addToArray(nodes, { ...node, data: editedStrain }));
+    if (node !== undefined) {
+      const editedNode = { ...node, data: editedStrain };
+      refreshCardInfoOfChild(
+        editedNode,
+        reactFlowInstance.getNodes(),
+        reactFlowInstance.getEdges()
+      );
+      setNodes((nodes) => addToArray(nodes, editedNode));
+    }
   };
 
   // Memoized so unrelated state changes (isSaving, drawerState, etc.) don't
@@ -429,7 +437,13 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           sex: strain.sex,
         })
           .then((strain) => {
-            setNodes((nodes) => addToArray(nodes, { ...node, data: strain }));
+            const flippedNode = { ...node, data: strain };
+            refreshCardInfoOfChild(
+              flippedNode,
+              reactFlowInstance.getNodes(),
+              reactFlowInstance.getEdges()
+            );
+            setNodes((nodes) => addToArray(nodes, flippedNode));
           })
           .catch(console.error);
       },
@@ -871,6 +885,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       position: getNodePositionFromLastClick(),
       type: NodeType.Strain,
     };
+    refreshFounderCardInfo([strainNode]);
     setNodes((nodes) => addToArray(nodes, strainNode));
     closeDrawer();
   };
@@ -1024,6 +1039,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   ): Promise<void> => {
     try {
       const result = await performMatedCross(hermNode, maleNode, fromHerm);
+      refreshFounderCardInfo(result.nodes);
       setNodes((nodes) => addToArray(nodes, ...result.nodes));
       setEdges((edges) => [...edges, ...result.edges]);
     } catch (err) {
@@ -1099,6 +1115,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
         },
         revealChild,
       });
+      refreshFounderCardInfo(result.nodes);
       setNodes((nodes) => addToArray(nodes, ...result.nodes));
       setEdges((edges) => [...edges, ...result.edges]);
     } catch (error) {

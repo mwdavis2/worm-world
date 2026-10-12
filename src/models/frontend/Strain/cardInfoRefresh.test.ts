@@ -124,15 +124,35 @@ describe('refreshing a child card against its cross', () => {
     expect(again.data.exprPhenotypeNames).toEqual([]);
   });
 
-  test('a card that is not a child of a cross is left alone', () => {
+  test('a card no cross made shows what its own genotype expresses', () => {
     const founder: Node<Strain> = {
       id: 'f',
       type: NodeType.Strain,
       position: { x: 0, y: 0 },
       data: new Strain({ allelePairs: [xAllele().toHomo()] }),
     };
-    refreshCardInfoOfChild(founder, [founder], []);
     expect(founder.data.lethal).toBeUndefined();
+    refreshCardInfoOfChild(founder, [founder], []);
+    expect(founder.data.lethal).toBe(true);
+    expect(founder.data.exprPhenotypeNames).toEqual(['unc']);
+  });
+
+  test('opening a design refreshes its founders too, and leaves other nodes alone', () => {
+    const founder: Node<Strain> = {
+      id: 'f',
+      type: NodeType.Strain,
+      position: { x: 0, y: 0 },
+      data: new Strain({ allelePairs: [xAllele().toHomo()] }),
+    };
+    const note: Node<any> = {
+      id: 'n',
+      type: NodeType.Note,
+      position: { x: 0, y: 0 },
+      data: { text: 'hi' },
+    };
+    refreshCardInfoOfChildren([founder, note], []);
+    expect(founder.data.exprPhenotypeNames).toEqual(['unc']);
+    expect(note.data).toEqual({ text: 'hi' });
   });
 });
 
