@@ -22,6 +22,11 @@ describe('Data Tables tab indicator', () => {
     expect(activeTabs()).toEqual(['Conditions']);
   });
 
+  test('has an Allele Conversions tab, highlighted on its own page', () => {
+    renderAt('/data-tables/allele-conversions');
+    expect(activeTabs()).toEqual(['Allele Conversions']);
+  });
+
   test('highlights Genes for the bare data tables path', () => {
     renderAt('/data-tables');
     expect(activeTabs()).toEqual(['Genes']);

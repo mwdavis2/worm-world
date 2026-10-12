@@ -26,7 +26,9 @@ import { getAlleles } from 'api/allele';
 import { refreshAlleleContents } from 'utils/refreshAlleleContents';
 import {
   allelesInDesign,
+  applyFreshConversions,
   applyFreshExpressions,
+  loadFreshConversions,
   loadFreshExpressions,
 } from 'utils/refreshAlleleExpressions';
 import {
@@ -242,6 +244,24 @@ const Editor = (props: EditorProps): React.JSX.Element => {
             );
           return result.nodes;
         });
+      })
+      .catch(console.error);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ...and the alleles' conversion rules (Cre/lox and the like), which a cross
+  // applies, so a design saved before a rule was added or changed uses it.
+  useEffect(() => {
+    let cancelled = false;
+    loadFreshConversions(
+      allelesInDesign(props.crossDesign.nodes),
+      Allele.loadAlleleConversions
+    )
+      .then((fresh) => {
+        if (cancelled) return;
+        setNodes((current) => applyFreshConversions(current, fresh).nodes);
       })
       .catch(console.error);
     return () => {
@@ -921,7 +941,11 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     // The parent is only marked as crossed once the cross has worked (below),
     // so a failed cross leaves it as it was.
     const parentStrain = new Strain({ ...parentNode.data, isParent: true });
-    const strainOpts = await parentStrain.selfCross();
+    // what the parent expresses, with its own parents and mother, decides
+    // which germline conversions (Cre/lox and the like) happen in it
+    const strainOpts = await parentStrain.selfCross(
+      getCardPhenotypes(parentNode, nodes, edges)
+    );
     parentNode.data = parentStrain;
     const selfNode: Node<StrainFilter> = {
       id: props.crossDesign.createId(),
@@ -984,7 +1008,10 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   ): Promise<CrossResult> => {
     // Cross first: the parents are only marked and moved once the cross has
     // worked, so a failed cross leaves them as they were.
-    const childOptions = await maleNode.data.crossWith(hermNode.data);
+    const childOptions = await maleNode.data.crossWith(hermNode.data, {
+      thisPhenotypes: getCardPhenotypes(maleNode, nodes, edges),
+      otherPhenotypes: getCardPhenotypes(hermNode, nodes, edges),
+    });
 
     // Mark as parents
     maleNode.data = new Strain({ ...maleNode.data, isParent: true });

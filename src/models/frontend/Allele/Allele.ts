@@ -1,3 +1,4 @@
+import { getConversionsOfAllele } from 'api/alleleConversion';
 import { getFilteredAlleleExpressions } from 'api/alleleExpression';
 import { getGene } from 'api/gene';
 import { getVariation } from 'api/variation';
@@ -6,6 +7,7 @@ import { type db_Allele } from 'models/db/db_Allele';
 import { type AlleleExpressionFieldName } from 'models/db/filter/db_AlleleExpressionFieldName';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import { type FilterGroup } from 'models/db/filter/FilterGroup';
+import { AlleleConversion } from 'models/frontend/AlleleConversion/AlleleConversion';
 import { AlleleExpression } from 'models/frontend/AlleleExpression/AlleleExpression';
 import { Gene } from 'models/frontend/Gene/Gene';
 import { Variation } from 'models/frontend/Variation/Variation';
@@ -31,6 +33,7 @@ interface AlleleState {
   gene?: Gene;
   variation?: Variation;
   alleleExpressions?: AlleleExpression[];
+  conversions?: AlleleConversion[];
   contents?: string;
 }
 
@@ -46,6 +49,10 @@ export class Allele {
 
   @Type(() => AlleleExpression)
   alleleExpressions: AlleleExpression[] = [];
+
+  /** Rules that turn this allele into another in a germline expressing a driver (see `AlleleConversion`) */
+  @Type(() => AlleleConversion)
+  conversions: AlleleConversion[] = [];
 
   contents?: string;
 
@@ -67,6 +74,7 @@ export class Allele {
       gene: undefined,
       variation: undefined,
       alleleExpressions: [],
+      conversions: [],
       contents: fields.contents,
     };
 
@@ -77,6 +85,12 @@ export class Allele {
     await Allele.setAlleleExpressions(newAlleleState, fields.name).catch(
       (err) => {
         console.error('error generating allele expressions: ', err);
+      }
+    );
+
+    await Allele.setAlleleConversions(newAlleleState, fields.name).catch(
+      (err) => {
+        console.error('error generating allele conversions: ', err);
       }
     );
 
@@ -113,6 +127,23 @@ export class Allele {
   ): Promise<void> {
     const res = await getVariation(variationName);
     partialAllele.variation = Variation.createFromRecord(res);
+  }
+
+  /** The allele's conversion rules as the database holds them now. */
+  static async loadAlleleConversions(
+    alleleName: string
+  ): Promise<AlleleConversion[]> {
+    const res = await getConversionsOfAllele(alleleName);
+    return (res ?? []).map((record) =>
+      AlleleConversion.createFromRecord(record)
+    );
+  }
+
+  private static async setAlleleConversions(
+    partialAllele: AlleleState,
+    alleleName: string
+  ): Promise<void> {
+    partialAllele.conversions = await Allele.loadAlleleConversions(alleleName);
   }
 
   /** The allele's expression rows as the database holds them now. */

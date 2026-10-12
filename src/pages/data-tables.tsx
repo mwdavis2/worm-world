@@ -17,6 +17,7 @@ const TAB_PATHS = [
   'conditions',
   'allele-expressions',
   'expression-relations',
+  'allele-conversions',
   'strains',
   'strain-alleles',
 ];
@@ -100,6 +101,9 @@ const DataTables = (): React.JSX.Element => {
           className='tab'
         >
           Phenotype Relationships
+        </Link>
+        <Link key='allele-conversions' to='allele-conversions' className='tab'>
+          Allele Conversions
         </Link>
         <Link key='strains' to='strains' className='tab'>
           Strains

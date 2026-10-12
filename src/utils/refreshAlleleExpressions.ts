@@ -1,6 +1,7 @@
 import { type Node } from 'reactflow';
 import { NodeType } from 'models/enums';
 import { type Allele } from 'models/frontend/Allele/Allele';
+import { type AlleleConversion } from 'models/frontend/AlleleConversion/AlleleConversion';
 import { type AlleleExpression } from 'models/frontend/AlleleExpression/AlleleExpression';
 import { type Strain } from 'models/frontend/Strain/Strain';
 import { instanceToPlain } from 'class-transformer';
@@ -30,24 +31,38 @@ export const allelesInDesign = (nodes: Array<Node<any>>): string[] => [
 ];
 
 /**
- * Each allele's expression rows as the database holds them now. An allele that
- * can't be loaded (deleted from the data tables, say) is left out, so the
- * design keeps its saved copy.
+ * Each allele's rows (expression rows, conversion rules) as the database holds
+ * them now. An allele that can't be loaded (deleted from the data tables, say)
+ * is left out, so the design keeps its saved copy.
  */
-export const loadFreshExpressions = async (
+const loadFresh = async <T>(
   alleleNames: string[],
-  load: (alleleName: string) => Promise<AlleleExpression[]>
-): Promise<Map<string, AlleleExpression[]>> => {
-  const fresh = new Map<string, AlleleExpression[]>();
+  load: (alleleName: string) => Promise<T[]>,
+  what: string
+): Promise<Map<string, T[]>> => {
+  const fresh = new Map<string, T[]>();
   await mapLimit(alleleNames, 4, async (name) => {
     try {
       fresh.set(name, await load(name));
     } catch (e) {
-      console.warn(`Keeping the saved expression rows of ${name}`, e);
+      console.warn(`Keeping the saved ${what} of ${name}`, e);
     }
   });
   return fresh;
 };
+
+export const loadFreshExpressions = async (
+  alleleNames: string[],
+  load: (alleleName: string) => Promise<AlleleExpression[]>
+): Promise<Map<string, AlleleExpression[]>> =>
+  await loadFresh(alleleNames, load, 'expression rows');
+
+/** Each allele's conversion rules as the database holds them now. */
+export const loadFreshConversions = async (
+  alleleNames: string[],
+  load: (alleleName: string) => Promise<AlleleConversion[]>
+): Promise<Map<string, AlleleConversion[]>> =>
+  await loadFresh(alleleNames, load, 'conversion rules');
 
 const rowsKey = (rows: AlleleExpression[]): string =>
   JSON.stringify(rows.map((row) => instanceToPlain(row)));
@@ -69,6 +84,42 @@ export const applyFreshExpressions = (
       if (rows === undefined) return;
       if (rowsKey(rows) !== rowsKey(allele.alleleExpressions)) {
         allele.alleleExpressions = rows;
+        changed = true;
+      }
+    });
+  });
+  if (!changed) return { nodes, changed };
+  return {
+    changed,
+    nodes: nodes.map((node) =>
+      node.type === NodeType.Strain
+        ? { ...node, data: (node.data as Strain).clone() }
+        : node
+    ),
+  };
+};
+
+const conversionsKey = (rules: AlleleConversion[]): string =>
+  JSON.stringify(rules.map((rule) => instanceToPlain(rule)));
+
+/**
+ * Replaces the saved conversion rules of every allele copy whose rules differ
+ * from `fresh`, like `applyFreshExpressions`.
+ */
+export const applyFreshConversions = (
+  nodes: Array<Node<any>>,
+  fresh: Map<string, AlleleConversion[]>
+): { nodes: Array<Node<any>>; changed: boolean } => {
+  let changed = false;
+  strainNodes(nodes).forEach((node) => {
+    node.data.getAlleles().forEach((allele: Allele) => {
+      if (allele.isWild() || allele.isAbsent()) return;
+      const rules = fresh.get(allele.name);
+      if (rules === undefined) return;
+      // a design saved before conversions existed has none on its alleles
+      const saved = allele.conversions ?? [];
+      if (conversionsKey(rules) !== conversionsKey(saved)) {
+        allele.conversions = rules;
         changed = true;
       }
     });

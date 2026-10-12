@@ -12,6 +12,7 @@ import { type FilterGroup } from 'models/db/filter/FilterGroup';
 import { type StrainAlleleFieldName } from 'models/db/filter/db_StrainAlleleFieldName';
 import { Sex } from 'models/enums';
 import { Allele } from 'models/frontend/Allele/Allele';
+import { type AlleleConversion } from 'models/frontend/AlleleConversion/AlleleConversion';
 import { type AlleleExpression } from 'models/frontend/AlleleExpression/AlleleExpression';
 import { AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import { type Condition } from 'models/frontend/Condition/Condition';
@@ -40,6 +41,59 @@ export interface Gamete {
   chromosomes: Allele[][];
   prob: number;
 }
+
+/**
+ * What the parents of a cross express, for the allele conversions a germline
+ * driver triggers (see `AlleleConversion`): unique phenotype names, as
+ * `Phenotype.getUniqueName()` writes them. A parent left out expresses what its
+ * own genotype gives it, with no parents, conditions or mother of its own.
+ */
+export interface CrossContext {
+  /** What the strain `crossWith` is called on expresses */
+  thisPhenotypes?: ReadonlySet<string>;
+  /** What the strain it is crossed with expresses */
+  otherPhenotypes?: ReadonlySet<string>;
+}
+
+/** A parent with this many germline variants or more is too tangled to cross */
+export const MAX_GERMLINE_VARIANTS = 256;
+
+/** One parent's germline as a weighted genotype */
+interface GermlineVariant {
+  strain: Strain;
+  prob: number;
+}
+
+/**
+ * The outcomes for ONE copy of an allele whose conversion rules are active:
+ * rules apply in order (product name, then driver), each succeeding with its
+ * own chance on the copies the earlier ones left, so the copy stays as it is
+ * with the product of the failures. `productName` is undefined for staying.
+ */
+export const conversionOutcomes = (
+  rules: AlleleConversion[]
+): Array<{ productName?: string; prob: number }> => {
+  const ordered = [...rules].sort((a, b) => {
+    const byProduct = a.productName.localeCompare(b.productName);
+    return byProduct !== 0
+      ? byProduct
+      : a.getDriverKey().localeCompare(b.getDriverKey());
+  });
+  const outcomes = new Map<string | undefined, number>();
+  let remaining = 1;
+  for (const rule of ordered) {
+    const chance = remaining * rule.getProbability();
+    outcomes.set(
+      rule.productName,
+      (outcomes.get(rule.productName) ?? 0) + chance
+    );
+    remaining -= chance;
+  }
+  if (remaining > 1e-12) outcomes.set(undefined, remaining);
+  return [...outcomes]
+    .filter(([, prob]) => prob > 0)
+    .map(([productName, prob]) => ({ productName, prob }));
+};
 
 interface IStrain {
   name?: string;
@@ -679,16 +733,26 @@ export class Strain {
    * Crosses this strain with itself
    * @returns Permuted list of all possible strains and their respective probabilities
    */
-  public async selfCross(): Promise<Strain[]> {
-    return await this.crossWith(this);
+  public async selfCross(
+    parentPhenotypes?: ReadonlySet<string>
+  ): Promise<Strain[]> {
+    return await this.crossWith(this, {
+      thisPhenotypes: parentPhenotypes,
+      otherPhenotypes: parentPhenotypes,
+    });
   }
 
   /**
    * Crosses this strain with {other}
    * @param other strain to cross against
+   * @param context what each parent expresses, for conversions a germline driver
+   * triggers; without it each parent's own genotype is used
    * @returns Permuted list of all possible strains and their respective probabilities
    */
-  public async crossWith(other: Strain): Promise<Strain[]> {
+  public async crossWith(
+    other: Strain,
+    context: CrossContext = {}
+  ): Promise<Strain[]> {
     // Fill missing loci on private copies: the parents (which may be shared
     // with cards on the canvas) must not gain wild alleles from a cross.
     const parent1 = this.deepClone();
@@ -696,13 +760,120 @@ export class Strain {
     parent1.fillWildsFrom(parent2);
     parent2.fillWildsFrom(parent1);
 
-    const gametes1 = parent1.meiosis();
-    const gametes2 = parent2.meiosis();
-    const exOptions = ChromosomePair.crossEx(
-      parent1.chromPairMap.get('Ex'),
-      parent2.chromPairMap.get('Ex')
+    // Each parent's germline may first convert alleles (Cre/lox and the like):
+    // one weighted genotype per outcome, so every combination is crossed
+    // normally and the results are merged once
+    const products = new Map<string, Allele>();
+    const variants1 = await parent1.germlineVariants(
+      context.thisPhenotypes,
+      products
     );
-    return await Strain.fertilize(gametes1, gametes2, exOptions);
+    const variants2 = await parent2.germlineVariants(
+      context.otherPhenotypes,
+      products
+    );
+    const children = variants1.flatMap((v1) => {
+      const gametes1 = v1.strain.meiosis();
+      return variants2.flatMap((v2) => {
+        const exOptions = ChromosomePair.crossEx(
+          v1.strain.chromPairMap.get('Ex'),
+          v2.strain.chromPairMap.get('Ex')
+        );
+        return Strain.buildChildren(
+          gametes1,
+          v2.strain.meiosis(),
+          exOptions,
+          v1.prob * v2.prob
+        );
+      });
+    });
+    return await Strain.finishChildren(children);
+  }
+
+  /**
+   * This strain's germline as weighted genotypes: each copy of an allele with
+   * an active conversion rule (the source is carried and the driver is among
+   * `expressed`) independently becomes its product or stays, see
+   * `conversionOutcomes`. A male's absent X is never a source. With no active
+   * rule this is just this strain.
+   * @param expressed unique names of the phenotypes this strain expresses; its
+   * own genotype's are used when undefined
+   * @param products product alleles loaded so far, filled in as needed
+   */
+  private async germlineVariants(
+    expressed: ReadonlySet<string> | undefined,
+    products: Map<string, Allele>
+  ): Promise<GermlineVariant[]> {
+    const isSource = (allele: Allele): boolean =>
+      !allele.isWild() &&
+      !allele.isAbsent() &&
+      (allele.conversions?.length ?? 0) > 0;
+    if (!this.getAlleles().some(isSource)) return [{ strain: this, prob: 1 }];
+
+    const driven =
+      expressed ??
+      new Set(this.getExprPhenotypes().map((phen) => phen.getUniqueName()));
+    // Work on a copy, so the slots below index the pairs of the strains made
+    // from it
+    const base = this.deepClone();
+    const slots: Array<{
+      pairIndex: number;
+      side: 'top' | 'bot';
+      outcomes: Array<{ productName?: string; prob: number }>;
+    }> = [];
+    base.getAllelePairs().forEach((pair, pairIndex) => {
+      for (const side of ['top', 'bot'] as const) {
+        const allele = pair[side];
+        if (!isSource(allele)) continue;
+        const rules = allele.conversions.filter((rule) =>
+          driven.has(rule.getDriverKey())
+        );
+        if (rules.length > 0)
+          slots.push({ pairIndex, side, outcomes: conversionOutcomes(rules) });
+      }
+    });
+    if (slots.length === 0) return [{ strain: this, prob: 1 }];
+
+    const total = slots.reduce((n, slot) => n * slot.outcomes.length, 1);
+    if (total > MAX_GERMLINE_VARIANTS)
+      throw new Error(
+        `A parent carries too many convertible alleles to cross (${total} germline variants; the limit is ${MAX_GERMLINE_VARIANTS})`
+      );
+
+    for (const slot of slots) {
+      for (const outcome of slot.outcomes) {
+        const name = outcome.productName;
+        if (name !== undefined && !products.has(name))
+          products.set(
+            name,
+            await Allele.createFromRecord(await getAllele(name))
+          );
+      }
+    }
+
+    let combinations: Array<{
+      prob: number;
+      picks: Array<string | undefined>;
+    }> = [{ prob: 1, picks: [] }];
+    for (const slot of slots) {
+      combinations = combinations.flatMap((combination) =>
+        slot.outcomes.map((outcome) => ({
+          prob: combination.prob * outcome.prob,
+          picks: [...combination.picks, outcome.productName],
+        }))
+      );
+    }
+    return combinations.map((combination) => {
+      const strain = base.deepClone();
+      const pairs = strain.getAllelePairs();
+      slots.forEach((slot, i) => {
+        const name = combination.picks[i];
+        if (name === undefined) return;
+        const product = products.get(name);
+        if (product !== undefined) pairs[slot.pairIndex][slot.side] = product;
+      });
+      return { strain, prob: combination.prob };
+    });
   }
 
   public getAllelePairs(): AllelePair[] {
@@ -718,22 +889,37 @@ export class Strain {
       { pair: new ChromosomePair([]), prob: 1 },
     ]
   ): Promise<Strain[]> {
-    const strains = await Promise.all(
-      gametes1.flatMap((gamete1) =>
-        gametes2.flatMap((gamete2) =>
-          exOptions.map(async (exOption) => {
-            const chromPairs = gamete1.chromosomes.map((chrom, idx) =>
-              ChromosomePair.buildFromChroms(chrom, gamete2.chromosomes[idx])
-            );
-            chromPairs.push(exOption.pair);
-            const strain = Strain.fromChromPairs(chromPairs);
-            strain.probability = gamete1.prob * gamete2.prob * exOption.prob;
-            strain.isChild = true;
-            return strain;
-          })
-        )
+    return await Strain.finishChildren(
+      Strain.buildChildren(gametes1, gametes2, exOptions)
+    );
+  }
+
+  /** Every pairing of an egg with a sperm (and Ex array outcome) as a child, its probability scaled by `weight` */
+  private static buildChildren(
+    gametes1: Gamete[],
+    gametes2: Gamete[],
+    exOptions: ChromosomePairOption[],
+    weight = 1
+  ): Strain[] {
+    return gametes1.flatMap((gamete1) =>
+      gametes2.flatMap((gamete2) =>
+        exOptions.map((exOption) => {
+          const chromPairs = gamete1.chromosomes.map((chrom, idx) =>
+            ChromosomePair.buildFromChroms(chrom, gamete2.chromosomes[idx])
+          );
+          chromPairs.push(exOption.pair);
+          const strain = Strain.fromChromPairs(chromPairs);
+          strain.probability =
+            gamete1.prob * gamete2.prob * exOption.prob * weight;
+          strain.isChild = true;
+          return strain;
+        })
       )
     );
+  }
+
+  /** Merges equal children, drops the impossible ones, orders them by probability and names them after saved strains */
+  private static async finishChildren(strains: Strain[]): Promise<Strain[]> {
     Strain.reduceStrains(strains);
     // A genotype with exactly zero probability cannot occur (for instance a
     // recombinant across a balancer's range, which suppresses crossing over
