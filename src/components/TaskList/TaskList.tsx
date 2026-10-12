@@ -63,6 +63,13 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
     ([date1], [date2]) => (moment(date1).isAfter(moment(date2)) ? 1 : -1)
   );
   const [task, setTask] = useState<Task>(props.tasks[0] ?? new Task());
+  // counts the times a task was picked, so the reschedule dialog starts over
+  // each time it is opened
+  const [openKey, setOpenKey] = useState(0);
+  const selectTask = (picked: Task): void => {
+    setTask(picked);
+    setOpenKey((key) => key + 1);
+  };
 
   const onTaskChecked = (checkedTask: Task): void => {
     if (props.tasks.every((task) => task.completed))
@@ -75,6 +82,7 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
         task={task}
         updateTask={props.updateTask}
         tasks={props.tasks}
+        openKey={openKey}
       />
       <TaskConditionModal task={task} />
       <div className='flex flex-col gap-2'>
@@ -96,7 +104,7 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
                     task={task}
                     updateTask={props.updateTask}
                     onTaskChecked={onTaskChecked}
-                    selectTask={setTask}
+                    selectTask={selectTask}
                     daysOverdue={diffDays(task.dueDate, new Date())}
                     daysUntilChildTaskDue={getDaysUntilChildTaskDue(
                       task,
@@ -124,7 +132,7 @@ const TaskList = (props: TaskListProps): React.JSX.Element => {
                     task={task}
                     updateTask={props.updateTask}
                     onTaskChecked={onTaskChecked}
-                    selectTask={setTask}
+                    selectTask={selectTask}
                     daysUntilChildTaskDue={getDaysUntilChildTaskDue(
                       task,
                       props.tasks
@@ -206,6 +214,9 @@ export const TaskRescheduleModal = (props: {
   task: Task;
   updateTask: (task: Task) => void;
   tasks: Task[];
+  // Changes each time the dialog is opened, so it starts again on the date
+  // step even for the task it was last used on
+  openKey?: number;
 }): React.JSX.Element => {
   const [preview, setPreview] = useState(false);
   const [date, setDate] = useState<Date>(props.task.dueDate ?? new Date());
@@ -213,8 +224,10 @@ export const TaskRescheduleModal = (props: {
   // date never becomes an invalid one
   const [dateText, setDateText] = useState(toDateInputValue(date));
   const [prevTaskId, setPrevTaskId] = useState<string>();
-  if (prevTaskId !== props.task.id) {
+  const [prevOpenKey, setPrevOpenKey] = useState(props.openKey);
+  if (prevTaskId !== props.task.id || prevOpenKey !== props.openKey) {
     setPrevTaskId(props.task.id);
+    setPrevOpenKey(props.openKey);
     setPreview(false);
     const start = props.task.dueDate ?? new Date();
     setDate(start);

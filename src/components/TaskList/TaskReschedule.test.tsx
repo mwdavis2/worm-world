@@ -50,3 +50,32 @@ describe('the reschedule date field', () => {
     expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
   });
 });
+
+describe('opening the reschedule dialog again', () => {
+  test('starts on the date step with the date field at the due date, not on the old preview', () => {
+    const task = octoberTask();
+    const props = { task, updateTask: vi.fn(), tasks: [task] };
+    const { rerender } = render(<TaskRescheduleModal {...props} openKey={1} />);
+    const input = screen.getByDisplayValue<HTMLInputElement>('2026-10-10');
+    fireEvent.change(input, { target: { value: '2026-10-12' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByText('+ 2 Days')).toBeVisible();
+
+    // the dialog is closed and opened again for the same task
+    rerender(<TaskRescheduleModal {...props} openKey={2} />);
+    expect(screen.queryByText('+ 2 Days')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Preview' })).toBeVisible();
+    expect(screen.getByDisplayValue('2026-10-10')).toBeVisible();
+  });
+
+  test('re-rendering without opening it again keeps what was entered', () => {
+    const task = octoberTask();
+    const props = { task, updateTask: vi.fn(), tasks: [task] };
+    const { rerender } = render(<TaskRescheduleModal {...props} openKey={1} />);
+    fireEvent.change(screen.getByDisplayValue('2026-10-10'), {
+      target: { value: '2026-10-12' },
+    });
+    rerender(<TaskRescheduleModal {...props} openKey={1} />);
+    expect(screen.getByDisplayValue('2026-10-12')).toBeVisible();
+  });
+});
