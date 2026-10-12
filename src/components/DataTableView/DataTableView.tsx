@@ -528,6 +528,16 @@ const DataTableView = <T, K>(
         </div>
       )}
       <div className='px-4 pb-12'>
+        {props.unused !== undefined &&
+          unusedOnly &&
+          rowCount === 0 &&
+          data.length === 0 && (
+            <p className='py-4 text-center opacity-70'>
+              {curFilter.filters.length === 0
+                ? 'No unused rows.'
+                : 'No unused rows match the current filters.'}
+            </p>
+          )}
         <Table
           applyFilters={applyFilters}
           nameMapping={props.nameMapping}

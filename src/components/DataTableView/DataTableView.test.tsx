@@ -257,6 +257,26 @@ describe('unused rows', () => {
     });
   });
 
+  test('says so when "Show only unused" finds nothing, and not otherwise', async () => {
+    const { getFilteredRecords, getCountFilteredRecords } = renderTable({
+      unused,
+    });
+    await screen.findByText('b');
+    expect(screen.queryByText('No unused rows.')).toBeNull();
+
+    getFilteredRecords.mockImplementation(async () => []);
+    getCountFilteredRecords.mockImplementation(async () => 0);
+    await userEvent.click(screen.getByLabelText('Show only unused'));
+    expect(await screen.findByText('No unused rows.')).toBeDefined();
+
+    // unticking brings the rows (and removes the note) back
+    getFilteredRecords.mockImplementation(async () => [{ name: 'a' }]);
+    getCountFilteredRecords.mockImplementation(async () => 1);
+    await userEvent.click(screen.getByLabelText('Show only unused'));
+    await screen.findByText('a');
+    expect(screen.queryByText('No unused rows.')).toBeNull();
+  });
+
   test('has no checkbox on tables without unused flagging', async () => {
     renderTable();
     await screen.findByText('b');
