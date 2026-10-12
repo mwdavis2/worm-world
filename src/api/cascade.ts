@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/tauri';
 import { type db_CascadeTable } from 'models/db/db_CascadeTable';
 import { type db_DependentRows } from 'models/db/db_DependentRows';
+import { markSearchIndexStale } from 'utils/searchIndexStale';
 
 /** What deleting the row would also delete (only tables with rows to go) */
 export const getDeleteImpact = async (
@@ -18,5 +19,10 @@ export const deleteWithDependents = async (
   table: db_CascadeTable,
   key: string[]
 ): Promise<number> => {
-  return await invoke('delete_with_dependents', { table, key });
+  const deleted = await invoke<number>('delete_with_dependents', {
+    table,
+    key,
+  });
+  markSearchIndexStale();
+  return deleted;
 };

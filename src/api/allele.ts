@@ -9,6 +9,7 @@ import {
   getSingleRecordOrThrow,
 } from 'models/db/filter/FilterGroup';
 import { type Allele } from 'models/frontend/Allele/Allele';
+import { markSearchIndexStale } from 'utils/searchIndexStale';
 
 export const getAlleles = async (): Promise<db_Allele[]> => {
   return await invoke('get_alleles');
@@ -61,6 +62,7 @@ export const insertDbAllele = async (record: db_Allele): Promise<void> => {
     throw Error('An allele can only belong to a gene OR a variation, not both');
 
   await invoke('insert_allele', { allele: record });
+  markSearchIndexStale();
 };
 
 // Changes an allele's non-key columns; its name picks the row. Same
@@ -72,6 +74,7 @@ export const updateDbAllele = async (record: db_Allele): Promise<void> => {
     throw Error('An allele can only belong to a gene OR a variation, not both');
 
   await invoke('update_allele', { allele: record });
+  markSearchIndexStale();
 };
 
 /**
@@ -82,13 +85,18 @@ export const updateDbAllele = async (record: db_Allele): Promise<void> => {
 export const insertAllelesFromFile = async (
   path: string
 ): Promise<db_TableImport> => {
-  return await invoke('insert_alleles_from_file', { path });
+  const result = await invoke<db_TableImport>('insert_alleles_from_file', {
+    path,
+  });
+  markSearchIndexStale();
+  return result;
 };
 
 export const deleteFilteredAlleles = async (
   filter: FilterGroup<AlleleFieldName>
 ): Promise<void> => {
   await invoke('delete_filtered_alleles', { filter });
+  markSearchIndexStale();
 };
 
 export const deleteAllele = async (allele: db_Allele): Promise<void> => {

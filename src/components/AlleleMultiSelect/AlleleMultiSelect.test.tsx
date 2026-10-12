@@ -10,6 +10,7 @@ import { type db_Allele } from 'models/db/db_Allele';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import { ed3, ox11000, ox11001 } from 'models/frontend/Allele/Allele.mock';
 import { unc119 } from 'models/frontend/Gene/Gene.mock';
+import { markSearchIndexStale } from 'utils/searchIndexStale';
 
 const renderComponent = ({
   placeholder = 'testPlaceholder',
@@ -46,6 +47,7 @@ const MockAlleleMultiSelect = (props: {
 
 describe('AlleleMultiSelect', () => {
   beforeEach(() => {
+    markSearchIndexStale(); // each test loads its own alleles
     mockIPC((cmd, _) => {
       if (cmd === 'get_filtered_alleles_with_gene_filter') {
         return [
@@ -127,38 +129,60 @@ describe('AlleleMultiSelect', () => {
     expect(item).toHaveTextContent(`${unc119.descName}(${ox11001.name})`);
   });
 
-  test('searches names that start with the text as well as names that contain it, each capped', async () => {
-    const calls: any[] = [];
-    mockIPC((cmd, args) => {
-      if (cmd === 'get_filtered_alleles_with_gene_filter')
-        calls.push((args as any).alleleFilter);
-      return [[ed3, unc119]];
-    });
+  test('lists names that start with the text first, then names that contain it', async () => {
+    mockIPC((cmd) =>
+      cmd === 'get_filtered_alleles_with_gene_filter'
+        ? [
+            [{ ...ed3, name: 'xed1' }, unc119],
+            [{ ...ed3, name: 'ed2' }, unc119],
+            [{ ...ed3, name: 'zz9' }, unc119],
+          ]
+        : []
+    );
     renderComponent({});
     const input = screen.getByRole('textbox');
     await user.click(input);
     await user.type(input, 'ed');
-    await screen.findByText(/ed3/i);
-    expect(calls).toHaveLength(2);
-    expect(
-      calls.map((filter) => Object.keys(filter.filters[0][0][1])[0]).sort()
-    ).toEqual(['Like', 'StartsWith']);
-    expect(calls.every((filter) => filter.limit === 200)).toBe(true);
+    await screen.findByText(/ed2/);
+    const items = screen.getAllByRole('listitem').map((li) => li.textContent);
+    expect(items).toEqual(['unc-119(ed2)', 'unc-119(xed1)']);
   });
 
-  test('does not search for a single character and says so', async () => {
-    const searched = vi.fn();
+  test('answers from the first character, with no minimum', async () => {
+    renderComponent({});
+    const input = screen.getByRole('textbox');
+    await user.click(input);
+    await user.type(input, 'e');
+    expect(await screen.findByText(/ed3/i)).toBeTruthy();
+    expect(screen.queryByText(/Type at least/)).toBeNull();
+  });
+
+  test('loads the alleles once, not on every keystroke', async () => {
+    const loads = vi.fn();
     mockIPC((cmd) => {
-      if (cmd === 'get_filtered_alleles_with_gene_filter') searched();
+      if (cmd === 'get_filtered_alleles_with_gene_filter') {
+        loads();
+        return [[ed3, unc119]];
+      }
       return [];
     });
     renderComponent({});
     const input = screen.getByRole('textbox');
     await user.click(input);
+    await user.type(input, 'ed3');
+    await screen.findByText(/ed3/i);
+    expect(loads).toHaveBeenCalledTimes(1);
+  });
+
+  test('applies shouldInclude before counting, so the total is of what can be picked', async () => {
+    mockIPC(() =>
+      Array.from({ length: 120 }, (_, i) => [{ ...ed3, name: `e${i}` }, unc119])
+    );
+    renderComponent({ shouldInclude: (a: db_Allele) => a.name !== 'e5' });
+    const input = screen.getByRole('textbox');
+    await user.click(input);
     await user.type(input, 'e');
-    expect(screen.getByText(/Type at least 2 characters/)).toBeTruthy();
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    expect(searched).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Showing 50 of 119/)).toBeTruthy();
   });
 
   test('shows at most 50 alleles', async () => {
@@ -169,7 +193,7 @@ describe('AlleleMultiSelect', () => {
     const input = screen.getByRole('textbox');
     await user.click(input);
     await user.type(input, 'e');
-    await user.type(input, '1');
-    expect(await screen.findAllByRole('listitem')).toHaveLength(50);
+    await screen.findByText(/Showing 50 of 120/);
+    expect(screen.getAllByRole('listitem')).toHaveLength(51); // 50 + the note
   });
 });

@@ -1,12 +1,8 @@
-import { getFilteredAllelesWithGeneFilter } from 'api/allele';
 import { getSelectedPills } from 'components/SelectedPill/SelectedPill';
 import { type db_Allele } from 'models/db/db_Allele';
 import { type db_Gene } from 'models/db/db_Gene';
-import { type Filter } from 'models/db/filter/Filter';
-import { type FilterGroup } from 'models/db/filter/FilterGroup';
-import { type AlleleFieldName } from 'models/db/filter/db_AlleleFieldName';
-import { type GeneFieldName } from 'models/db/filter/db_GeneFieldName';
 import React, { useEffect, useRef, useState } from 'react';
+import { getAlleleEntries, searchAlleles } from 'utils/searchIndex';
 
 export interface AlleleMultiSelectProps {
   /** provide the api call that will fetch filtered db records */
@@ -25,97 +21,56 @@ export interface AlleleMultiSelectProps {
   onRequestNewAllele?: (prefillName: string) => void;
 }
 
-// At most this many alleles are listed; typing more narrows them
-export const MAX_RESULTS = 50;
-// Rows fetched per query. Larger than MAX_RESULTS because `shouldInclude`
-// (e.g. alleles already chosen) is applied after the fetch.
-const FETCH_LIMIT = 200;
-// Wait this long after the last keystroke before searching
-export const SEARCH_DELAY_MS = 150;
-export const MIN_SEARCH_LENGTH = 2;
-
-type Match = Array<[db_Allele, db_Gene]>;
-
-// Alleles whose name (or gene name) starts with the text, then those that
-// merely contain it, each capped so a short search never pulls back thousands
-// of rows.
-const searchAlleles = async (value: string): Promise<Match> => {
-  const query = async (
-    alleleFilter: Filter,
-    geneFilter: Filter
-  ): Promise<Match> =>
-    await getFilteredAllelesWithGeneFilter(
-      {
-        filters: [[['Name', alleleFilter]]],
-        orderBy: [],
-        limit: FETCH_LIMIT,
-      } satisfies FilterGroup<AlleleFieldName>,
-      {
-        filters: [[['DescName', geneFilter]]],
-        orderBy: [],
-      } satisfies FilterGroup<GeneFieldName>
-    );
-  const [starts, contains] = await Promise.all([
-    query({ StartsWith: value }, { StartsWith: value }),
-    query({ Like: value }, { Like: value }),
-  ]);
-  const merged = new Map<string, [db_Allele, db_Gene]>();
-  for (const match of [...starts, ...contains]) {
-    if (!merged.has(match[0].name)) merged.set(match[0].name, match);
-  }
-  return [...merged.values()];
-};
-
 export const AlleleMultiSelect = (
   props: AlleleMultiSelectProps
 ): React.JSX.Element => {
   const [searchRes, setSearchRes] = useState(new Array<[db_Allele, db_Gene]>());
+  const [total, setTotal] = useState(0);
   const [userInput, setUserInput] = useState('');
   // The text the current results are for, so "+ New allele" is offered only
   // once a search for what is typed has come back empty
   const [searchedText, setSearchedText] = useState('');
-  const timer = useRef<ReturnType<typeof setTimeout>>();
-  // Identifies the latest search, so a slow earlier one can't overwrite it
+  // Identifies the latest search, so a slower earlier one can't overwrite it
   const latestSearch = useRef(0);
-  useEffect(
-    () => () => {
-      clearTimeout(timer.current);
-    },
-    []
-  );
+  // Start loading the names as the box opens, so the first keystroke is quick
+  useEffect(() => {
+    getAlleleEntries().catch(console.error);
+  }, []);
 
   const onInputChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const value = event.target.value;
     setUserInput(value);
-    clearTimeout(timer.current);
     const thisSearch = ++latestSearch.current;
-    if (value.length < MIN_SEARCH_LENGTH) {
-      // Keep select option menu empty until there is enough to search for
+    if (value.trim() === '') {
       setSearchRes([]);
+      setTotal(0);
       setSearchedText('');
       return;
     }
 
-    // Query from DB and do final filtering on frontend
+    // The names are searched in memory (see `utils/searchIndex.ts`)
     const shouldInclude = props.shouldInclude ?? (() => true);
-    timer.current = setTimeout(() => {
-      searchAlleles(value)
-        .then((results) => {
-          if (thisSearch !== latestSearch.current) return;
-          setSearchRes(
-            results.filter((res) => shouldInclude(res[0])).slice(0, MAX_RESULTS)
-          );
-          setSearchedText(value);
-        })
-        .catch(console.error);
-    }, SEARCH_DELAY_MS);
+    getAlleleEntries()
+      .then((entries) => {
+        if (thisSearch !== latestSearch.current) return;
+        const result = searchAlleles(entries, value, shouldInclude);
+        setSearchRes(
+          result.matches.map((entry): [db_Allele, db_Gene] => [
+            entry.allele,
+            entry.gene,
+          ])
+        );
+        setTotal(result.total);
+        setSearchedText(value);
+      })
+      .catch(console.error);
   };
 
   const clearSearch = (): void => {
-    clearTimeout(timer.current);
     latestSearch.current++;
     setUserInput('');
     setSearchRes([]);
+    setTotal(0);
     setSearchedText('');
   };
 
@@ -141,11 +96,6 @@ export const AlleleMultiSelect = (
           onChange={onInputChange}
           value={userInput}
         />
-        {userInput.length > 0 && userInput.length < MIN_SEARCH_LENGTH && (
-          <div className='dropdown-content rounded-box z-50 my-2 w-52 bg-base-100 p-3 text-sm opacity-70 shadow'>
-            Type at least {MIN_SEARCH_LENGTH} characters
-          </div>
-        )}
         {searchRes.length === 0 ? (
           userInput !== '' &&
           searchedText === userInput &&
@@ -195,6 +145,12 @@ export const AlleleMultiSelect = (
                 </li>
               );
             })}
+            {total > searchRes.length && (
+              <li className='disabled px-4 py-2 text-sm opacity-70'>
+                Showing {searchRes.length} of {total.toLocaleString()} - keep
+                typing to narrow
+              </li>
+            )}
           </ul>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import user from '@testing-library/user-event';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
+import { markSearchIndexStale } from 'utils/searchIndexStale';
 import NewAlleleModal from 'components/NewAlleleModal/NewAlleleModal';
 import { unc119 } from 'models/frontend/Gene/Gene.mock';
 import { vi } from 'vitest';
@@ -26,6 +27,8 @@ describe('NewAlleleModal', () => {
       switch (cmd) {
         case 'get_location_reference_variations':
           return [];
+        case 'get_genes': // the gene search box
+          return [unc119];
         case 'get_filtered_genes':
           return [unc119];
         case 'get_filtered_conditions':
@@ -35,6 +38,10 @@ describe('NewAlleleModal', () => {
       }
     });
   };
+
+  beforeEach(() => {
+    markSearchIndexStale(); // the gene box loads its names afresh
+  });
 
   afterEach(() => {
     clearMocks();

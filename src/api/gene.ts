@@ -7,6 +7,7 @@ import {
   getSingleRecordOrThrow,
 } from 'models/db/filter/FilterGroup';
 import { type Gene } from 'models/frontend/Gene/Gene';
+import { markSearchIndexStale } from 'utils/searchIndexStale';
 
 export const getGenes = async (): Promise<db_Gene[]> => {
   return await invoke('get_genes');
@@ -46,11 +47,13 @@ export const insertGene = async (gene: Gene): Promise<void> => {
 
 export const insertDbGene = async (record: db_Gene): Promise<void> => {
   await invoke('insert_gene', { gene: record });
+  markSearchIndexStale();
 };
 
 // Changes a gene's non-key columns; its systematic name picks the row.
 export const updateDbGene = async (record: db_Gene): Promise<void> => {
   await invoke('update_gene', { gene: record });
+  markSearchIndexStale();
 };
 
 /**
@@ -61,13 +64,18 @@ export const updateDbGene = async (record: db_Gene): Promise<void> => {
 export const insertGenesFromFile = async (
   path: string
 ): Promise<db_TableImport> => {
-  return await invoke('insert_genes_from_file', { path });
+  const result = await invoke<db_TableImport>('insert_genes_from_file', {
+    path,
+  });
+  markSearchIndexStale();
+  return result;
 };
 
 export const deleteFilteredGenes = async (
   filter: FilterGroup<GeneFieldName>
 ): Promise<void> => {
   await invoke('delete_filtered_genes', { filter });
+  markSearchIndexStale();
 };
 
 export const deleteGene = async (gene: db_Gene): Promise<void> => {
