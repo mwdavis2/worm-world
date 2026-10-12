@@ -1,0 +1,3 @@
+allele_name,expressing_phenotype_name,expressing_phenotype_wild,altering_phenotype_name,altering_phenotype_wild,altering_condition,is_suppressing,altering_phenotype_maternal
+oxSi1308,HaloTag,0,Flp,1,,0,0
+oxSi1361,HaloTag,0,Flp,1,,0,0
