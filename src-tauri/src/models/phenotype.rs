@@ -69,12 +69,12 @@ pub enum PhenotypeFieldName {
     FemaleSterile,
     Arrested,
     MaturationDays,
-    /// Virtual column: true when no allele expression or relation uses the phenotype (filter it with `Filter::True`)
+    /// Virtual column: true when no allele expression, relation or conversion driver uses the phenotype (filter it with `Filter::True`)
     Unused,
 }
 
 /// SQL condition (on the `phenotypes` table) for a phenotype nothing uses
-pub const UNUSED_PHENOTYPE_SQL: &str = "(NOT EXISTS (SELECT 1 FROM allele_exprs ae WHERE ae.expressing_phenotype_name = phenotypes.name AND ae.expressing_phenotype_wild = phenotypes.wild) AND NOT EXISTS (SELECT 1 FROM expr_relations er WHERE er.altering_phenotype_name = phenotypes.name AND er.altering_phenotype_wild = phenotypes.wild))";
+pub const UNUSED_PHENOTYPE_SQL: &str = "(NOT EXISTS (SELECT 1 FROM allele_exprs ae WHERE ae.expressing_phenotype_name = phenotypes.name AND ae.expressing_phenotype_wild = phenotypes.wild) AND NOT EXISTS (SELECT 1 FROM expr_relations er WHERE er.altering_phenotype_name = phenotypes.name AND er.altering_phenotype_wild = phenotypes.wild) AND NOT EXISTS (SELECT 1 FROM allele_conversions ac WHERE ac.driver_phenotype_name = phenotypes.name AND ac.driver_phenotype_wild = phenotypes.wild))";
 
 impl FieldNameEnum for PhenotypeFieldName {
     fn get_col_name(self: &PhenotypeFieldName) -> String {

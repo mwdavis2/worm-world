@@ -757,6 +757,33 @@ oxTi302,[Peft-3::mCherry; cbr-unc-119(+)],,oxTi302"
         Ok(())
     }
 
+    // A product allele is in no strain (a cross makes it), and a driver phenotype
+    // is expressed by no allele of the rule, but a conversion rule uses both.
+    #[sqlx::test]
+    async fn test_conversions_keep_their_alleles_and_driver_in_use(
+        pool: Pool<Sqlite>,
+    ) -> Result<()> {
+        for sql in [
+            "INSERT INTO variations (allele_name) VALUES ('v_c')",
+            "INSERT INTO alleles (name, variation_name) VALUES ('floxed', 'v_c'), ('excised', 'v_c'), ('lonely', NULL)",
+            "INSERT INTO strains (name, genotype) VALUES ('s1', '')",
+            "INSERT INTO strain_alleles (strain_name, allele_name, is_on_top, is_on_bot) VALUES ('s1', 'floxed', 1, 1)",
+            "INSERT INTO phenotypes (name, wild, short_name) VALUES ('Cre', 1, 'Cre'), ('p_none', 0, 'n')",
+            "INSERT INTO allele_conversions (source_allele, product_allele, driver_phenotype_name, driver_phenotype_wild, percent_conversion) VALUES ('floxed', 'excised', 'Cre', 1, 100)",
+        ] {
+            sqlx::query(sql).execute(&pool).await?;
+        }
+        let state = InnerDbState { conn_pool: pool };
+
+        // 'excised' is in no strain but is a product, so only 'lonely' is unused
+        assert_eq!(state.get_unused_allele_names().await?, vec!["lonely"]);
+        assert_eq!(
+            state.get_unused_phenotype_keys().await?,
+            vec![("p_none".to_string(), false)]
+        );
+        Ok(())
+    }
+
     // Unused rows: alleles no strain has, variations no allele uses, and
     // phenotypes no allele expression or relation uses.
     #[sqlx::test]

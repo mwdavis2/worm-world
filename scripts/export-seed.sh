@@ -34,6 +34,7 @@ export_table variations "SELECT allele_name AS alleleName, chromosome, phys_loc 
 export_table alleles "SELECT name, contents, systematic_gene_name AS sysGeneName, variation_name AS variationName FROM alleles ORDER BY name"
 export_table allele_exprs "SELECT allele_name AS alleleName, expressing_phenotype_name AS expressingPhenotypeName, expressing_phenotype_wild AS expressingPhenotypeWild, dominance FROM allele_exprs ORDER BY allele_name, expressing_phenotype_name, expressing_phenotype_wild"
 export_table expr_relations "SELECT allele_name, expressing_phenotype_name, expressing_phenotype_wild, altering_phenotype_name, altering_phenotype_wild, altering_condition, is_suppressing, altering_phenotype_maternal FROM expr_relations ORDER BY allele_name, expressing_phenotype_name, expressing_phenotype_wild"
+export_table allele_conversions "SELECT source_allele AS sourceAllele, product_allele AS productAllele, driver_phenotype_name AS driverPhenotypeName, driver_phenotype_wild AS driverPhenotypeWild, percent_conversion AS percentConversion, description FROM allele_conversions ORDER BY source_allele, product_allele, driver_phenotype_name, driver_phenotype_wild"
 export_table strains "SELECT name, genotype, description FROM strains ORDER BY name"
 export_table strain_alleles "SELECT strain_name AS strainName, allele_name AS alleleName, CASE WHEN is_on_top THEN 'true' ELSE 'false' END AS isOnTop, CASE WHEN is_on_bot THEN 'true' ELSE 'false' END AS isOnBot FROM strain_alleles ORDER BY strain_name, allele_name"
 

@@ -21,13 +21,13 @@ pub enum AlleleFieldName {
     Contents,
     SysGeneName,
     VariationName,
-    /// Virtual column: true when no strain has the allele (filter it with `Filter::True`)
+    /// Virtual column: true when no strain has the allele and no conversion rule uses it (filter it with `Filter::True`)
     Unused,
 }
 
-/// SQL condition (on the `alleles` table) for an allele no strain has
-pub const UNUSED_ALLELE_SQL: &str =
-    "(alleles.name NOT IN (SELECT allele_name FROM strain_alleles))";
+/// SQL condition (on the `alleles` table) for an allele no strain has and no
+/// conversion rule turns into, or out of
+pub const UNUSED_ALLELE_SQL: &str = "(alleles.name NOT IN (SELECT allele_name FROM strain_alleles) AND alleles.name NOT IN (SELECT source_allele FROM allele_conversions) AND alleles.name NOT IN (SELECT product_allele FROM allele_conversions))";
 
 impl FieldNameEnum for AlleleFieldName {
     fn get_col_name(&self) -> String {

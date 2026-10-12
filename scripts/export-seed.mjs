@@ -35,6 +35,7 @@ const TABLES = {
   alleles: 'SELECT name, contents, systematic_gene_name AS sysGeneName, variation_name AS variationName FROM alleles ORDER BY rowid',
   allele_exprs: 'SELECT allele_name AS alleleName, expressing_phenotype_name AS expressingPhenotypeName, expressing_phenotype_wild AS expressingPhenotypeWild, dominance FROM allele_exprs ORDER BY rowid',
   expr_relations: 'SELECT allele_name, expressing_phenotype_name, expressing_phenotype_wild, altering_phenotype_name, altering_phenotype_wild, altering_condition, is_suppressing, altering_phenotype_maternal FROM expr_relations ORDER BY rowid',
+  allele_conversions: 'SELECT source_allele AS sourceAllele, product_allele AS productAllele, driver_phenotype_name AS driverPhenotypeName, driver_phenotype_wild AS driverPhenotypeWild, percent_conversion AS percentConversion, description FROM allele_conversions ORDER BY rowid',
   strains: 'SELECT name, genotype, description FROM strains ORDER BY rowid',
   strain_alleles: `SELECT strain_name AS strainName, allele_name AS alleleName, ${bool('is_on_top')} AS isOnTop, ${bool('is_on_bot')} AS isOnBot FROM strain_alleles ORDER BY rowid`,
 };

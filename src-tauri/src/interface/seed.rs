@@ -61,6 +61,10 @@ impl InnerDbState {
             .await?;
         self.insert_expr_relations(bulk_from(include_bytes!("../../seed/expr_relations.csv")))
             .await?;
+        self.insert_allele_conversions(bulk_from(include_bytes!(
+            "../../seed/allele_conversions.csv"
+        )))
+        .await?;
         self.insert_strains(bulk_from(include_bytes!("../../seed/strains.csv")))
             .await?;
         self.insert_strain_alleles(bulk_from(include_bytes!("../../seed/strain_alleles.csv")))
@@ -78,7 +82,7 @@ mod tests {
     // (table, embedded csv, number of leading columns forming the primary
     // key, so duplicate keys in a file - which INSERT OR IGNORE drops - are
     // counted once).
-    const SEEDS: [(&str, &[u8], usize); 9] = [
+    const SEEDS: [(&str, &[u8], usize); 10] = [
         ("genes", include_bytes!("../../seed/genes.csv"), 1),
         ("conditions", include_bytes!("../../seed/conditions.csv"), 1),
         ("phenotypes", include_bytes!("../../seed/phenotypes.csv"), 2),
@@ -93,6 +97,11 @@ mod tests {
             "expr_relations",
             include_bytes!("../../seed/expr_relations.csv"),
             8,
+        ),
+        (
+            "allele_conversions",
+            include_bytes!("../../seed/allele_conversions.csv"),
+            4,
         ),
         ("strains", include_bytes!("../../seed/strains.csv"), 1),
         (

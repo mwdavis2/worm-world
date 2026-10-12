@@ -141,6 +141,14 @@ impl InnerDbState {
             let selected = format!("SELECT name FROM alleles WHERE {alleles_where}");
             vec![
                 step(
+                    "allele conversions",
+                    "allele_conversions",
+                    &format!(
+                        "source_allele IN ({selected}) OR product_allele IN ({selected})"
+                    ),
+                    false,
+                ),
+                step(
                     "expression relations",
                     "expr_relations",
                     &format!("allele_name IN ({selected})"),
@@ -216,6 +224,12 @@ impl InnerDbState {
                 ]
             }
             CascadeTable::Phenotypes => vec![
+                step(
+                    "allele conversions",
+                    "allele_conversions",
+                    "driver_phenotype_name = ?1 AND driver_phenotype_wild = ?2",
+                    false,
+                ),
                 step(
                     "expression relations",
                     "expr_relations",
@@ -411,6 +425,66 @@ mod tests {
         assert_eq!(count(&pool, "allele_exprs").await, 1);
         assert_eq!(count(&pool, "expr_relations").await, 1);
         assert_eq!(count(&pool, "phenotypes").await, 2); // shared rows stay
+    }
+
+    /// Allele a5 on v2 is the product of a3 under driver phenotype q.
+    async fn add_conversion(pool: &Pool<Sqlite>) {
+        for sql in [
+            "INSERT INTO alleles (name, variation_name) VALUES ('a5', 'v2')",
+            "INSERT INTO allele_conversions (source_allele, product_allele, driver_phenotype_name, driver_phenotype_wild, percent_conversion)
+                VALUES ('a3', 'a5', 'q', 0, 100)",
+        ] {
+            exec(pool, sql).await;
+        }
+    }
+
+    async fn conversion_goes_with_allele(pool: Pool<Sqlite>, allele: &str) {
+        seed(&pool).await;
+        add_conversion(&pool).await;
+        let state = InnerDbState {
+            conn_pool: pool.clone(),
+        };
+        let impact = state
+            .get_delete_impact(CascadeTable::Alleles, key(&[allele]))
+            .await
+            .unwrap();
+        assert_eq!(impact[0].table, "allele conversions");
+        assert_eq!(impact[0].count, 1);
+        state
+            .delete_with_dependents(CascadeTable::Alleles, key(&[allele]))
+            .await
+            .unwrap();
+        assert_eq!(count(&pool, "allele_conversions").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn deleting_a_source_allele_takes_its_conversion_rule(pool: Pool<Sqlite>) {
+        conversion_goes_with_allele(pool, "a3").await;
+    }
+
+    #[sqlx::test]
+    async fn deleting_a_product_allele_takes_its_conversion_rule(pool: Pool<Sqlite>) {
+        conversion_goes_with_allele(pool, "a5").await;
+    }
+
+    #[sqlx::test]
+    async fn deleting_a_driver_phenotype_takes_its_conversion_rule(pool: Pool<Sqlite>) {
+        seed(&pool).await;
+        add_conversion(&pool).await;
+        let state = InnerDbState {
+            conn_pool: pool.clone(),
+        };
+        let impact = state
+            .get_delete_impact(CascadeTable::Phenotypes, key(&["q", "0"]))
+            .await
+            .unwrap();
+        assert_eq!(impact[0].table, "allele conversions");
+        state
+            .delete_with_dependents(CascadeTable::Phenotypes, key(&["q", "0"]))
+            .await
+            .unwrap();
+        assert_eq!(count(&pool, "allele_conversions").await, 0);
+        assert_eq!(count(&pool, "alleles").await, 5); // the alleles stay
     }
 
     #[sqlx::test]

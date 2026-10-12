@@ -1,4 +1,5 @@
 pub mod allele;
+pub mod allele_conversion;
 pub mod allele_expr;
 pub mod bulk;
 pub mod cascade;

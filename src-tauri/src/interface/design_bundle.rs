@@ -8,9 +8,9 @@
 //! refers to; importing it loads the tables and the design in one transaction.
 use super::{folder_import::DESIGN_ENTRY, DbError, InnerDbState};
 use crate::models::{
-    allele::Allele, allele_expr::AlleleExpressionDb, condition::ConditionDb,
-    expr_relation::ExpressionRelationDb, gene::GeneDb, phenotype::PhenotypeDb, strain::Strain,
-    strain_allele::StrainAllele, variation::VariationDb,
+    allele::Allele, allele_conversion::AlleleConversionDb, allele_expr::AlleleExpressionDb,
+    condition::ConditionDb, expr_relation::ExpressionRelationDb, gene::GeneDb,
+    phenotype::PhenotypeDb, strain::Strain, strain_allele::StrainAllele, variation::VariationDb,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite::SqliteRow, FromRow, QueryBuilder, Sqlite};
@@ -32,6 +32,7 @@ pub struct DesignTables {
     pub alleles: Vec<Allele>,
     pub allele_exprs: Vec<AlleleExpressionDb>,
     pub expr_relations: Vec<ExpressionRelationDb>,
+    pub allele_conversions: Vec<AlleleConversionDb>,
     pub strains: Vec<Strain>,
     pub strain_alleles: Vec<StrainAllele>,
 }
@@ -89,6 +90,7 @@ impl DesignTables {
         file!("alleles", self.alleles);
         file!("allele_exprs", self.allele_exprs);
         file!("expr_relations", self.expr_relations);
+        file!("allele_conversions", self.allele_conversions);
         file!("strains", self.strains);
         file!("strain_alleles", self.strain_alleles);
         Ok(files)
@@ -157,6 +159,31 @@ impl InnerDbState {
         wanted.extend(strain_alleles.iter().map(|sa| sa.allele_name.clone()));
         wanted.sort();
         wanted.dedup();
+
+        // The conversion rules of those alleles, and the product alleles they
+        // turn into (which a cross of the design can produce), following chains
+        // until no new allele turns up.
+        let mut allele_conversions: Vec<AlleleConversionDb>;
+        loop {
+            allele_conversions = self
+                .select_where_in(
+                    "SELECT source_allele, product_allele, driver_phenotype_name, driver_phenotype_wild, percent_conversion, description FROM allele_conversions",
+                    "source_allele",
+                    &wanted,
+                )
+                .await?;
+            let new_products: Vec<String> = allele_conversions
+                .iter()
+                .map(|c| c.product_allele.clone())
+                .filter(|product| !wanted.contains(product))
+                .collect();
+            if new_products.is_empty() {
+                break;
+            }
+            wanted.extend(new_products);
+            wanted.sort();
+            wanted.dedup();
+        }
 
         let alleles: Vec<Allele> = self
             .select_where_in(
@@ -238,6 +265,12 @@ impl InnerDbState {
                 phenotype_keys.insert((name.clone(), wild));
             }
         }
+        for conversion in &allele_conversions {
+            phenotype_keys.insert((
+                conversion.driver_phenotype_name.clone(),
+                conversion.driver_phenotype_wild,
+            ));
+        }
         let condition_keys: HashSet<String> = expr_relations
             .iter()
             .filter_map(|r| r.altering_condition.clone())
@@ -270,6 +303,7 @@ impl InnerDbState {
                 alleles,
                 allele_exprs,
                 expr_relations,
+                allele_conversions,
                 strains,
                 strain_alleles,
             },
@@ -411,6 +445,53 @@ mod tests {
         // only the design's strain, with its strain alleles
         assert_eq!(keys(&tables.strains, |s| s.name.clone()), ["DB1"]);
         assert_eq!(tables.strain_alleles.len(), 3);
+    }
+
+    // A cross of the design can turn an allele into its product, so the bundle
+    // carries the conversion rules, the product alleles (and, down a chain, their
+    // products), and the driver phenotype.
+    #[sqlx::test]
+    async fn conversions_bring_their_products_and_driver(pool: Pool<Sqlite>) {
+        let state = database(&pool).await;
+        for sql in [
+            "INSERT INTO phenotypes (name, wild, short_name) VALUES ('DbCre', 1, 'DbCre')",
+            "INSERT INTO alleles (name, variation_name) VALUES ('dbA2d', 'dbV1'), ('dbA2e', 'dbV1'), ('dbOtherd', 'dbV1')",
+            "INSERT INTO allele_conversions (source_allele, product_allele, driver_phenotype_name, driver_phenotype_wild, percent_conversion) VALUES ('dbA2', 'dbA2d', 'DbCre', 1, 100), ('dbA2d', 'dbA2e', 'DbCre', 1, 50), ('dbOther', 'dbOtherd', 'DbCre', 1, 100)",
+        ] {
+            exec(&pool, sql).await;
+        }
+        let (tables, _) = state
+            .collect_design_tables(&[], &names(&["DB1"]))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            keys(&tables.alleles, |a| a.name.clone()),
+            ["dbA1", "dbA2", "dbA2d", "dbA2e", "dbA3"]
+        );
+        // the rules of the design's alleles and of their products, not the
+        // unrelated allele's
+        assert_eq!(
+            keys(&tables.allele_conversions, |c| (
+                c.source_allele.clone(),
+                c.product_allele.clone()
+            )),
+            [
+                ("dbA2".to_owned(), "dbA2d".to_owned()),
+                ("dbA2d".to_owned(), "dbA2e".to_owned())
+            ]
+        );
+        assert!(tables
+            .phenotypes
+            .iter()
+            .any(|p| p.name == "DbCre" && p.wild == 1));
+        let files = tables.files().unwrap();
+        let tables_written: Vec<&str> = files.iter().map(|(name, _, _)| *name).collect();
+        assert!(tables_written.contains(&"allele_conversions"));
+        // and the file sits after the tables it points at
+        let at = |name: &str| tables_written.iter().position(|n| *n == name).unwrap();
+        assert!(at("alleles") < at("allele_conversions"));
+        assert!(at("phenotypes") < at("allele_conversions"));
     }
 
     #[sqlx::test]

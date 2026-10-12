@@ -24,6 +24,7 @@ use interface::{
 mod models;
 use models::{
     allele::{Allele, AlleleFieldName},
+    allele_conversion::{AlleleConversion, AlleleConversionFieldName},
     allele_expr::{AlleleExpression, AlleleExpressionFieldName},
     condition::{Condition, ConditionFieldName},
     cross_design::{CrossDesign, CrossDesignFieldName},
@@ -129,6 +130,14 @@ async fn main() {
             insert_allele,
             insert_alleles_from_file,
             delete_filtered_alleles,
+            // allele_conversions
+            get_allele_conversions,
+            get_filtered_allele_conversions,
+            get_count_filtered_allele_conversions,
+            insert_allele_conversion,
+            insert_allele_conversions_from_file,
+            delete_filtered_allele_conversions,
+            update_allele_conversion,
             // expr_relations
             get_expr_relations,
             get_filtered_expr_relations,
@@ -531,6 +540,80 @@ async fn delete_filtered_variations(
     state_guard.delete_filtered_variations(&filter).await
 }
 /* #endregion variations */
+
+/* #region allele_conversions */
+#[tauri::command]
+async fn get_allele_conversions(
+    state: tauri::State<'_, DbState>,
+) -> Result<Vec<AlleleConversion>, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.get_allele_conversions().await
+}
+
+#[tauri::command]
+async fn get_filtered_allele_conversions(
+    state: tauri::State<'_, DbState>,
+    filter: FilterGroup<AlleleConversionFieldName>,
+) -> Result<Vec<AlleleConversion>, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.get_filtered_allele_conversions(&filter).await
+}
+
+#[tauri::command]
+async fn get_count_filtered_allele_conversions(
+    state: tauri::State<'_, DbState>,
+    filter: FilterGroup<AlleleConversionFieldName>,
+) -> Result<u32, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard
+        .get_count_filtered_allele_conversions(&filter)
+        .await
+}
+
+#[tauri::command]
+async fn insert_allele_conversion(
+    state: tauri::State<'_, DbState>,
+    allele_conversion: AlleleConversion,
+) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard
+        .insert_allele_conversion(&allele_conversion)
+        .await
+}
+
+#[tauri::command]
+async fn insert_allele_conversions_from_file(
+    state: tauri::State<'_, DbState>,
+    path: String,
+) -> Result<TableImport, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard
+        .import_table_file("allele_conversions", Path::new(&path))
+        .await
+}
+
+#[tauri::command]
+async fn delete_filtered_allele_conversions(
+    state: tauri::State<'_, DbState>,
+    filter: FilterGroup<AlleleConversionFieldName>,
+) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard
+        .delete_filtered_allele_conversions(&filter)
+        .await
+}
+
+#[tauri::command]
+async fn update_allele_conversion(
+    state: tauri::State<'_, DbState>,
+    allele_conversion: AlleleConversion,
+) -> Result<(), DbError> {
+    let state_guard = state.0.read().await;
+    state_guard
+        .update_allele_conversion(&allele_conversion)
+        .await
+}
+/* #endregion allele_conversions */
 
 /* #region allele_exprs */
 #[tauri::command]

@@ -3,6 +3,7 @@ pub trait FieldNameEnum: TS + std::hash::Hash + std::cmp::Eq {
     fn get_col_name(&self) -> String;
 }
 pub mod allele;
+pub mod allele_conversion;
 pub mod allele_expr;
 pub mod chromosome_name;
 pub mod condition;

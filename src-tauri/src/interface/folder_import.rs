@@ -12,9 +12,9 @@
 use super::{bulk::Bulk, DbError, InnerDbState};
 use crate::models::cross_design::CrossDesign;
 use crate::models::{
-    allele::Allele, allele_expr::AlleleExpressionDb, condition::ConditionDb,
-    expr_relation::ExpressionRelationDb, gene::GeneDb, phenotype::PhenotypeDb, strain::Strain,
-    strain_allele::StrainAllele, variation::VariationDb,
+    allele::Allele, allele_conversion::AlleleConversionDb, allele_expr::AlleleExpressionDb,
+    condition::ConditionDb, expr_relation::ExpressionRelationDb, gene::GeneDb,
+    phenotype::PhenotypeDb, strain::Strain, strain_allele::StrainAllele, variation::VariationDb,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -26,7 +26,7 @@ use tempfile::TempDir;
 use ts_rs::TS;
 
 /// The tables in the order they must be imported.
-pub const IMPORT_ORDER: [&str; 9] = [
+pub const IMPORT_ORDER: [&str; 10] = [
     "genes",
     "conditions",
     "variations",
@@ -34,6 +34,7 @@ pub const IMPORT_ORDER: [&str; 9] = [
     "alleles",
     "allele_exprs",
     "expr_relations",
+    "allele_conversions",
     "strains",
     "strain_alleles",
 ];
@@ -244,6 +245,9 @@ impl InnerDbState {
             "alleles" => import!(Allele, Self::insert_alleles_on),
             "allele_exprs" => import!(AlleleExpressionDb, Self::insert_allele_exprs_on),
             "expr_relations" => import!(ExpressionRelationDb, Self::insert_expr_relations_on),
+            "allele_conversions" => {
+                import!(AlleleConversionDb, Self::insert_allele_conversions_on)
+            }
             "strains" => import!(Strain, Self::insert_strains_on),
             "strain_alleles" => import!(StrainAllele, Self::insert_strain_alleles_on),
             _ => {
@@ -388,6 +392,50 @@ mod tests {
         );
         assert!(report.iter().all(|r| r.read == r.inserted));
         assert_eq!(count(&pool, "strain_alleles").await, 1);
+    }
+
+    // Conversions need both of their alleles and the driver phenotype, so they
+    // import after those tables whatever order the files were listed in.
+    #[sqlx::test]
+    async fn imports_allele_conversions_after_alleles_and_phenotypes(pool: Pool<Sqlite>) {
+        let state = state(&pool).await;
+        let alleles = "name,contents,sysGeneName,variationName\nfiX1,,,fiX1\nfiX1d,,,fiX1\n";
+        let conversions = "sourceAllele,productAllele,driverPhenotypeName,driverPhenotypeWild,percentConversion,description\nfiX1,fiX1d,FiPheno,1,100,germline\n";
+        let folder = Folder::new(
+            "conversions",
+            &[
+                ("allele_conversions.csv", conversions),
+                ("alleles.csv", alleles),
+                ("phenotypes.csv", PHENOTYPES),
+                ("variations.csv", VARIATIONS),
+            ],
+        );
+        let report = state.import_folder(&folder.0).await.unwrap();
+
+        let tables: Vec<_> = report.iter().map(|r| r.table.as_str()).collect();
+        assert_eq!(
+            tables,
+            ["variations", "phenotypes", "alleles", "allele_conversions"]
+        );
+        assert_eq!(count(&pool, "allele_conversions").await, 1);
+
+        // a rule whose product is at another locus fails the whole import
+        let other = "name,contents,sysGeneName,variationName\nfiX1,,,fiX1\nelse,,,fiX9\n";
+        let wrong = "sourceAllele,productAllele,driverPhenotypeName,driverPhenotypeWild,percentConversion,description\nfiX1,else,FiPheno,1,100,\n";
+        let variations = "alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd,isLocationReference,percentLoss\nfiX1,X,1000,1.5,,,false,\nfiX9,X,2000,1.6,,,false,\n";
+        let bad = Folder::new(
+            "conversions-bad",
+            &[
+                ("allele_conversions.csv", wrong),
+                ("alleles.csv", other),
+                ("phenotypes.csv", PHENOTYPES),
+                ("variations.csv", variations),
+            ],
+        );
+        let before = count(&pool, "alleles").await;
+        assert!(state.import_folder(&bad.0).await.is_err());
+        assert_eq!(count(&pool, "alleles").await, before);
+        assert_eq!(count(&pool, "allele_conversions").await, 1);
     }
 
     #[sqlx::test]
@@ -709,8 +757,11 @@ mod tests {
         let zip = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/seed.zip");
 
         let report = state.import_archive(&zip, None).await.unwrap();
-        assert_eq!(report.len(), 9);
-        assert!(report.iter().all(|r| r.read == r.inserted && r.read > 0));
+        // the conversions file ships with a header only, for now
+        assert_eq!(report.len(), 10);
+        assert!(report
+            .iter()
+            .all(|r| r.read == r.inserted && (r.read > 0 || r.table == "allele_conversions")));
         for table in [
             "genes",
             "phenotypes",
