@@ -115,7 +115,7 @@ export const AlleleMultiSelect = (
             <></> // Don't show list if no results
           )
         ) : (
-          <ul className='menu dropdown-content rounded-box z-50 my-2 w-52 overflow-auto bg-base-100 p-2 shadow'>
+          <ul className='menu dropdown-content rounded-box z-50 my-2 max-h-80 w-52 flex-nowrap overflow-auto bg-base-100 p-2 shadow'>
             {searchRes.map((record, idx) => {
               const [allele, gene] = record;
               const optionText =
@@ -146,7 +146,7 @@ export const AlleleMultiSelect = (
               );
             })}
             {total > searchRes.length && (
-              <li className='disabled px-4 py-2 text-sm opacity-70'>
+              <li className='pointer-events-none sticky -bottom-2 bg-base-100 px-4 py-2 text-sm text-base-content/70'>
                 Showing {searchRes.length} of {total.toLocaleString()} - keep
                 typing to narrow
               </li>
