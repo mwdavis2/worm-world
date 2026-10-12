@@ -33,6 +33,11 @@ import {
   refreshCardInfoOfChild,
   refreshCardInfoOfChildren,
 } from 'models/frontend/CrossDesign/refreshCardInfo';
+import {
+  getCardPhenotypes,
+  getMotherPhenotypes,
+  type PhenotypeCache,
+} from 'models/frontend/CrossDesign/motherPhenotypes';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import CrossDesign, {
   addToArray,
@@ -758,10 +763,19 @@ const Editor = (props: EditorProps): React.JSX.Element => {
             (parent: Node<Strain>) => parent.data.getNonWildAlleles()
           );
 
+    const motherPhenotypes =
+      middleNodeForParents === undefined
+        ? undefined
+        : getMotherPhenotypes(middleNodeForParents, nodes, edges);
+
     childNodes.forEach((node: Node<Strain>) => {
-      node.data.refreshCardInfo(parentAlleles, filter.activeConditions);
+      node.data.refreshCardInfo(
+        parentAlleles,
+        filter.activeConditions,
+        motherPhenotypes
+      );
       node.hidden =
-        !node.data.passesFilter(filter, parentAlleles) ||
+        !node.data.passesFilter(filter, parentAlleles, motherPhenotypes) ||
         filter.hiddenNodes.has(node.id);
       hideConnectedEdges(node, node.hidden);
     });
@@ -787,14 +801,20 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   const applyInitialHiddenFilter = (
     middleNode: Node<StrainFilter>,
     childNodes: Array<Node<Strain>>,
-    parentAlleles: Allele[]
+    parentAlleles: Allele[],
+    motherPhenotypes?: ReadonlySet<string>
   ): void => {
     const threshold = getPreferences().minChildProbability;
     const filter = new StrainFilter();
 
     childNodes.forEach((node) => {
-      node.data.refreshCardInfo(parentAlleles, filter.activeConditions);
-      if (!node.data.passesFilter(filter, parentAlleles)) node.hidden = true;
+      node.data.refreshCardInfo(
+        parentAlleles,
+        filter.activeConditions,
+        motherPhenotypes
+      );
+      if (!node.data.passesFilter(filter, parentAlleles, motherPhenotypes))
+        node.hidden = true;
       if (threshold > 0 && (node.data.probability ?? 1) < threshold) {
         node.hidden = true;
         filter.hiddenNodes.add(node.id);
@@ -882,7 +902,8 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     applyInitialHiddenFilter(
       selfNode,
       childNodes,
-      parentNode.data.getNonWildAlleles()
+      parentNode.data.getNonWildAlleles(),
+      getCardPhenotypes(parentNode, nodes, edges)
     );
     const childEdges = childNodes.map((node) => {
       return {
@@ -974,10 +995,12 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       targetHandle: 'right',
     };
     const childNodes = getChildNodes(xNode, childOptions);
-    applyInitialHiddenFilter(xNode, childNodes, [
-      ...hermStrain.getNonWildAlleles(),
-      ...maleStrain.getNonWildAlleles(),
-    ]);
+    applyInitialHiddenFilter(
+      xNode,
+      childNodes,
+      [...hermStrain.getNonWildAlleles(), ...maleStrain.getNonWildAlleles()],
+      getCardPhenotypes(hermNode, nodes, edges)
+    );
     const childEdges = childNodes.map((node) => {
       return {
         id: props.crossDesign.createId(),
@@ -1176,6 +1199,9 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     []
   );
 
+  // One per render, shared by every cross's filter modal.
+  const motherCache: PhenotypeCache = new Map();
+
   return (
     <div className='drawer drawer-end'>
       <input
@@ -1197,6 +1223,12 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                 )}
                 parentAlleles={getIncomers(middleNode, nodes, edges).flatMap(
                   (parent: Node<Strain>) => parent.data.getNonWildAlleles()
+                )}
+                motherPhenotypes={getMotherPhenotypes(
+                  middleNode,
+                  nodes,
+                  edges,
+                  motherCache
                 )}
                 filter={middleNode.data}
                 updateFilter={updateFilter}

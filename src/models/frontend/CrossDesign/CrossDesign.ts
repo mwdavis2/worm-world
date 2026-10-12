@@ -11,6 +11,7 @@ import {
 import { StrainFilter } from 'models/frontend/StrainFilter/StrainFilter';
 import moment from 'moment';
 import { Task } from 'models/frontend/Task/Task';
+import { getAncestryMotherPhenotypes } from 'models/frontend/CrossDesign/motherPhenotypes';
 import {
   STRAIN_NODE_HEIGHT,
   STRAIN_NODE_WIDTH,
@@ -329,7 +330,11 @@ export default class CrossDesign {
         ? new Date()
         : moment(parents[0]?.task.dueDate)
             .add(
-              ancestorTree.strain.getMaturationDays(directParentAlleles),
+              ancestorTree.strain.getMaturationDays(
+                directParentAlleles,
+                undefined,
+                getAncestryMotherPhenotypes(ancestorTree)
+              ),
               'days'
             )
             .toDate();

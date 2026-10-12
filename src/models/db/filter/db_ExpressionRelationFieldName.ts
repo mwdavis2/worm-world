@@ -7,4 +7,5 @@ export type ExpressionRelationFieldName =
   | 'AlteringPhenotypeName'
   | 'AlteringPhenotypeWild'
   | 'AlteringCondition'
-  | 'IsSuppressing';
+  | 'IsSuppressing'
+  | 'AlteringPhenotypeMaternal';

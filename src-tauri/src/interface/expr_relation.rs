@@ -8,8 +8,7 @@ use sqlx::{QueryBuilder, Sqlite};
 
 impl InnerDbState {
     pub async fn get_expr_relations(&self) -> Result<Vec<ExpressionRelation>, DbError> {
-        match sqlx::query_as!(
-            ExpressionRelationDb,
+        match sqlx::query_as::<_, ExpressionRelationDb>(
             "
             SELECT
                 allele_name,
@@ -18,7 +17,8 @@ impl InnerDbState {
                 altering_phenotype_name,
                 altering_phenotype_wild,
                 altering_condition,
-                is_suppressing
+                is_suppressing,
+                altering_phenotype_maternal
             FROM
                 expr_relations
             ORDER BY
@@ -27,8 +27,9 @@ impl InnerDbState {
                 expressing_phenotype_wild,
                 altering_phenotype_name,
                 altering_phenotype_wild,
-                altering_condition
-            "
+                altering_condition,
+                altering_phenotype_maternal
+            ",
         )
         .fetch_all(&self.conn_pool)
         .await
@@ -53,7 +54,8 @@ impl InnerDbState {
                 altering_phenotype_name,
                 altering_phenotype_wild,
                 altering_condition,
-                is_suppressing
+                is_suppressing,
+                altering_phenotype_maternal
             FROM
                 expr_relations",
         );
@@ -101,7 +103,7 @@ impl InnerDbState {
             "UPDATE expr_relations SET is_suppressing = ?
             WHERE allele_name = ? AND expressing_phenotype_name = ? AND expressing_phenotype_wild = ?
             AND altering_phenotype_name IS ? AND altering_phenotype_wild IS ?
-            AND altering_condition IS ?",
+            AND altering_condition IS ? AND altering_phenotype_maternal = ?",
         )
         .bind(relation.is_suppressing)
         .bind(&relation.allele_name)
@@ -110,6 +112,7 @@ impl InnerDbState {
         .bind(&relation.altering_phenotype_name)
         .bind(relation.altering_phenotype_wild)
         .bind(&relation.altering_condition)
+        .bind(relation.altering_phenotype_maternal)
         .execute(&self.conn_pool)
         .await
         {
@@ -126,7 +129,7 @@ impl InnerDbState {
     }
 
     pub async fn insert_expr_relation(&self, relation: &ExpressionRelation) -> Result<(), DbError> {
-        match sqlx::query!(
+        match sqlx::query(
             "INSERT INTO expr_relations (
                 allele_name,
                 expressing_phenotype_name,
@@ -134,18 +137,20 @@ impl InnerDbState {
                 altering_phenotype_name,
                 altering_phenotype_wild,
                 altering_condition,
-                is_suppressing
+                is_suppressing,
+                altering_phenotype_maternal
             )
-            VALUES(?, ?, ?, ?, ?, ?, ?)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
             ",
-            relation.allele_name,
-            relation.expressing_phenotype_name,
-            relation.expressing_phenotype_wild,
-            relation.altering_phenotype_name,
-            relation.altering_phenotype_wild,
-            relation.altering_condition,
-            relation.is_suppressing,
         )
+        .bind(&relation.allele_name)
+        .bind(&relation.expressing_phenotype_name)
+        .bind(relation.expressing_phenotype_wild)
+        .bind(&relation.altering_phenotype_name)
+        .bind(relation.altering_phenotype_wild)
+        .bind(&relation.altering_condition)
+        .bind(relation.is_suppressing)
+        .bind(relation.altering_phenotype_maternal)
         .execute(&self.conn_pool)
         .await
         {
@@ -157,13 +162,18 @@ impl InnerDbState {
         }
     }
 
-    pub async fn insert_expr_relations(&self, bulk: Bulk<ExpressionRelationDb>) -> Result<(), DbError> {
+    pub async fn insert_expr_relations(
+        &self,
+        bulk: Bulk<ExpressionRelationDb>,
+    ) -> Result<(), DbError> {
         let mut conn = self
             .conn_pool
             .acquire()
             .await
             .map_err(|e| DbError::BulkInsert(e.to_string()))?;
-        Self::insert_expr_relations_on(&mut conn, bulk).await.map(|_| ())
+        Self::insert_expr_relations_on(&mut conn, bulk)
+            .await
+            .map(|_| ())
     }
 
     /// Inserts on the given connection (so a caller can wrap several tables in
@@ -180,7 +190,7 @@ impl InnerDbState {
                 bulk.errors[0].1
             )));
         }
-        let bind_limit = SQLITE_BIND_LIMIT / 7;
+        let bind_limit = SQLITE_BIND_LIMIT / 8;
         let mut data = bulk.data.into_iter().peekable();
         while data.peek().is_some() {
             let chunk = data.by_ref().take(bind_limit - 1).collect::<Vec<_>>();
@@ -192,7 +202,8 @@ impl InnerDbState {
                 altering_phenotype_name,
                 altering_phenotype_wild,
                 altering_condition,
-                is_suppressing
+                is_suppressing,
+                altering_phenotype_maternal
             ) ",
             );
             if chunk.len() > bind_limit {
@@ -208,7 +219,8 @@ impl InnerDbState {
                     .push_bind(item.altering_phenotype_name)
                     .push_bind(item.altering_phenotype_wild)
                     .push_bind(item.altering_condition)
-                    .push_bind(item.is_suppressing);
+                    .push_bind(item.is_suppressing)
+                    .push_bind(item.altering_phenotype_maternal);
             });
 
             match qb.build().execute(&mut *conn).await {
@@ -453,6 +465,7 @@ mod test {
             altering_phenotype_wild: Some(true),
             altering_condition: None,
             is_suppressing: false,
+            altering_phenotype_maternal: false,
         };
 
         let csv_str = "allele_name,expressing_phenotype_name,expressing_phenotype_wild,altering_phenotype_name,altering_phenotype_wild,altering_condition,is_suppressing
@@ -541,6 +554,7 @@ oxIs644,YFP(pharynx),0,Flp,1,,0"
             altering_phenotype_wild: Some(true),
             altering_condition: None,
             is_suppressing: false,
+            altering_phenotype_maternal: false,
         };
 
         state.insert_expr_relation(&rel).await?;
@@ -617,6 +631,7 @@ oxIs644,YFP(pharynx),0,Flp,1,,0"
             altering_phenotype_wild: Some(true),
             altering_condition: None,
             is_suppressing: false,
+            altering_phenotype_maternal: false,
         };
 
         state.insert_expr_relation(&rel).await.unwrap();
@@ -784,6 +799,97 @@ oxIs644,YFP(pharynx),0,Flp,1,,0"
 
         assert_eq!(expr_relations.len(), 0);
 
+        Ok(())
+    }
+
+    async fn seed_maternal_fixture(pool: &Pool<Sqlite>) -> Result<()> {
+        for sql in [
+            "INSERT INTO alleles (name) VALUES ('a1')",
+            "INSERT INTO phenotypes (name, wild, short_name) VALUES ('p', 0, 'p'), ('q', 1, 'q')",
+            "INSERT INTO allele_exprs (allele_name, expressing_phenotype_name, expressing_phenotype_wild, dominance) VALUES ('a1', 'p', 0, 1)",
+        ] {
+            sqlx::query(sql).execute(pool).await?;
+        }
+        Ok(())
+    }
+
+    fn maternal_relation(maternal: bool) -> ExpressionRelation {
+        ExpressionRelation {
+            allele_name: "a1".to_string(),
+            expressing_phenotype_name: "p".to_string(),
+            expressing_phenotype_wild: false,
+            altering_phenotype_name: Some("q".to_string()),
+            altering_phenotype_wild: Some(true),
+            altering_condition: None,
+            is_suppressing: true,
+            altering_phenotype_maternal: maternal,
+        }
+    }
+
+    // The maternal flag survives an insert and a read, rows added without it
+    // are not maternal, and one relation may exist once of each kind.
+    #[sqlx::test]
+    async fn test_maternal_flag_round_trip(pool: Pool<Sqlite>) -> Result<()> {
+        seed_maternal_fixture(&pool).await?;
+        sqlx::query("INSERT INTO expr_relations (allele_name, expressing_phenotype_name, expressing_phenotype_wild, altering_phenotype_name, altering_phenotype_wild, is_suppressing) VALUES ('a1', 'p', 0, 'q', 1, 0)")
+            .execute(&pool)
+            .await?;
+        let state = InnerDbState { conn_pool: pool };
+
+        let old = state.get_expr_relations().await?;
+        assert_eq!(old.len(), 1);
+        assert!(!old[0].altering_phenotype_maternal);
+
+        state
+            .insert_expr_relation(&maternal_relation(false))
+            .await?;
+        state.insert_expr_relation(&maternal_relation(true)).await?;
+        let all = state.get_expr_relations().await?;
+        assert_eq!(all.len(), 3);
+        assert_eq!(
+            all.iter().filter(|r| r.altering_phenotype_maternal).count(),
+            1
+        );
+
+        // The same kind twice is a duplicate.
+        assert!(state
+            .insert_expr_relation(&maternal_relation(true))
+            .await
+            .is_err());
+
+        let maternal_only = FilterGroup::<ExpressionRelationFieldName> {
+            filters: vec![vec![(
+                ExpressionRelationFieldName::AlteringPhenotypeMaternal,
+                Filter::True,
+            )]],
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        };
+        let found = state.get_filtered_expr_relations(&maternal_only).await?;
+        assert_eq!(found.len(), 1);
+        assert!(found[0].altering_phenotype_maternal);
+        Ok(())
+    }
+
+    // Updating the suppressing flag of a maternal row leaves the zygotic twin.
+    #[sqlx::test]
+    async fn test_update_maternal_row_only(pool: Pool<Sqlite>) -> Result<()> {
+        seed_maternal_fixture(&pool).await?;
+        let state = InnerDbState { conn_pool: pool };
+        state
+            .insert_expr_relation(&maternal_relation(false))
+            .await?;
+        state.insert_expr_relation(&maternal_relation(true)).await?;
+
+        let mut changed = maternal_relation(true);
+        changed.is_suppressing = false;
+        state.update_expr_relation(&changed).await?;
+
+        let all = state.get_expr_relations().await?;
+        for row in all {
+            assert_eq!(row.is_suppressing, !row.altering_phenotype_maternal);
+        }
         Ok(())
     }
 }

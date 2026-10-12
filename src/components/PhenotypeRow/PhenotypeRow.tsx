@@ -17,6 +17,7 @@ export interface PhenotypeRowProps {
 const COPY_NUMBER_OPTIONS: Array<{ value: CopyNumber; label: string }> = [
   { value: '0', label: '0 copies' },
   { value: '1', label: '1 copy' },
+  { value: '1wt', label: '1 copy, other copy +' },
   { value: '2', label: '2 copies' },
   { value: '1or2', label: '1 or 2 copies' },
 ];
@@ -42,6 +43,27 @@ const RELATIONSHIP_OPTIONS: Array<{
   },
   { value: 'suppressedByCondition', label: 'Suppressed by Condition' },
   { value: 'requiresCondition', label: 'Requires Condition' },
+];
+
+// Maternal effects: the named phenotype is looked up on the hermaphrodite
+// mother of the animal rather than on the animal itself.
+const MATERNAL_RELATIONSHIP_OPTIONS: Array<{
+  value: PhenotypeRelationship;
+  label: string;
+}> = [
+  {
+    value: 'suppressedByMaternalPhenotype',
+    label: 'Suppressed by Maternal Phenotype',
+  },
+  {
+    value: 'rescuedByMaternalWildTypePhenotype',
+    label: 'Rescued by Maternal Wild-type Phenotype',
+  },
+  { value: 'requiresMaternalPhenotype', label: 'Requires Maternal Phenotype' },
+  {
+    value: 'requiresMaternalWildTypePhenotype',
+    label: 'Requires Maternal Wild-type Phenotype',
+  },
 ];
 
 // A row with no name yet has no active consequence - dimmed to signal that,
@@ -126,6 +148,13 @@ const PhenotypeRow = (props: PhenotypeRowProps): React.JSX.Element => {
               {opt.label}
             </option>
           ))}
+          <optgroup label='From the mother'>
+            {MATERNAL_RELATIONSHIP_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </optgroup>
         </select>
         <input
           type='text'

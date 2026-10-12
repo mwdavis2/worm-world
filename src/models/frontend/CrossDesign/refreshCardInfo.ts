@@ -1,4 +1,8 @@
 import { NodeType } from 'models/enums';
+import {
+  getMotherPhenotypes,
+  type PhenotypeCache,
+} from 'models/frontend/CrossDesign/motherPhenotypes';
 import { type Strain } from 'models/frontend/Strain/Strain';
 import { type StrainFilter } from 'models/frontend/StrainFilter/StrainFilter';
 import { getIncomers, type Edge, type Node } from 'reactflow';
@@ -14,7 +18,8 @@ import { getIncomers, type Edge, type Node } from 'reactflow';
 export const refreshCardInfoOfChild = (
   child: Node<Strain>,
   nodes: Array<Node<any>>,
-  edges: Edge[]
+  edges: Edge[],
+  cache: PhenotypeCache = new Map()
 ): void => {
   if (child.parentNode === undefined) return;
   const middleNode = nodes.find((node) => node.id === child.parentNode) as
@@ -28,7 +33,11 @@ export const refreshCardInfoOfChild = (
   const parentAlleles = getIncomers(middleNode, nodes, edges).flatMap(
     (parent: Node<Strain>) => parent.data.getNonWildAlleles()
   );
-  child.data.refreshCardInfo(parentAlleles, middleNode.data.activeConditions);
+  child.data.refreshCardInfo(
+    parentAlleles,
+    middleNode.data.activeConditions,
+    getMotherPhenotypes(middleNode, nodes, edges, cache)
+  );
 };
 
 /** Refreshes every child card in the design (used when a design opens or its allele data changes). */
@@ -36,9 +45,10 @@ export const refreshCardInfoOfChildren = (
   nodes: Array<Node<any>>,
   edges: Edge[]
 ): void => {
+  const cache: PhenotypeCache = new Map();
   nodes
     .filter((node) => node.parentNode !== undefined)
     .forEach((child: Node<Strain>) => {
-      refreshCardInfoOfChild(child, nodes, edges);
+      refreshCardInfoOfChild(child, nodes, edges, cache);
     });
 };

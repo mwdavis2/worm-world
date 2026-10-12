@@ -13,44 +13,28 @@ const isSuppressingRelationship = (
 ): boolean =>
   relationship === 'suppressedByPhenotype' ||
   relationship === 'rescuedByWildTypePhenotype' ||
+  relationship === 'suppressedByMaternalPhenotype' ||
+  relationship === 'rescuedByMaternalWildTypePhenotype' ||
   relationship === 'suppressedByCondition';
 
 const isWildTypeRelationship = (relationship: PhenotypeRelationship): boolean =>
   relationship === 'rescuedByWildTypePhenotype' ||
-  relationship === 'requiresWildTypePhenotype';
+  relationship === 'requiresWildTypePhenotype' ||
+  relationship === 'rescuedByMaternalWildTypePhenotype' ||
+  relationship === 'requiresMaternalWildTypePhenotype';
+
+// The altering phenotype is the hermaphrodite mother's, not the animal's own.
+const isMaternalRelationship = (relationship: PhenotypeRelationship): boolean =>
+  relationship === 'suppressedByMaternalPhenotype' ||
+  relationship === 'rescuedByMaternalWildTypePhenotype' ||
+  relationship === 'requiresMaternalPhenotype' ||
+  relationship === 'requiresMaternalWildTypePhenotype';
 
 const isConditionRelationship = (
   relationship: PhenotypeRelationship
 ): boolean =>
   relationship === 'suppressedByCondition' ||
   relationship === 'requiresCondition';
-
-// Which of the 4 independent AlleleExpression relation arrays a given
-// relationship ultimately populates - a phenotype may have at most one row
-// per category (one requires-condition, one suppressed-by-condition, one
-// requires-phenotype, one suppressed-by-phenotype), even though it can
-// freely combine one of each category together (e.g. a row both requiring
-// a condition and suppressed by a phenotype).
-type RelationCategory =
-  | 'requiredConditions'
-  | 'suppressingConditions'
-  | 'requiredPhenotypes'
-  | 'suppressingPhenotypes';
-
-const categorize = (relationship: PhenotypeRelationship): RelationCategory => {
-  switch (relationship) {
-    case 'requiresCondition':
-      return 'requiredConditions';
-    case 'suppressedByCondition':
-      return 'suppressingConditions';
-    case 'requiresPhenotype':
-    case 'requiresWildTypePhenotype':
-      return 'requiredPhenotypes';
-    case 'suppressedByPhenotype':
-    case 'rescuedByWildTypePhenotype':
-      return 'suppressingPhenotypes';
-  }
-};
 
 const phenotypeKey = (name: string, wild: boolean): string =>
   `${name}\u0000${String(wild)}`;
@@ -157,28 +141,33 @@ export const persistPhenotypeRows = async (
     });
   }
 
-  // Pass 2 - relations, only for rows that have one. A phenotype may
-  // combine at most one row per relation category (one requires-condition,
-  // one suppressed-by-condition, one requires-phenotype, one
-  // suppressed-by-phenotype) - reject a second row in the same category
-  // before writing anything, rather than silently persisting a duplicate.
-  const seenCategories = new Set<string>();
+  // Pass 2 - relations, only for rows that have one. A phenotype may have any
+  // number of relations; reject only an exact repeat of one (same kind, same
+  // condition or altering phenotype) before writing anything, rather than
+  // silently persisting a duplicate.
+  const seenRelations = new Set<string>();
   for (const row of namedRows) {
     if (row.relationship === undefined) continue;
-    const category = categorize(row.relationship);
-    const categoryKey = `${phenotypeKey(
-      row.name,
-      row.isWildType
-    )}\u0000${category}`;
-    if (seenCategories.has(categoryKey)) {
+    const target = isConditionRelationship(row.relationship)
+      ? `condition\u0000${row.relationshipText}`
+      : `phenotype\u0000${row.relationshipText}\u0000${String(
+          isWildTypeRelationship(row.relationship)
+        )}`;
+    const relationKey = [
+      phenotypeKey(row.name, row.isWildType),
+      String(isSuppressingRelationship(row.relationship)),
+      String(isMaternalRelationship(row.relationship)),
+      target,
+    ].join('\u0000');
+    if (seenRelations.has(relationKey)) {
       throw new Error(
         `Phenotype "${row.name}" (${
           row.isWildType ? 'wild-type' : 'non-wild-type'
-        }) has more than one "${category}" relation - only one of each ` +
-          'relation category is allowed per phenotype.'
+        }) has the same relationship to "${row.relationshipText}" more ` +
+          'than once - remove the repeated row.'
       );
     }
-    seenCategories.add(categoryKey);
+    seenRelations.add(relationKey);
   }
   for (const row of namedRows) {
     if (row.relationship === undefined) continue;
@@ -193,6 +182,7 @@ export const persistPhenotypeRows = async (
         alteringPhenotypeWild: null,
         alteringCondition: row.relationshipText,
         isSuppressing,
+        alteringPhenotypeMaternal: false,
       });
     } else {
       const alteringWild = isWildTypeRelationship(row.relationship);
@@ -205,6 +195,7 @@ export const persistPhenotypeRows = async (
         alteringPhenotypeWild: alteringWild,
         alteringCondition: null,
         isSuppressing,
+        alteringPhenotypeMaternal: isMaternalRelationship(row.relationship),
       });
     }
   }

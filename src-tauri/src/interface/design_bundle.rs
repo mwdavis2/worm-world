@@ -211,7 +211,7 @@ impl InnerDbState {
             .await?;
         let expr_relations: Vec<ExpressionRelationDb> = self
             .select_where_in(
-                "SELECT allele_name, expressing_phenotype_name, expressing_phenotype_wild, altering_phenotype_name, altering_phenotype_wild, altering_condition, is_suppressing FROM expr_relations",
+                "SELECT allele_name, expressing_phenotype_name, expressing_phenotype_wild, altering_phenotype_name, altering_phenotype_wild, altering_condition, is_suppressing, altering_phenotype_maternal FROM expr_relations",
                 "allele_name",
                 &found_alleles,
             )

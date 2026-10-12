@@ -192,7 +192,8 @@ export class Strain {
 
   public passesFilter(
     filter: StrainFilter,
-    parentAlleles: Allele[] = []
+    parentAlleles: Allele[] = [],
+    motherPhenotypes?: ReadonlySet<string>
   ): boolean {
     const passesAlleleNames =
       filter.alleleNames.size === 0 ||
@@ -218,7 +219,11 @@ export class Strain {
     const passesExprPhens =
       filter.exprPhenotypes.size === 0 ||
       [...filter.exprPhenotypes].every((exprPhenName) =>
-        this.getExprPhenotypes(parentAlleles, filter.activeConditions)
+        this.getExprPhenotypes(
+          parentAlleles,
+          filter.activeConditions,
+          motherPhenotypes
+        )
           .map((exprPhen) => exprPhen.getUniqueName())
           .includes(exprPhenName)
       );
@@ -226,7 +231,7 @@ export class Strain {
     const passesViability =
       filter.viability.size === 0 ||
       filter.viability.has(
-        this.isLethal(parentAlleles, filter.activeConditions)
+        this.isLethal(parentAlleles, filter.activeConditions, motherPhenotypes)
           ? LETHAL
           : NON_LETHAL
       );
@@ -820,6 +825,22 @@ export class Strain {
   }
 
   /**
+   * Whether this genotype has exactly one copy of the allele with a literal
+   * wild-type allele on the other homolog (`Zygosity` `'1wt'`). A compound
+   * heterozygote with another mutant allele, a homozygote and a male's single
+   * X do not count.
+   */
+  private isOneCopyOverWild(alleleName: string): boolean {
+    const pair = this.getAllelePairs().find(
+      (p) => p.top.name === alleleName || p.bot.name === alleleName
+    );
+    if (pair === undefined || !pair.isWildHet()) return false;
+    const mutantAllele = pair.top.isWild() ? pair.bot : pair.top;
+    if (mutantAllele.name !== alleleName) return false;
+    return !(this.sex === Sex.Male && mutantAllele.isX());
+  }
+
+  /**
    * Whether `expr` (a `Zygosity` `'5'`, "2 copies (lof)" row) is satisfied:
    * this genotype has 2 mutant copies of `expr`'s gene, whether that's the
    * same allele twice or 2 different alleles of the gene in trans - as
@@ -876,10 +897,14 @@ export class Strain {
    */
   public getExprPhenotypes(
     parentAlleles: Allele[] = [],
-    activeConditions = new Set<string>()
+    activeConditions = new Set<string>(),
+    motherPhenotypes?: ReadonlySet<string>
   ): Phenotype[] {
-    return this.resolveExprPhenotypes(parentAlleles, activeConditions)
-      .expressed;
+    return this.resolveExprPhenotypes(
+      parentAlleles,
+      activeConditions,
+      motherPhenotypes
+    ).expressed;
   }
 
   /**
@@ -889,15 +914,20 @@ export class Strain {
    */
   public getUnresolvedExprPhenotypes(
     parentAlleles: Allele[] = [],
-    activeConditions = new Set<string>()
+    activeConditions = new Set<string>(),
+    motherPhenotypes?: ReadonlySet<string>
   ): Phenotype[] {
-    return this.resolveExprPhenotypes(parentAlleles, activeConditions)
-      .unresolved;
+    return this.resolveExprPhenotypes(
+      parentAlleles,
+      activeConditions,
+      motherPhenotypes
+    ).unresolved;
   }
 
   private resolveExprPhenotypes(
     parentAlleles: Allele[],
-    activeConditions: Set<string>
+    activeConditions: Set<string>,
+    motherPhenotypes?: ReadonlySet<string>
   ): { expressed: Phenotype[]; unresolved: Phenotype[] } {
     type Status = 'true' | 'false' | 'unknown';
 
@@ -914,6 +944,8 @@ export class Strain {
       let zygosityMatches: boolean;
       if (expr.dominance === '5') {
         zygosityMatches = this.isGeneLofSatisfied(expr);
+      } else if (expr.dominance === '1wt') {
+        zygosityMatches = this.isOneCopyOverWild(expr.alleleName);
       } else {
         const actualZygosity = this.getZygosity(expr.alleleName);
         zygosityMatches =
@@ -975,6 +1007,23 @@ export class Strain {
       const supStatuses = expr.suppressingPhenotypes.map(
         (phen) => snapshot.get(phen.getUniqueName()) ?? 'false'
       );
+      // A maternal relation asks about the mother, whose phenotypes are
+      // already settled, so it is a plain yes/no. Without a known mother a
+      // required phenotype is not met and a suppressing one has no effect.
+      if (
+        expr.maternalRequiredPhenotypes.some(
+          (phen) => !(motherPhenotypes?.has(phen.getUniqueName()) ?? false)
+        )
+      ) {
+        return 'false';
+      }
+      if (
+        expr.maternalSuppressingPhenotypes.some(
+          (phen) => motherPhenotypes?.has(phen.getUniqueName()) ?? false
+        )
+      ) {
+        return 'false';
+      }
       if (reqStatuses.some((s) => s === 'false')) return 'false';
       if (supStatuses.some((s) => s === 'true')) return 'false';
       if (
@@ -1065,10 +1114,15 @@ export class Strain {
 
   public getMaturationDays(
     parentAlleles: Allele[] = [],
-    activeConditions = new Set<string>()
+    activeConditions = new Set<string>(),
+    motherPhenotypes?: ReadonlySet<string>
   ): number {
     const maturationDays = [
-      ...this.getExprPhenotypes(parentAlleles, activeConditions),
+      ...this.getExprPhenotypes(
+        parentAlleles,
+        activeConditions,
+        motherPhenotypes
+      ),
     ].flatMap((phen) => phen.maturationDays ?? []);
     if (maturationDays.length === 0) maturationDays.push(3); // default
 
@@ -1082,9 +1136,14 @@ export class Strain {
    */
   public refreshCardInfo(
     parentAlleles: Allele[] = [],
-    activeConditions = new Set<string>()
+    activeConditions = new Set<string>(),
+    motherPhenotypes?: ReadonlySet<string>
   ): void {
-    const expressed = this.getExprPhenotypes(parentAlleles, activeConditions);
+    const expressed = this.getExprPhenotypes(
+      parentAlleles,
+      activeConditions,
+      motherPhenotypes
+    );
     this.lethal = expressed.some((phen) => phen.lethal === true);
     this.exprPhenotypeNames = [
       ...new Set(
@@ -1098,11 +1157,14 @@ export class Strain {
   /** True if any currently-expressed phenotype is flagged lethal. */
   public isLethal(
     parentAlleles: Allele[] = [],
-    activeConditions = new Set<string>()
+    activeConditions = new Set<string>(),
+    motherPhenotypes?: ReadonlySet<string>
   ): boolean {
-    return this.getExprPhenotypes(parentAlleles, activeConditions).some(
-      (phen) => phen.lethal === true
-    );
+    return this.getExprPhenotypes(
+      parentAlleles,
+      activeConditions,
+      motherPhenotypes
+    ).some((phen) => phen.lethal === true);
   }
 
   /**

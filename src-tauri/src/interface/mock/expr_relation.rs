@@ -10,6 +10,7 @@ pub fn get_expr_relations() -> Vec<ExpressionRelation> {
             altering_phenotype_wild: Some(false),
             altering_condition: None,
             is_suppressing: true,
+            altering_phenotype_maternal: false,
         },
         ExpressionRelation {
             allele_name: "eT1(III)".to_string(),
@@ -19,6 +20,7 @@ pub fn get_expr_relations() -> Vec<ExpressionRelation> {
             altering_phenotype_wild: Some(false),
             altering_condition: None,
             is_suppressing: true,
+            altering_phenotype_maternal: false,
         },
         ExpressionRelation {
             allele_name: "eT1(V)".to_string(),
@@ -28,6 +30,7 @@ pub fn get_expr_relations() -> Vec<ExpressionRelation> {
             altering_phenotype_wild: Some(false),
             altering_condition: None,
             is_suppressing: true,
+            altering_phenotype_maternal: false,
         },
         ExpressionRelation {
             allele_name: "eT1(V)".to_string(),
@@ -37,6 +40,7 @@ pub fn get_expr_relations() -> Vec<ExpressionRelation> {
             altering_phenotype_wild: Some(false),
             altering_condition: None,
             is_suppressing: true,
+            altering_phenotype_maternal: false,
         },
         ExpressionRelation {
             allele_name: "n765".to_string(),
@@ -46,6 +50,7 @@ pub fn get_expr_relations() -> Vec<ExpressionRelation> {
             altering_phenotype_wild: None,
             altering_condition: Some("25C".to_string()),
             is_suppressing: false,
+            altering_phenotype_maternal: false,
         },
         ExpressionRelation {
             allele_name: "oxEx219999".to_string(),
@@ -55,6 +60,7 @@ pub fn get_expr_relations() -> Vec<ExpressionRelation> {
             altering_phenotype_wild: None,
             altering_condition: Some("Histamine".to_string()),
             is_suppressing: false,
+            altering_phenotype_maternal: false,
         },
         ExpressionRelation {
             allele_name: "oxIs644".to_string(),
@@ -64,6 +70,7 @@ pub fn get_expr_relations() -> Vec<ExpressionRelation> {
             altering_phenotype_wild: Some(true),
             altering_condition: None,
             is_suppressing: false,
+            altering_phenotype_maternal: false,
         },
     ]
 }
@@ -76,6 +83,7 @@ pub fn get_filtered_expr_relations() -> Vec<ExpressionRelation> {
         altering_phenotype_wild: None,
         altering_condition: Some("Histamine".to_string()),
         is_suppressing: false,
+        altering_phenotype_maternal: false,
     }]
 }
 pub fn get_filtered_expr_relations_many_and_clauses() -> Vec<ExpressionRelation> {
@@ -87,6 +95,7 @@ pub fn get_filtered_expr_relations_many_and_clauses() -> Vec<ExpressionRelation>
         altering_phenotype_wild: None,
         altering_condition: Some("Histamine".to_string()),
         is_suppressing: false,
+        altering_phenotype_maternal: false,
     }]
 }
 pub fn search_expr_relations_by_allele_name() -> Vec<ExpressionRelation> {
@@ -99,6 +108,7 @@ pub fn search_expr_relations_by_allele_name() -> Vec<ExpressionRelation> {
             altering_phenotype_wild: None,
             altering_condition: Some("25C".to_string()),
             is_suppressing: false,
+            altering_phenotype_maternal: false,
         },
         ExpressionRelation {
             allele_name: "oxIs644".to_string(),
@@ -108,6 +118,7 @@ pub fn search_expr_relations_by_allele_name() -> Vec<ExpressionRelation> {
             altering_phenotype_wild: Some(true),
             altering_condition: None,
             is_suppressing: false,
+            altering_phenotype_maternal: false,
         },
     ]
 }
@@ -120,5 +131,6 @@ pub fn search_expr_relations_by_allele_name_and_expressing_phenotype() -> Vec<Ex
         altering_phenotype_wild: Some(true),
         altering_condition: None,
         is_suppressing: false,
+        altering_phenotype_maternal: false,
     }]
 }

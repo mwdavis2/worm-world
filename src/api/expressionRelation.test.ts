@@ -21,6 +21,7 @@ const base: db_ExpressionRelation = {
   alteringPhenotypeWild: true,
   alteringCondition: null,
   isSuppressing: true,
+  alteringPhenotypeMaternal: false,
 };
 
 describe('deleteExpressionRelation', () => {
@@ -47,6 +48,7 @@ describe('deleteExpressionRelation', () => {
         // phenotype's (false).
         [['AlteringPhenotypeWild', 'True']],
         [['AlteringCondition', 'Null']],
+        [['AlteringPhenotypeMaternal', 'False']],
       ],
       orderBy: [],
     });
@@ -59,7 +61,7 @@ describe('deleteExpressionRelation', () => {
       alteringPhenotypeWild: null,
       alteringCondition: '25C',
     })) as { filters: unknown[] };
-    expect(filter.filters.slice(3)).toEqual([
+    expect(filter.filters.slice(3, 6)).toEqual([
       [['AlteringPhenotypeName', 'Null']],
       [['AlteringPhenotypeWild', 'Null']],
       [['AlteringCondition', { Equal: '25C' }]],

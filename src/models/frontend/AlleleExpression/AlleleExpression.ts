@@ -15,6 +15,9 @@ import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
  * to be expressed - copies of the *non-wild* allele, e.g. for `ed3`:
  * '0' = +/+ (wild-type homozygous, allele absent), '1' = ed3/+ (het),
  * '2' = ed3/ed3 (homozygous mutant), '1or2' = either (old "Dominant").
+ * '1wt' = "1 copy, other copy +": exactly one copy of the allele with a
+ * literal wild-type allele on the other homolog (so not a compound
+ * heterozygote with another mutant allele, and never a male's single X).
  * '5' = "2 copies (lof)" - gene-based alleles only (never valid on a
  * `Variation`-based allele): satisfied by 2 copies of *any* combination of
  * alleles of the same gene that are each independently marked '5' for this
@@ -30,7 +33,7 @@ import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
  * correctly-typed read/write boundary for it, see
  * `dominanceToZygosity`/`zygosityToDominance` below).
  */
-export type Zygosity = '0' | '1' | '2' | '1or2' | '5';
+export type Zygosity = '0' | '1' | '2' | '1or2' | '5' | '1wt';
 
 export const zygosityToDominance = (zygosity: Zygosity): number => {
   switch (zygosity) {
@@ -44,6 +47,8 @@ export const zygosityToDominance = (zygosity: Zygosity): number => {
       return 3;
     case '5':
       return 4;
+    case '1wt':
+      return 5;
   }
 };
 
@@ -57,6 +62,8 @@ export const dominanceToZygosity = (dominance: number): Zygosity => {
       return '1or2';
     case 4:
       return '5';
+    case 5:
+      return '1wt';
     default:
       return '0';
   }
@@ -67,6 +74,8 @@ export interface AlleleExpressionState {
   expressingPhenotype: Phenotype;
   requiredPhenotypes: Phenotype[];
   suppressingPhenotypes: Phenotype[];
+  maternalRequiredPhenotypes?: Phenotype[];
+  maternalSuppressingPhenotypes?: Phenotype[];
   requiredConditions: Condition[];
   suppressingConditions: Condition[];
   dominance: Zygosity;
@@ -85,6 +94,17 @@ export class AlleleExpression {
   /** Phenotypes that "cover up" the visibility of the expressing phenotype */
   @Type(() => Phenotype)
   suppressingPhenotypes: Phenotype[] = [];
+
+  /**
+   * Phenotypes the hermaphrodite MOTHER needs to express for this phenotype
+   * to be visible (a maternal effect; see `Strain.resolveExprPhenotypes`)
+   */
+  @Type(() => Phenotype)
+  maternalRequiredPhenotypes: Phenotype[] = [];
+
+  /** Phenotypes of the mother that "cover up" this phenotype */
+  @Type(() => Phenotype)
+  maternalSuppressingPhenotypes: Phenotype[] = [];
 
   /** Environmental conditions that need to be present for expressing phenotype to be visible */
   @Type(() => Condition)
@@ -109,6 +129,9 @@ export class AlleleExpression {
     this.dominance = fields?.dominance;
     this.requiredPhenotypes = fields?.requiredPhenotypes ?? [];
     this.suppressingPhenotypes = fields?.suppressingPhenotypes ?? [];
+    this.maternalRequiredPhenotypes = fields?.maternalRequiredPhenotypes ?? [];
+    this.maternalSuppressingPhenotypes =
+      fields?.maternalSuppressingPhenotypes ?? [];
     this.requiredConditions = fields?.requiredConditions ?? [];
     this.suppressingConditions = fields?.suppressingConditions ?? [];
   }
@@ -137,6 +160,24 @@ export class AlleleExpression {
           record.alleleName,
           record.expressingPhenotypeName,
           record.expressingPhenotypeWild,
+          true
+        )
+      ).map((sup) => Phenotype.createFromRecord(sup)),
+      maternalRequiredPhenotypes: (
+        await getAlteringPhenotypes(
+          record.alleleName,
+          record.expressingPhenotypeName,
+          record.expressingPhenotypeWild,
+          false,
+          true
+        )
+      ).map((req) => Phenotype.createFromRecord(req)),
+      maternalSuppressingPhenotypes: (
+        await getAlteringPhenotypes(
+          record.alleleName,
+          record.expressingPhenotypeName,
+          record.expressingPhenotypeWild,
+          true,
           true
         )
       ).map((sup) => Phenotype.createFromRecord(sup)),

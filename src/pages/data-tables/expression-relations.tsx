@@ -21,6 +21,7 @@ export const cols: Array<ColumnDefinitionType<db_ExpressionRelation>> = [
   { key: 'alteringPhenotypeWild', header: 'Altering Phenotype Wild' },
   { key: 'alteringCondition', header: 'Altering Condition' },
   { key: 'isSuppressing', header: 'Is Suppressing' },
+  { key: 'alteringPhenotypeMaternal', header: 'Altering Phenotype Maternal' },
 ];
 
 const fields: Array<Field<db_ExpressionRelation>> = [
@@ -59,6 +60,11 @@ const fields: Array<Field<db_ExpressionRelation>> = [
     title: 'Is Suppressing',
     type: 'boolean',
   },
+  {
+    name: 'alteringPhenotypeMaternal',
+    title: 'Altering Phenotype Maternal',
+    type: 'boolean',
+  },
 ];
 
 const nameMapping: {
@@ -71,6 +77,7 @@ const nameMapping: {
   alteringPhenotypeWild: 'AlteringPhenotypeWild',
   alteringCondition: 'AlteringCondition',
   isSuppressing: 'IsSuppressing',
+  alteringPhenotypeMaternal: 'AlteringPhenotypeMaternal',
 };
 
 export default function ExpressionRelationDataTable(): React.JSX.Element {
@@ -94,6 +101,7 @@ export default function ExpressionRelationDataTable(): React.JSX.Element {
         'alteringPhenotypeName',
         'alteringPhenotypeWild',
         'alteringCondition',
+        'alteringPhenotypeMaternal',
       ]}
       clearTable={async () => {
         await deleteFilteredExpressionRelations({ filters: [], orderBy: [] });

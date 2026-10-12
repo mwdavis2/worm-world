@@ -8,4 +8,5 @@ export interface db_ExpressionRelation {
   alteringPhenotypeWild: boolean | null;
   alteringCondition: string | null;
   isSuppressing: boolean;
+  alteringPhenotypeMaternal: boolean;
 }

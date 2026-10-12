@@ -100,6 +100,12 @@ export const deleteExpressionRelation = async (
             : { Equal: exprRel.alteringCondition },
         ],
       ],
+      [
+        [
+          'AlteringPhenotypeMaternal',
+          getDbBoolean(exprRel.alteringPhenotypeMaternal),
+        ],
+      ],
     ],
     orderBy: [],
   };

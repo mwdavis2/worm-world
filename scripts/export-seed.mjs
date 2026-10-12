@@ -34,7 +34,7 @@ const TABLES = {
   variations: `SELECT allele_name AS alleleName, chromosome, phys_loc AS physLoc, gen_loc AS geneticLoc, recomb_suppressor_start AS recombSuppressorStart, recomb_suppressor_end AS recombSuppressorEnd, ${bool('is_location_reference')} AS isLocationReference, percent_loss AS percentLoss FROM variations ORDER BY rowid`,
   alleles: 'SELECT name, contents, systematic_gene_name AS sysGeneName, variation_name AS variationName FROM alleles ORDER BY rowid',
   allele_exprs: 'SELECT allele_name AS alleleName, expressing_phenotype_name AS expressingPhenotypeName, expressing_phenotype_wild AS expressingPhenotypeWild, dominance FROM allele_exprs ORDER BY rowid',
-  expr_relations: 'SELECT allele_name, expressing_phenotype_name, expressing_phenotype_wild, altering_phenotype_name, altering_phenotype_wild, altering_condition, is_suppressing FROM expr_relations ORDER BY rowid',
+  expr_relations: 'SELECT allele_name, expressing_phenotype_name, expressing_phenotype_wild, altering_phenotype_name, altering_phenotype_wild, altering_condition, is_suppressing, altering_phenotype_maternal FROM expr_relations ORDER BY rowid',
   strains: 'SELECT name, genotype, description FROM strains ORDER BY rowid',
   strain_alleles: `SELECT strain_name AS strainName, allele_name AS alleleName, ${bool('is_on_top')} AS isOnTop, ${bool('is_on_bot')} AS isOnBot FROM strain_alleles ORDER BY rowid`,
 };

@@ -146,7 +146,8 @@ export class StrainFilter implements IStrainFilter {
   public static getSingleFilterOptions(
     strainNode: Node<Strain>,
     parentAlleles: Allele[] = [],
-    activeConditionsInEffect = new Set<string>()
+    activeConditionsInEffect = new Set<string>(),
+    motherPhenotypes?: ReadonlySet<string>
   ): IStrainFilter {
     const reqConditions = new Set(
       [...strainNode.data.getReqConditions()].map((cond) => cond.name)
@@ -165,7 +166,8 @@ export class StrainFilter implements IStrainFilter {
         [
           ...strainNode.data.getExprPhenotypes(
             parentAlleles,
-            activeConditionsInEffect
+            activeConditionsInEffect,
+            motherPhenotypes
           ),
         ].map((phen) => phen.getUniqueName())
       ),
@@ -179,7 +181,8 @@ export class StrainFilter implements IStrainFilter {
       // narrow on - the union across children then holds both groups.
       viability: strainNode.data.isLethal(
         parentAlleles,
-        activeConditionsInEffect
+        activeConditionsInEffect,
+        motherPhenotypes
       )
         ? new Set([LETHAL, NON_LETHAL])
         : new Set(),
@@ -191,14 +194,16 @@ export class StrainFilter implements IStrainFilter {
   public static getFilterOptions(
     strainNodes: Array<Node<Strain>>,
     parentAlleles: Allele[] = [],
-    activeConditionsInEffect = new Set<string>()
+    activeConditionsInEffect = new Set<string>(),
+    motherPhenotypes?: ReadonlySet<string>
   ): IStrainFilter {
     const options = strainNodes.reduce<IStrainFilter>(
       (allOptions, strainNode) => {
         const options = this.getSingleFilterOptions(
           strainNode,
           parentAlleles,
-          activeConditionsInEffect
+          activeConditionsInEffect,
+          motherPhenotypes
         );
         allOptions.alleleNames = new Set([
           ...allOptions.alleleNames,

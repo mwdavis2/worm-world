@@ -13,6 +13,10 @@ export type PhenotypeRelationship =
   | 'rescuedByWildTypePhenotype'
   | 'requiresPhenotype'
   | 'requiresWildTypePhenotype'
+  | 'suppressedByMaternalPhenotype'
+  | 'rescuedByMaternalWildTypePhenotype'
+  | 'requiresMaternalPhenotype'
+  | 'requiresMaternalWildTypePhenotype'
   | 'suppressedByCondition'
   | 'requiresCondition';
 

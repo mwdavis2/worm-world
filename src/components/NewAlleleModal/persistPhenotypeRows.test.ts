@@ -176,6 +176,109 @@ describe('persistPhenotypeRows', () => {
     }
   );
 
+  test.each([
+    ['suppressedByMaternalPhenotype', false, true],
+    ['rescuedByMaternalWildTypePhenotype', true, true],
+    ['requiresMaternalPhenotype', false, false],
+    ['requiresMaternalWildTypePhenotype', true, false],
+  ] as const)(
+    '%s writes a maternal relation with altering_phenotype_wild=%s and is_suppressing=%s',
+    async (relationship, expectedWild, expectedSuppressing) => {
+      setupIPC();
+      await persistPhenotypeRows('ed3', [
+        baseRow({ name: 'Unc', relationship, relationshipText: 'unc-119(+)' }),
+      ]);
+      const insertRelation = calls.find(
+        (c) => c.cmd === 'insert_expr_relation'
+      );
+      expect(insertRelation?.payload).toMatchObject({
+        exprRelation: {
+          alteringPhenotypeName: 'unc-119(+)',
+          alteringPhenotypeWild: expectedWild,
+          isSuppressing: expectedSuppressing,
+          alteringPhenotypeMaternal: true,
+        },
+      });
+    }
+  );
+
+  test('a zygotic and a maternal relation of the same kind may both be on one phenotype', async () => {
+    setupIPC();
+    await persistPhenotypeRows('ed3', [
+      baseRow({
+        name: 'Unc',
+        relationship: 'suppressedByPhenotype',
+        relationshipText: 'A',
+      }),
+      baseRow({
+        id: 'row-2',
+        name: 'Unc',
+        relationship: 'suppressedByMaternalPhenotype',
+        relationshipText: 'B',
+      }),
+    ]);
+    const relations = calls.filter((c) => c.cmd === 'insert_expr_relation');
+    expect(relations).toHaveLength(2);
+    expect(
+      relations.map(
+        (c) =>
+          (
+            c.payload as {
+              exprRelation: { alteringPhenotypeMaternal: boolean };
+            }
+          ).exprRelation.alteringPhenotypeMaternal
+      )
+    ).toEqual([false, true]);
+  });
+
+  test('several relationships of one kind are allowed when they name different things', async () => {
+    setupIPC();
+    await persistPhenotypeRows('ed3', [
+      baseRow({
+        name: 'Unc',
+        relationship: 'suppressedByPhenotype',
+        relationshipText: 'A',
+      }),
+      baseRow({
+        id: 'row-2',
+        name: 'Unc',
+        relationship: 'suppressedByPhenotype',
+        relationshipText: 'B',
+      }),
+      baseRow({
+        id: 'row-3',
+        name: 'Unc',
+        relationship: 'rescuedByWildTypePhenotype',
+        relationshipText: 'A',
+      }),
+    ]);
+    expect(calls.filter((c) => c.cmd === 'insert_expr_relation')).toHaveLength(
+      3
+    );
+  });
+
+  test('an exact repeat of a relationship is rejected', async () => {
+    setupIPC();
+    await expect(
+      persistPhenotypeRows('ed3', [
+        baseRow({
+          name: 'Unc',
+          relationship: 'requiresMaternalPhenotype',
+          relationshipText: 'A',
+        }),
+        baseRow({
+          id: 'row-2',
+          name: 'Unc',
+          relationship: 'requiresMaternalPhenotype',
+          relationshipText: 'A',
+        }),
+      ])
+    ).rejects.toThrow(/same relationship/);
+    expect(calls.filter((c) => c.cmd === 'insert_expr_relation')).toHaveLength(
+      0
+    );
+  });
+
   test('finds-or-creates a Condition for the *Condition relationship variants', async () => {
     setupIPC();
     await persistPhenotypeRows('ed3', [

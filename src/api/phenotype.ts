@@ -65,7 +65,8 @@ export const getAlteringPhenotypes = async (
   alleleName: string,
   phenotypeName: string,
   phenotypeWild: boolean,
-  isSuppressing: boolean
+  isSuppressing: boolean,
+  maternal = false
 ): Promise<db_Phenotype[]> => {
   const exprRelationFilter: FilterGroup<ExpressionRelationFieldName> = {
     filters: [
@@ -73,6 +74,7 @@ export const getAlteringPhenotypes = async (
       [['ExpressingPhenotypeName', { Equal: phenotypeName }]],
       [['ExpressingPhenotypeWild', getDbBoolean(phenotypeWild)]],
       [['IsSuppressing', getDbBoolean(isSuppressing)]],
+      [['AlteringPhenotypeMaternal', getDbBoolean(maternal)]],
     ],
     orderBy: [],
   };

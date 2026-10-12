@@ -20,6 +20,10 @@ pub struct ExpressionRelation {
     pub altering_condition: Option<String>,
     #[serde(rename = "isSuppressing")]
     pub is_suppressing: bool,
+    /// The altering phenotype is looked up on the hermaphrodite mother of the
+    /// animal rather than on the animal itself.
+    #[serde(rename = "alteringPhenotypeMaternal", default)]
+    pub altering_phenotype_maternal: bool,
 }
 
 impl From<ExpressionRelationDb> for ExpressionRelation {
@@ -32,6 +36,7 @@ impl From<ExpressionRelationDb> for ExpressionRelation {
             altering_phenotype_wild: item.altering_phenotype_wild.map(|v| v == 1),
             altering_condition: item.altering_condition,
             is_suppressing: item.is_suppressing == 1,
+            altering_phenotype_maternal: item.altering_phenotype_maternal == 1,
         }
     }
 }
@@ -45,6 +50,8 @@ pub struct ExpressionRelationDb {
     pub altering_phenotype_wild: Option<i64>,
     pub altering_condition: Option<String>,
     pub is_suppressing: i64,
+    #[serde(default)]
+    pub altering_phenotype_maternal: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Hash, PartialEq, Eq, TS)]
@@ -60,6 +67,7 @@ pub enum ExpressionRelationFieldName {
     AlteringPhenotypeWild,
     AlteringCondition,
     IsSuppressing,
+    AlteringPhenotypeMaternal,
 }
 
 impl FieldNameEnum for ExpressionRelationFieldName {
@@ -80,6 +88,9 @@ impl FieldNameEnum for ExpressionRelationFieldName {
             }
             ExpressionRelationFieldName::AlteringCondition => "altering_condition".to_owned(),
             ExpressionRelationFieldName::IsSuppressing => "is_suppressing".to_owned(),
+            ExpressionRelationFieldName::AlteringPhenotypeMaternal => {
+                "altering_phenotype_maternal".to_owned()
+            }
         }
     }
 }

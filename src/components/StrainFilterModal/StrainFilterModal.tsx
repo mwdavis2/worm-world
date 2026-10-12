@@ -17,6 +17,9 @@ export interface StrainFilterModalProps {
   // that doesn't carry an allele can still be evaluated against that
   // allele's wild-type-background phenotype row (see Strain.getExprPhenotypes).
   parentAlleles: Allele[];
+  // What the hermaphrodite mother of these children expresses, for maternal
+  // phenotype relations; undefined when the cross has no mother.
+  motherPhenotypes?: ReadonlySet<string>;
   filter: StrainFilter;
   updateFilter: (update: StrainFilterUpdate) => void;
 }
@@ -27,12 +30,17 @@ export interface StrainFilterModalProps {
 const getUnresolvedPhenotypeNames = (
   childNodes: Array<Node<Strain>>,
   parentAlleles: Allele[],
-  activeConditions: Set<string>
+  activeConditions: Set<string>,
+  motherPhenotypes?: ReadonlySet<string>
 ): Set<string> => {
   const names = new Set<string>();
   childNodes.forEach((node) => {
     node.data
-      .getUnresolvedExprPhenotypes(parentAlleles, activeConditions)
+      .getUnresolvedExprPhenotypes(
+        parentAlleles,
+        activeConditions,
+        motherPhenotypes
+      )
       .forEach((phen) => names.add(phen.name));
   });
   return names;
@@ -44,12 +52,14 @@ export const StrainFilterModal = (
   const options = StrainFilter.getFilterOptions(
     props.childNodes,
     props.parentAlleles,
-    props.filter.activeConditions
+    props.filter.activeConditions,
+    props.motherPhenotypes
   );
   const unresolvedPhenotypeNames = getUnresolvedPhenotypeNames(
     props.childNodes,
     props.parentAlleles,
-    props.filter.activeConditions
+    props.filter.activeConditions,
+    props.motherPhenotypes
   );
   return (
     <>
@@ -268,10 +278,15 @@ const StrainList = (props: {
   updateFilter: (update: StrainFilterUpdate) => void;
   childNodes: Array<Node<Strain>>;
   parentAlleles: Allele[];
+  motherPhenotypes?: ReadonlySet<string>;
   filter: StrainFilter;
 }): React.JSX.Element => {
   const filteredList = props.childNodes.filter((node) =>
-    node.data.passesFilter(props.filter, props.parentAlleles)
+    node.data.passesFilter(
+      props.filter,
+      props.parentAlleles,
+      props.motherPhenotypes
+    )
   );
   const [allSelected, setAllSelected] = useState(true);
 

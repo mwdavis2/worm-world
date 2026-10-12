@@ -249,6 +249,7 @@ async fn update_expressions_relations_and_strain_alleles(pool: Pool<Sqlite>) {
         altering_phenotype_wild: None,
         altering_condition: Some("25C".into()),
         is_suppressing: true,
+        altering_phenotype_maternal: false,
     };
     state.update_expr_relation(&relation).await.unwrap();
     let suppressing: bool = scalar(

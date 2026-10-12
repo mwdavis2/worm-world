@@ -142,4 +142,65 @@ describe('AlleleExpression', () => {
       'ActuallySuppressingPhenotype',
     ]);
   });
+
+  // Maternal relations are stored on the same table with the maternal flag
+  // set, and must land in their own arrays, not the animal's own ones.
+  test('createFromRecord sends the maternal flag and keeps maternal phenotypes apart', async () => {
+    const phenotype = (name: string): Record<string, unknown> => ({
+      name,
+      wild: true,
+      shortName: name,
+      description: null,
+      maleMating: null,
+      lethal: null,
+      femaleSterile: null,
+      arrested: null,
+      maturationDays: null,
+    });
+    const flagOf = (filter: FilterGroup<unknown>, field: string): string => {
+      const tuple = filter.filters.flat().find(([name]) => name === field);
+      return tuple?.[1] as unknown as string;
+    };
+
+    mockIPC((cmd, rawPayload) => {
+      const payload = rawPayload as {
+        exprRelationFilter?: FilterGroup<unknown>;
+      };
+      switch (cmd) {
+        case 'get_altering_phenotypes': {
+          const filter = payload.exprRelationFilter as FilterGroup<unknown>;
+          const maternal =
+            flagOf(filter, 'AlteringPhenotypeMaternal') === 'True';
+          const suppressing = flagOf(filter, 'IsSuppressing') === 'True';
+          if (maternal) {
+            return [phenotype(suppressing ? 'MomSuppresses' : 'MomRequires')];
+          }
+          return suppressing ? [phenotype('OwnSuppresses')] : [];
+        }
+        case 'get_altering_conditions':
+          return [];
+        case 'get_filtered_phenotypes':
+          return [phenotype('Tra')];
+        default:
+          return undefined;
+      }
+    });
+
+    const alleleExpr = await AlleleExpression.createFromRecord({
+      alleleName: 'e1107',
+      expressingPhenotypeName: 'Tra',
+      expressingPhenotypeWild: true,
+      dominance: 0,
+    });
+    expect(alleleExpr.maternalSuppressingPhenotypes.map((p) => p.name)).toEqual(
+      ['MomSuppresses']
+    );
+    expect(alleleExpr.maternalRequiredPhenotypes.map((p) => p.name)).toEqual([
+      'MomRequires',
+    ]);
+    expect(alleleExpr.suppressingPhenotypes.map((p) => p.name)).toEqual([
+      'OwnSuppresses',
+    ]);
+    expect(alleleExpr.requiredPhenotypes).toEqual([]);
+  });
 });

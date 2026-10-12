@@ -17,6 +17,8 @@ import {
   AlleleExpression,
   type AlleleExpressionState,
   type Zygosity,
+  dominanceToZygosity,
+  zygosityToDominance,
 } from 'models/frontend/AlleleExpression/AlleleExpression';
 import { Sex } from 'models/enums';
 import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
@@ -852,6 +854,93 @@ describe('getExprPhenotypes() - backlog #11 second half', () => {
     );
   });
 
+  describe('maternal relations', () => {
+    const names = (strain: Strain, mother?: Set<string>): string[] =>
+      strain
+        .getExprPhenotypes([], new Set<string>(), mother)
+        .map((x) => x.getUniqueName());
+
+    test('maternal suppression: hidden when the mother expresses it, shown otherwise or with no mother', () => {
+      const tra = phen('mTra', false);
+      const motherPhen = phen('mTra', true);
+      const allele = alleleWithExpr('mAllele1', [
+        {
+          dominance: '2',
+          expressingPhenotype: tra,
+          maternalSuppressingPhenotypes: [motherPhen],
+        },
+      ]);
+      const child = new Strain({ allelePairs: [allele.toHomo()] });
+      expect(names(child, new Set([motherPhen.getUniqueName()]))).not.toContain(
+        'mTra'
+      );
+      expect(names(child, new Set())).toContain('mTra');
+      expect(names(child)).toContain('mTra');
+    });
+
+    test('maternal requirement: shown only when the mother expresses it', () => {
+      const tra = phen('mTra2', false);
+      const motherPhen = phen('mMother2', false);
+      const allele = alleleWithExpr('mAllele2', [
+        {
+          dominance: '2',
+          expressingPhenotype: tra,
+          maternalRequiredPhenotypes: [motherPhen],
+        },
+      ]);
+      const child = new Strain({ allelePairs: [allele.toHomo()] });
+      expect(names(child, new Set([motherPhen.getUniqueName()]))).toContain(
+        'mTra2'
+      );
+      expect(names(child, new Set())).not.toContain('mTra2');
+      expect(names(child)).not.toContain('mTra2');
+    });
+
+    test('a maternal and an own-phenotype relation on one row must both hold', () => {
+      const own = phen('mOwn', false);
+      const motherPhen = phen('mMother3', false);
+      const target = phen('mTarget3', false);
+      const allele = alleleWithExpr('mAllele3', [
+        { dominance: '2', expressingPhenotype: own },
+        {
+          dominance: '2',
+          expressingPhenotype: target,
+          requiredPhenotypes: [own],
+          maternalRequiredPhenotypes: [motherPhen],
+        },
+      ]);
+      const child = new Strain({ allelePairs: [allele.toHomo()] });
+      expect(names(child, new Set([motherPhen.getUniqueName()]))).toContain(
+        'mTarget3'
+      );
+      expect(names(child, new Set())).not.toContain('mTarget3');
+    });
+
+    test('card info and maturation use the mother', () => {
+      const lethal = new Phenotype({
+        name: 'mLethal',
+        shortName: 'mLethal',
+        wild: false,
+        lethal: true,
+      });
+      const motherPhen = phen('mMother4', false);
+      const allele = alleleWithExpr('mAllele4', [
+        {
+          dominance: '2',
+          expressingPhenotype: lethal,
+          maternalSuppressingPhenotypes: [motherPhen],
+        },
+      ]);
+      const child = new Strain({ allelePairs: [allele.toHomo()] });
+      expect(child.isLethal([], new Set())).toBe(true);
+      expect(
+        child.isLethal([], new Set(), new Set([motherPhen.getUniqueName()]))
+      ).toBe(false);
+      child.refreshCardInfo([], new Set(), new Set());
+      expect(child.lethal).toBe(true);
+    });
+  });
+
   test('multi-level dependency chain resolves in dependency order (C requires B requires A)', () => {
     const phenA = phen('phenA3', false);
     const phenB = phen('phenB3', false);
@@ -1080,6 +1169,64 @@ describe('getExprPhenotypes() - gene-level "2 copies (lof)" (Zygosity \'5\')', (
     const names = strain.getExprPhenotypes().map((x) => x.getUniqueName());
     expect(names).not.toContain('phenX');
     expect(names).not.toContain('phenY');
+  });
+
+  describe('"1 copy, other copy +" (1wt) rows', () => {
+    const wildPhen1wt = phen('kin-20', true);
+    const rowsFor = (name: string): Allele =>
+      geneAlleleWithExpr(name, 'kin-20', [
+        { dominance: '1wt', expressingPhenotype: wildPhen1wt },
+      ]);
+    const expresses = (strain: Strain): boolean =>
+      strain
+        .getExprPhenotypes()
+        .map((x) => x.getUniqueName())
+        .includes(wildPhen1wt.getUniqueName());
+
+    test('resolves for a heterozygote over wild-type, on either homolog', () => {
+      const allele = rowsFor('wtA1');
+      expect(expresses(new Strain({ allelePairs: [allele.toTopHet()] }))).toBe(
+        true
+      );
+      expect(expresses(new Strain({ allelePairs: [allele.toBotHet()] }))).toBe(
+        true
+      );
+    });
+
+    test('does not resolve for a homozygote', () => {
+      expect(
+        expresses(new Strain({ allelePairs: [rowsFor('wtA2').toHomo()] }))
+      ).toBe(false);
+    });
+
+    test('does not resolve for a compound heterozygote with another mutant allele', () => {
+      const strain = new Strain({
+        allelePairs: [
+          new AllelePair({ top: rowsFor('wtA3'), bot: rowsFor('wtB3') }),
+        ],
+      });
+      expect(expresses(strain)).toBe(false);
+    });
+
+    test("does not resolve for a male's single X", () => {
+      const allele = new Allele({
+        name: 'wtX',
+        variation: new Variation({ name: 'wtX', chromosome: 'X' }),
+      });
+      allele.alleleExpressions = rowsFor('wtX').alleleExpressions;
+      const male = new Strain({
+        allelePairs: [new AllelePair({ top: allele, bot: allele.toAbsent() })],
+        sex: Sex.Male,
+      });
+      expect(expresses(male)).toBe(false);
+      const herm = new Strain({ allelePairs: [allele.toTopHet()] });
+      expect(expresses(herm)).toBe(true);
+    });
+
+    test('is stored as dominance 5 and read back', () => {
+      expect(zygosityToDominance('1wt')).toBe(5);
+      expect(dominanceToZygosity(5)).toBe('1wt');
+    });
   });
 
   test('a "5" row resolves for a trans compound het of 2 different LOF alleles of the same gene, same phenotype', () => {
