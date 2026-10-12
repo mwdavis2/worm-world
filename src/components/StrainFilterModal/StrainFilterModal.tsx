@@ -108,6 +108,7 @@ export const StrainFilterModal = (
             filterId={props.filterId}
             options={options.viability}
             field='viability'
+            matchesAny
             filter={props.filter}
             updateFilter={props.updateFilter}
           />
@@ -116,6 +117,7 @@ export const StrainFilterModal = (
             filterId={props.filterId}
             options={options.sex}
             field='sex'
+            matchesAny
             filter={props.filter}
             updateFilter={props.updateFilter}
           />
@@ -143,11 +145,22 @@ const FilterList = (props: {
   title: string;
   options: Set<string>;
   field: keyof IStrainFilter;
+  // A strain passes when it matches ANY ticked option (viability, sex), so
+  // ticking every option narrows nothing, and counts as "No filters". The
+  // alleles and phenotypes lists need ALL ticked options, so there ticking
+  // everything is a real filter.
+  matchesAny?: boolean;
   filterId: string;
   filter: StrainFilter;
   updateFilter: (update: StrainFilterUpdate) => void;
 }): React.JSX.Element => {
   if (props.options.size === 0) return <></>;
+
+  const ticked = props.filter[props.field];
+  const noFilters =
+    ticked.size === 0 ||
+    (props.matchesAny === true &&
+      [...props.options].every((option) => ticked.has(option)));
 
   const filterOptions = [...props.options].map((name, idx) => {
     return (
@@ -181,7 +194,7 @@ const FilterList = (props: {
           <li className={'mb-4 flex items-center'}>
             <input
               type='checkbox'
-              checked={props.filter[props.field].size === 0}
+              checked={noFilters}
               className='checkbox mx-4'
               onClick={() => {
                 props.updateFilter({

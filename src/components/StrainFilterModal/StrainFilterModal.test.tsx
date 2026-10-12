@@ -1,5 +1,9 @@
-import { render, screen } from '@testing-library/react';
-import { StrainFilter } from 'models/frontend/StrainFilter/StrainFilter';
+import { cleanup, render, screen, within } from '@testing-library/react';
+import {
+  HERMAPHRODITE,
+  MALE,
+  StrainFilter,
+} from 'models/frontend/StrainFilter/StrainFilter';
 import { StrainFilterModal } from 'components/StrainFilterModal/StrainFilterModal';
 import * as alleles from 'models/frontend/Allele/Allele.mock';
 import * as crossDesigns from 'models/frontend/CrossDesign/CrossDesign.mock';
@@ -120,6 +124,53 @@ describe('StrainFilterModal', () => {
     expect(badge).toBeDefined();
     expect(badge.textContent).toContain('cycleA');
     expect(badge.textContent).toContain('cycleB');
+  });
+});
+
+describe('the "No filters" tick', () => {
+  const noFiltersTick = (title: RegExp): HTMLInputElement => {
+    const section = screen.getByText(title).closest('.collapse');
+    // the first checkbox in a section is its collapse toggle
+    return within(section as HTMLElement).getAllByRole(
+      'checkbox'
+    )[1] as HTMLInputElement;
+  };
+  const children = [crossDesigns.ed3HeteroHerm, crossDesigns.ed3HeteroMale];
+
+  test('is ticked for the sex list when every sex is shown, not when one is hidden', () => {
+    const narrowed = new StrainFilter();
+    narrowed.sex = new Set([HERMAPHRODITE]);
+    renderModal({ childNodes: children, filter: narrowed });
+    expect(noFiltersTick(/by sex/i).checked).toBe(false);
+    cleanup();
+
+    const everyone = new StrainFilter();
+    everyone.sex = new Set([HERMAPHRODITE, MALE]);
+    renderModal({ childNodes: children, filter: everyone });
+    expect(noFiltersTick(/by sex/i).checked).toBe(true);
+    cleanup();
+
+    const empty = new StrainFilter();
+    empty.sex = new Set();
+    renderModal({ childNodes: children, filter: empty });
+    expect(noFiltersTick(/by sex/i).checked).toBe(true);
+  });
+
+  test('ticking every allele is still a real filter, so the tick stays off', () => {
+    const filter = new StrainFilter();
+    renderModal({ childNodes: children, filter });
+    const section = screen.getByText(/by alleles/i).closest('.collapse');
+    const boxes = within(section as HTMLElement).getAllByRole('checkbox');
+    expect((boxes[1] as HTMLInputElement).checked).toBe(true); // nothing ticked yet
+    cleanup();
+
+    const options = StrainFilter.getFilterOptions(children);
+    filter.alleleNames = new Set(options.alleleNames);
+    renderModal({ childNodes: children, filter });
+    const ticked = within(
+      screen.getByText(/by alleles/i).closest('.collapse') as HTMLElement
+    ).getAllByRole('checkbox');
+    expect((ticked[1] as HTMLInputElement).checked).toBe(false);
   });
 });
 
