@@ -1,5 +1,5 @@
 import { BiX as CloseIcon, BiPlus as PlusIcon } from 'react-icons/bi';
-import { type ChangeEvent, type HTMLInputTypeAttribute, useState } from 'react';
+import { type ChangeEvent, type HTMLInputTypeAttribute } from 'react';
 import { type Filter } from 'models/db/filter/Filter';
 import {
   type FilterType,
@@ -38,6 +38,29 @@ const fieldTypeToFilterTypes: {
   ],
   boolean: ['True', 'False', 'Null', 'NotNull'],
   select: ['Equal', 'NotEqual', 'Null', 'NotNull'],
+};
+
+/**
+ * The filter a new row starts as: "Like" (contains) for text, so typing finds
+ * matches at once, and the first of the field's filter types otherwise.
+ */
+const defaultFilterType = <T,>(field: Field<T>): FilterType =>
+  field.type === 'text' ? 'Like' : fieldTypeToFilterTypes[field.type][0];
+
+/**
+ * Text and number columns open with one blank row, ready to type in. The other
+ * types start with a value already chosen (true, or the first option), which
+ * would filter at once, so they keep the "+" button.
+ */
+const opensWithBlankRow = <T,>(field: Field<T>): boolean =>
+  field.type === 'text' || field.type === 'number';
+
+const blankFilter = <T,>(field: Field<T>): Filter => {
+  const type = defaultFilterType(field);
+  return createNewFilter(
+    type,
+    Array<FormValueType>(filterValuesLengthForFilterType[type]).fill('')
+  );
 };
 
 interface FilterTextInputProps {
@@ -185,20 +208,20 @@ export interface ColumnFilterProps<T> {
 export const ColumnFilter = <T,>(
   props: ColumnFilterProps<T>
 ): React.JSX.Element => {
+  // A column with no filters yet shows one blank row (not stored until it is
+  // typed in or changed), so a search box is there without pressing "+"
+  const rows =
+    props.field !== undefined &&
+    props.columnFilters.length === 0 &&
+    opensWithBlankRow(props.field)
+      ? [blankFilter(props.field)]
+      : props.columnFilters;
   const addFilter = (): void => {
     if (props.field === undefined) {
       return;
     }
-    // get the first filter type for the field type and create a new filter with that type
-    const firstFilterType = fieldTypeToFilterTypes[props.field.type][0];
-    const filterValuesLen = filterValuesLengthForFilterType[firstFilterType];
-    props.setColumnFilters([
-      ...props.columnFilters,
-      createNewFilter(
-        firstFilterType,
-        Array<FormValueType>(filterValuesLen).fill('')
-      ),
-    ]);
+    // the blank row a column opens with counts as a row, so "+" adds a second
+    props.setColumnFilters([...rows, blankFilter(props.field)]);
   };
   return (
     <>
@@ -207,7 +230,7 @@ export const ColumnFilter = <T,>(
           <div className='mb-4 flex w-full justify-between text-3xl'>
             {props.field.title + ' Filters'}
           </div>
-          {props.columnFilters.map((filterType, i) => (
+          {rows.map((filterType, i) => (
             <div key={i} className='flex flex-row'>
               <span
                 className={
@@ -264,16 +287,15 @@ interface FilterEntryProps<T> {
  * It also renders a button to remove the filter.
  */
 const FilterEntry = <T,>(props: FilterEntryProps<T>): React.JSX.Element => {
-  const [filterValues, setLocalFilterValues] = useState<FormValueType[]>(
-    getValuesForFilterType(props.filter)
-  );
+  // The values come straight from the filter, so a row that is deleted or
+  // replaced never shows what an earlier filter in its place had typed
+  const filterValues = getValuesForFilterType(props.filter);
   const setFilterValues = (
     filterType: Filter,
     values: FormValueType[]
   ): void => {
     const name = getFilterType(filterType);
     const newFilterType = createNewFilter(name, values);
-    setLocalFilterValues(values);
     props.setFilter(newFilterType);
   };
   const changeFilterType = (e: ChangeEvent<HTMLSelectElement>): void => {
@@ -287,7 +309,6 @@ const FilterEntry = <T,>(props: FilterEntryProps<T>): React.JSX.Element => {
       e.target.value as FilterType,
       newFilterValues
     );
-    setLocalFilterValues(newFilterValues);
     props.setFilter(newFilterType);
   };
   return (

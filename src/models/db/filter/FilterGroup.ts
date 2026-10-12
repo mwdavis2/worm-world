@@ -181,6 +181,25 @@ export const getFilterType = (filter: Filter): FilterType => {
 export type FormValueType = string | number | boolean;
 
 /**
+ * A filter still waiting for its value: nothing typed yet. It is left out of a
+ * query (a blank "Equal" would match only empty values), and does not count as
+ * the column being filtered. Filters with no value to type (Null, NotNull, True,
+ * False) are never blank; a range is blank only with both bounds empty.
+ */
+export const isBlankFilter = (filter: Filter): boolean => {
+  if (typeof filter === 'string') return false;
+  if ('Range' in filter)
+    return filter.Range[0] === '' && filter.Range[2] === '';
+  if ('LessThan' in filter) return filter.LessThan[0] === '';
+  if ('GreaterThan' in filter) return filter.GreaterThan[0] === '';
+  if ('Equal' in filter) return filter.Equal === '';
+  if ('NotEqual' in filter) return filter.NotEqual === '';
+  if ('Like' in filter) return filter.Like === '';
+  if ('StartsWith' in filter) return filter.StartsWith === '';
+  return false;
+};
+
+/**
  * @param type The type of filter you want to create
  * @param values The values you want to use for the filter, this will be different lengths for different filter types
  * @returns Filter of given type filled with the values you provide

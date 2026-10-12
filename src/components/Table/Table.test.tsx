@@ -204,4 +204,68 @@ describe('Table component', () => {
     await userEvent.click(sortButtons[0]);
     expect(applyFilters).toBeCalled();
   });
+
+  describe('the filter box of a text column', () => {
+    const renderTable = (): ReturnType<typeof vi.fn> => {
+      const applyFilters = vi.fn();
+      render(
+        <Table
+          data={[]}
+          columns={alleleCols}
+          nameMapping={nameMapping}
+          fields={fields}
+          applyFilters={applyFilters}
+          deleteRecord={async () => {}}
+        />
+      );
+      return applyFilters;
+    };
+    const openFirstFilter = async (): Promise<void> => {
+      const headers = screen.getAllByRole('columnheader');
+      await userEvent.hover(headers[0]);
+      await userEvent.click(
+        screen.getAllByRole('button', { name: 'filter-icon' })[0]
+      );
+    };
+    const closeBox = async (): Promise<void> => {
+      await userEvent.click(
+        document.querySelector('.modal > div.absolute') as HTMLElement
+      );
+    };
+
+    test('opens with a blank search box, and what is typed there is applied as "Like"', async () => {
+      userEvent.setup();
+      const applyFilters = renderTable();
+      await openFirstFilter();
+      const box = screen.getByRole('textbox');
+      expect(box).toHaveValue('');
+      await userEvent.type(box, 'ox');
+      await closeBox();
+      expect(applyFilters).toHaveBeenLastCalledWith({
+        filters: [[['Name', { Like: 'ox' }]]],
+        orderBy: [],
+      });
+    });
+
+    test('a box closed without typing, or cleared again, filters nothing', async () => {
+      userEvent.setup();
+      const applyFilters = renderTable();
+      await openFirstFilter();
+      await closeBox();
+      expect(applyFilters).toHaveBeenLastCalledWith({
+        filters: [],
+        orderBy: [],
+      });
+
+      await openFirstFilter();
+      const box = screen.getByRole('textbox');
+      await userEvent.type(box, 'ox');
+      await userEvent.clear(box);
+      await closeBox();
+      expect(applyFilters).toHaveBeenLastCalledWith({
+        filters: [],
+        orderBy: [],
+      });
+    });
+  });
 });

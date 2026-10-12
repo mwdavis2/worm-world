@@ -1,6 +1,7 @@
 import {
   type FilterGroup,
   type FilterTuple,
+  isBlankFilter,
 } from 'models/db/filter/FilterGroup';
 import { type Filter } from 'models/db/filter/Filter';
 import { type Order } from 'models/db/filter/Order';
@@ -130,7 +131,9 @@ const TableHeader = <T,>(props: TableHeaderProps<T>): React.JSX.Element => {
         setSortType={props.setSortType}
         column={column}
         index={index}
-        colFilters={props.filterMap.get(column.key) ?? []}
+        colFilters={(props.filterMap.get(column.key) ?? []).filter(
+          (filter) => !isBlankFilter(filter)
+        )}
       />
     );
   });
@@ -371,10 +374,13 @@ export const Table = <T, K>(props: TableProps<T, K>): React.JSX.Element => {
     const filters = new Array<Array<FilterTuple<K>>>();
     filterMap.forEach((filterTypes, key) => {
       const filter = new Array<FilterTuple<K>>();
-      filterTypes.forEach((filterType) => {
-        filter.push([props.nameMapping[key], filterType]);
-      });
-      filters.push(filter);
+      // a row still waiting for its value is not a filter
+      filterTypes
+        .filter((filterType) => !isBlankFilter(filterType))
+        .forEach((filterType) => {
+          filter.push([props.nameMapping[key], filterType]);
+        });
+      if (filter.length > 0) filters.push(filter);
     });
     const orderBy =
       sortType !== undefined

@@ -8,6 +8,8 @@ import { ColumnFilter, type Field } from 'components/ColumnFilter/ColumnFilter';
 interface ColumnFilterWrapperProps<T> {
   field: Field<T>;
   filterTypes?: Filter[];
+  // told whenever the column's stored filters change
+  onFilters?: (filters: Filter[]) => void;
 }
 
 const ColumnFilterWrapper = <T,>(
@@ -21,7 +23,10 @@ const ColumnFilterWrapper = <T,>(
       <ColumnFilter
         field={props.field}
         columnFilters={filterTypes}
-        setColumnFilters={setFilterTypes}
+        setColumnFilters={(filters) => {
+          setFilterTypes(filters);
+          props.onFilters?.(filters);
+        }}
       />
     </div>
   );
@@ -75,21 +80,75 @@ describe('ColumnFilter', () => {
     expect(selects[0].childElementCount).toBe(4); // true, false, null, notNull
   });
 
-  it('delete button removes filter', async () => {
+  it('delete button removes the filter, leaving a blank row to type in', async () => {
     userEvent.setup();
     const filterTypes: Filter[] = [{ Equal: 'foo' }];
     render(<ColumnFilterWrapper field={field} filterTypes={filterTypes} />);
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toHaveValue('foo');
     await userEvent.click(screen.getByTitle('delete-filter'));
-    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.getByRole('textbox')).toHaveValue('');
   });
 
-  it('add button creates filter', async () => {
+  it('a text column opens with a blank "Like" search box, no "+" needed', () => {
+    render(<ColumnFilterWrapper field={field} />);
+    expect(screen.getByRole('textbox')).toHaveValue('');
+    expect(screen.getByRole('combobox')).toHaveValue('Like');
+  });
+
+  it('typing in the blank row creates the filter', async () => {
     userEvent.setup();
-    const filterTypes: Filter[] = [];
-    render(<ColumnFilterWrapper field={field} filterTypes={filterTypes} />);
-    expect(screen.queryByRole('textbox')).toBeNull();
+    const seen: Filter[][] = [];
+    render(
+      <ColumnFilterWrapper
+        field={field}
+        onFilters={(filters) => seen.push(filters)}
+      />
+    );
+    // nothing is stored just by opening the box
+    expect(seen).toHaveLength(0);
+    await userEvent.type(screen.getByRole('textbox'), 'ox');
+    expect(seen[seen.length - 1]).toEqual([{ Like: 'ox' }]);
+    expect(screen.getByRole('textbox')).toHaveValue('ox');
+  });
+
+  it('a number column opens with a blank row too', () => {
+    const numberField: Field<db_Allele> = { ...field, type: 'number' };
+    render(<ColumnFilterWrapper field={numberField} />);
+    // the blank row is there without "+", starting as "Equal"
+    expect(screen.getByRole('combobox')).toHaveValue('Equal');
+    expect(screen.getByRole('textbox')).toHaveValue('');
+  });
+
+  it('boolean and select columns still start empty, with the "+" button', () => {
+    const booleanField: Field<db_Allele> = { ...field, type: 'boolean' };
+    const { unmount } = render(<ColumnFilterWrapper field={booleanField} />);
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.getByTitle('add-filter')).toBeInTheDocument();
+    unmount();
+    const selectField: Field<db_Allele> = {
+      ...field,
+      type: 'select',
+      selectOptions: ['foo', 'bar'],
+    };
+    render(<ColumnFilterWrapper field={selectField} />);
+    expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  it('add button adds a second row below the blank one', async () => {
+    userEvent.setup();
+    render(<ColumnFilterWrapper field={field} />);
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
     await userEvent.click(screen.getByTitle('add-filter'));
-    expect(screen.queryByRole('textbox')).toBeInTheDocument();
+    expect(screen.getAllByRole('textbox')).toHaveLength(2);
+    // the first row's label is there but hidden
+    expect(screen.getAllByText('OR')).toHaveLength(2);
+  });
+
+  it('add button creates a filter on a column that has a different type of first row', async () => {
+    userEvent.setup();
+    const booleanField: Field<db_Allele> = { ...field, type: 'boolean' };
+    render(<ColumnFilterWrapper field={booleanField} />);
+    await userEvent.click(screen.getByTitle('add-filter'));
+    expect(screen.getAllByRole('combobox')).toHaveLength(1);
   });
 });
