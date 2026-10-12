@@ -193,3 +193,9 @@ mIs14,Pmyo-2::GFP(weak),0,1
 mIs14,Pmyo-2::GFP,0,0
 ox423,Kin,0,4
 ox423,kin-20,1,5
+oxSi1308,Unc-119,1,2
+oxSi1308,HaloTag,0,2
+oxSi1361,HaloTag,0,2
+oxSi1215,Cre,1,2
+oxSi1215,Germline-mNeonGreen,0,2
+oxSi1215,Unc-119,1,2

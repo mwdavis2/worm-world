@@ -140,3 +140,6 @@ qyEx127,,,qyEx127
 mIn1,,,mIn1
 mIs14,,,mIs14
 ox423,,F46F2.2,
+oxSi1308,"[loxP Cbr-unc-119 loxP; Peft-3::FRT::let-858UTR::FRT::HALOc::rps-1UTR roxP, *oxSi1270]",,oxSi1308
+oxSi1361,"[loxP; Peft-3::FRT::let-858UTR::FRT::HALOc::rps-1UTR roxP, *oxSi1270 *oxSi1308]",,oxSi1308
+oxSi1215,"[Pmex-5::wrmCre-2xNLS::SL2::mNeonGreen::glh-2UTR Cbr-unc-119(+) *ttTi5605]",,oxSi1215

@@ -605,6 +605,7 @@ mod tests {
             "SELECT COUNT(*) FROM allele_exprs e WHERE NOT EXISTS (SELECT 1 FROM phenotypes p WHERE p.name = e.expressing_phenotype_name AND p.wild = e.expressing_phenotype_wild)",
             "SELECT COUNT(*) FROM alleles WHERE variation_name IS NOT NULL AND variation_name NOT IN (SELECT allele_name FROM variations)",
             "SELECT COUNT(*) FROM strain_alleles WHERE allele_name NOT IN (SELECT name FROM alleles)",
+            "SELECT COUNT(*) FROM allele_conversions WHERE source_allele NOT IN (SELECT name FROM alleles) OR product_allele NOT IN (SELECT name FROM alleles)",
         ] {
             assert_eq!(count(&pool, orphans).await, 0, "{orphans}");
         }
@@ -726,6 +727,7 @@ mod tests {
             "DELETE FROM strain_alleles",
             "DELETE FROM strains",
             "DELETE FROM expr_relations",
+            "DELETE FROM allele_conversions",
             "DELETE FROM allele_exprs",
             "DELETE FROM alleles",
             "DELETE FROM variations",

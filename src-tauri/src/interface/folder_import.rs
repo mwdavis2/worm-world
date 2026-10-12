@@ -757,11 +757,8 @@ mod tests {
         let zip = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/seed.zip");
 
         let report = state.import_archive(&zip, None).await.unwrap();
-        // the conversions file ships with a header only, for now
         assert_eq!(report.len(), 10);
-        assert!(report
-            .iter()
-            .all(|r| r.read == r.inserted && (r.read > 0 || r.table == "allele_conversions")));
+        assert!(report.iter().all(|r| r.read == r.inserted && r.read > 0));
         for table in [
             "genes",
             "phenotypes",
