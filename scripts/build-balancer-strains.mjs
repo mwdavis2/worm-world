@@ -96,12 +96,12 @@ const check = (condition, message) => {
 // Genes and variations, for each allele's chromosome, position and label.
 const genes = new Map(
   [...parseCsv('src-tauri/seed/genes.csv'), ...parseCsv('data/wormbase/placeholder_genes.csv')].map(
-    ([sys, desc, chr, , gen]) => [sys, { desc: desc === '' ? sys : desc, chr, gen: Number(gen) }]
+    ([sys, desc, chr, phys, gen]) => [sys, { desc: desc === '' ? sys : desc, chr, phys: Number(phys), gen: Number(gen) }]
   )
 );
 const variations = new Map(
   [...parseCsv('data/translocations/variations.csv'), ...parseCsv('data/balancer_alleles/variations.csv')].map(
-    ([name, chr, , gen]) => [name, { chr, gen: Number(gen) }]
+    ([name, chr, phys, gen]) => [name, { chr, phys: Number(phys), gen: Number(gen) }]
   )
 );
 // allele name -> { label, chr, gen }
@@ -111,18 +111,26 @@ const alleleInfo = new Map();
     if (variationName !== '') {
       const v = variations.get(variationName);
       check(v !== undefined, `allele ${name}: variation ${variationName} not found`);
-      if (v !== undefined) alleleInfo.set(name, { label: name, chr: v.chr, gen: v.gen });
+      if (v !== undefined)
+        alleleInfo.set(name, { label: name, chr: v.chr, phys: v.phys, gen: v.gen, locus: variationName });
     } else {
       const g = genes.get(geneKey);
       check(g !== undefined, `allele ${name}: gene ${geneKey} not found`);
-      if (g !== undefined) alleleInfo.set(name, { label: `${g.desc}(${name})`, chr: g.chr, gen: g.gen });
+      if (g !== undefined)
+        alleleInfo.set(name, { label: `${g.desc}(${name})`, chr: g.chr, phys: g.phys, gen: g.gen, locus: geneKey });
     }
   }
 );
 const e128Gene = genes.get(E128.geneSys);
 check(e128Gene !== undefined, 'dpy-10 (T14B4.7) not found');
 if (e128Gene !== undefined)
-  alleleInfo.set(E128.name, { label: `${e128Gene.desc}(${E128.name})`, chr: e128Gene.chr, gen: e128Gene.gen });
+  alleleInfo.set(E128.name, {
+    label: `${e128Gene.desc}(${E128.name})`,
+    chr: e128Gene.chr,
+    phys: e128Gene.phys,
+    gen: e128Gene.gen,
+    locus: E128.geneSys,
+  });
 
 // The halves of each balancer family: nT1 -> nT1(IV), nT1(V).
 const halvesOf = (family) =>
@@ -132,7 +140,8 @@ const CHROMOSOME_ORDER = ['I', 'II', 'III', 'IV', 'V', 'X'];
 
 // The genotype text as Strain.toString builds it: chromosomes in order, each
 // "<top alleles>/<wild partners> <chromosome>", alleles sorted by genetic
-// position (the same comparator as AllelePair.sort), joined with "; ".
+// position, ties by physical position and then by gene or variation name (the
+// same comparator as AllelePair.sort), joined with "; ".
 const genotypeOf = (alleleNames, homozygous) => {
   const byChromosome = new Map();
   alleleNames.forEach((name) => {
@@ -142,7 +151,11 @@ const genotypeOf = (alleleNames, homozygous) => {
   const text = CHROMOSOME_ORDER.filter((chr) => byChromosome.has(chr))
     .map((chr) => {
       const infos = byChromosome.get(chr);
-      infos.sort((a, b) => (a.gen < b.gen ? -1 : 1));
+      infos.sort((a, b) => {
+        if (a.gen !== b.gen) return a.gen < b.gen ? -1 : 1;
+        if (a.phys !== b.phys) return a.phys < b.phys ? -1 : 1;
+        return a.locus === b.locus ? 0 : a.locus < b.locus ? -1 : 1;
+      });
       const top = infos.map((i) => i.label).join(' ');
       return homozygous ? `${top} ${chr}` : `${top}/${infos.map(() => '+').join(' ')} ${chr}`;
     })

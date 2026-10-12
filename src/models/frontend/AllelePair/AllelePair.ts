@@ -50,12 +50,32 @@ export class AllelePair implements IAllelePair {
     else AllelePair.sortByPos(allelePairs);
   }
 
+  /**
+   * Loci run in genetic position order. Loci at the SAME position (two
+   * insertions at one landing site, say) must also come out in one fixed order,
+   * the same for every strain: a cross pairs an egg's loci with a sperm's loci
+   * by index, so two parents listing tied loci in different orders would join
+   * alleles of different loci into one pair. Ties therefore fall back to the
+   * physical position and then to the gene or variation name.
+   */
   private static sortByPos(allelePairs: AllelePair[]): void {
     allelePairs.sort((pair1, pair2) => {
       const pair1Pos = pair1.top.getGenPosition() ?? 50; // gen pos never greater than 25
       const pair2Pos = pair2.top.getGenPosition() ?? 50; // gen pos never greater than 25
-      return pair1Pos < pair2Pos ? -1 : 1;
+      if (pair1Pos !== pair2Pos) return pair1Pos < pair2Pos ? -1 : 1;
+      const phys1 = pair1.top.getPhysPosition() ?? Infinity;
+      const phys2 = pair2.top.getPhysPosition() ?? Infinity;
+      if (phys1 !== phys2) return phys1 < phys2 ? -1 : 1;
+      const locus1 = AllelePair.locusKey(pair1);
+      const locus2 = AllelePair.locusKey(pair2);
+      if (locus1 === locus2) return 0;
+      return locus1 < locus2 ? -1 : 1;
     });
+  }
+
+  /** What identifies the pair's locus: its gene, else its variation */
+  private static locusKey(pair: AllelePair): string {
+    return pair.top.gene?.sysName ?? pair.top.variation?.name ?? pair.top.name;
   }
 
   private static sortByName(allelePairs: AllelePair[]): void {
