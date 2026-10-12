@@ -92,7 +92,7 @@ mod tests {
         (
             "expr_relations",
             include_bytes!("../../seed/expr_relations.csv"),
-            7,
+            8,
         ),
         ("strains", include_bytes!("../../seed/strains.csv"), 1),
         (
@@ -934,7 +934,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        let distinct: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM (SELECT 1 FROM expr_relations GROUP BY allele_name, expressing_phenotype_name, expressing_phenotype_wild, COALESCE(altering_phenotype_name, ''), COALESCE(altering_phenotype_wild, -1), COALESCE(altering_condition, ''), is_suppressing)")
+        let distinct: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM (SELECT 1 FROM expr_relations GROUP BY allele_name, expressing_phenotype_name, expressing_phenotype_wild, COALESCE(altering_phenotype_name, ''), COALESCE(altering_phenotype_wild, -1), COALESCE(altering_condition, ''), is_suppressing, altering_phenotype_maternal)")
             .fetch_one(&pool)
             .await
             .unwrap();

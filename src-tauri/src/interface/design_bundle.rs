@@ -680,7 +680,7 @@ mod tests {
         // no relation was duplicated on the way
         assert_eq!(
             count(&pool, "SELECT COUNT(*) FROM expr_relations").await,
-            count(&pool, "SELECT COUNT(*) FROM (SELECT 1 FROM expr_relations GROUP BY allele_name, expressing_phenotype_name, expressing_phenotype_wild, COALESCE(altering_phenotype_name, ''), COALESCE(altering_phenotype_wild, -1), COALESCE(altering_condition, ''), is_suppressing)").await
+            count(&pool, "SELECT COUNT(*) FROM (SELECT 1 FROM expr_relations GROUP BY allele_name, expressing_phenotype_name, expressing_phenotype_wild, COALESCE(altering_phenotype_name, ''), COALESCE(altering_phenotype_wild, -1), COALESCE(altering_condition, ''), is_suppressing, altering_phenotype_maternal)").await
         );
     }
 }
