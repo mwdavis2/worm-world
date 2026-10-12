@@ -2,7 +2,15 @@ import { fs } from '@tauri-apps/api';
 import { toPng } from 'html-to-image';
 import { useEffect } from 'react';
 import { BsCardImage } from 'react-icons/bs';
-import { FaPlus, FaMinus, FaExpand, FaLock, FaLockOpen } from 'react-icons/fa6';
+import {
+  FaPlus,
+  FaMinus,
+  FaExpand,
+  FaLock,
+  FaLockOpen,
+  FaRotateLeft,
+  FaRotateRight,
+} from 'react-icons/fa6';
 import { SiMicrogenetics as GeneIcon } from 'react-icons/si';
 import { toast } from 'react-toastify';
 import {
@@ -25,6 +33,10 @@ interface CustomControlsProps {
   alleleDisplayMode: string;
   alleleDisplayLabel: string;
   textExportMode: TextExportMode;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 // Each button gets a daisyUI tooltip to its right (the controls sit in the
@@ -89,6 +101,26 @@ const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
       >
         <FaExpand className='hover:cursor-pointer' />
       </ControlButton>
+      {props.crossDesignEditable && (
+        <>
+          <ControlButton
+            className={TIP}
+            data-tip={`Undo (${MOD}Z)`}
+            disabled={!props.canUndo}
+            onClick={props.onUndo}
+          >
+            <FaRotateLeft className='hover:cursor-pointer' />
+          </ControlButton>
+          <ControlButton
+            className={TIP}
+            data-tip={`Redo (${isMac ? '⇧⌘Z' : 'Ctrl+Y'})`}
+            disabled={!props.canRedo}
+            onClick={props.onRedo}
+          >
+            <FaRotateRight className='hover:cursor-pointer' />
+          </ControlButton>
+        </>
+      )}
       {props.crossDesignEditable && (
         <ControlButton
           className={TIP}

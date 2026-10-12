@@ -110,6 +110,7 @@ import { NoteNode } from 'components/NoteNode/NoteNode';
 import StrainNode from 'components/StrainNode/StrainNode';
 import EditorContext from 'components/EditorContext/EditorContext';
 import CustomControls from 'components/CustomControls/CustomControls';
+import { useUndoRedo } from 'components/Editor/useUndoRedo';
 import MiddleNode from 'components/MiddleNode/MiddleNode';
 import FilteredOutModal from 'components/FilteredOutModal/FilteredOutModal';
 
@@ -156,6 +157,19 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     return props.crossDesign.nodes;
   });
   const [edges, setEdges] = useState(props.crossDesign.edges);
+  const undoRedo = useUndoRedo({
+    nodes,
+    edges,
+    editable: props.crossDesign.editable,
+    setNodes,
+    setEdges,
+  });
+  // The key handler below is set up once, so it reaches undo and redo through
+  // refs that always hold the latest
+  const undoRef = useRef(undoRedo.undo);
+  const redoRef = useRef(undoRedo.redo);
+  undoRef.current = undoRedo.undo;
+  redoRef.current = undoRedo.redo;
   const [drawerState, setDrawerState] = useState<DrawerState>({
     type: DrawerType.AddStrain,
     isOpen: false,
@@ -360,7 +374,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       const key = event.key.toLowerCase();
-      if ((key !== 'c' && key !== 'v') || event.altKey) return;
+      if (!['c', 'v', 'z', 'y'].includes(key) || event.altKey) return;
       if (!(event.metaKey || event.ctrlKey)) return;
       const target = event.target as HTMLElement | null;
       if (
@@ -370,6 +384,15 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           target.isContentEditable)
       )
         return;
+      // Cmd/Ctrl-Z undoes, with Shift (or Ctrl-Y) redoes; text fields, above,
+      // keep their own undo
+      if (key === 'z' || (key === 'y' && event.ctrlKey && !event.metaKey)) {
+        event.preventDefault();
+        if (key === 'y' || event.shiftKey) redoRef.current();
+        else undoRef.current();
+        return;
+      }
+      if (key === 'y') return;
       if (key === 'c' && (window.getSelection()?.toString() ?? '') !== '')
         return;
       event.preventDefault();
@@ -1335,6 +1358,10 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                 alleleDisplayMode={alleleDisplay.mode}
                 alleleDisplayLabel={alleleDisplay.label}
                 textExportMode={preferences.textExportMode}
+                canUndo={undoRedo.canUndo}
+                canRedo={undoRedo.canRedo}
+                onUndo={undoRedo.undo}
+                onRedo={undoRedo.redo}
               />
               <MiniMap
                 position='bottom-left'
