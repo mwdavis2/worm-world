@@ -12,6 +12,7 @@
 // Unc-36: e251 is ME0 but e873 (the eT1 breakpoint, the only unc-36 allele in the
 // seed) is ME1, so it is left OK at ME1 (the instructor's decision; the CGC has the
 // eT1 strain at M-MATING+POOR <1%WT).
+// Unc-44 (e362) is ME0 in WormBase (2026-10-13) and M-MATING-NO SUCCESS in the CGC (CB362).
 // Not marked: unc-24 (e138, ME1), unc-4 (e120, ME1; a first-edition entry says
 // ME0), unc-75 (e950, ME2), unc-23 (e25, ME1; the CGC had e324 at POOR <1%) and
 // unc-31 (e169, ME1; the CGC had POOR <1%), unc-29 (e193, ME2; CGC 1-10%) and
@@ -21,6 +22,7 @@ export const MALE_MATING_DEFECTIVE_PHENOTYPES = new Set([
   'Unc-9',
   'Unc-18',
   'Unc-22',
+  'Unc-44',
   'Unc-52',
   'Unc-60',
   'Unc-73',
