@@ -24,15 +24,15 @@ const draw = (): void => {
 };
 
 describe('settings for crossing effects', () => {
-  test('crossing effects count by default, and the Him frequency starts at 33%', () => {
+  test('crossing effects count by default, and the Him frequency starts at 37%', () => {
     draw();
     expect(
       screen.getByRole<HTMLInputElement>('checkbox', {
         name: 'Ignore crossing effects',
       }).checked
     ).toBe(false);
-    expect(screen.getByLabelText(/Him male frequency: 33%/)).toBeTruthy();
-    expect(getPreferences().himMalePercent).toBe(33);
+    expect(screen.getByLabelText(/Him male frequency: 37%/)).toBeTruthy();
+    expect(getPreferences().himMalePercent).toBe(37);
     expect(getPreferences().ignoreCrossingEffects).toBe(false);
   });
 

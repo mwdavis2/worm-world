@@ -232,8 +232,10 @@ const Settings = (): React.JSX.Element => {
           />
           <label className='label'>
             <span className='label-text-alt'>
-              The share of a Him hermaphrodite&apos;s self-cross children that
-              are males. Males appear in new self crosses from Him strains.
+              The share of a Him hermaphrodite&apos;s eggs that carry no X,
+              which is also the share of males among its self-cross children
+              (about 37% for him-8). In a cross to a male, those eggs give extra
+              males that carry the father&apos;s X. Applies to new crosses.
             </span>
           </label>
         </div>

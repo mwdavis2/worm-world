@@ -21,7 +21,8 @@ export interface Preferences {
   // When true, a phenotype's crossing effects (male / female / self crossing
   // defective) no longer block a cross, so any cross can be forced.
   ignoreCrossingEffects: boolean;
-  // Percent (1-99) of a Him hermaphrodite's self-cross children that are males.
+  // Percent (1-99) of a Him hermaphrodite's eggs that carry no X, which is the
+  // share of males among its self-cross children (about 37% in him-8(e1489)).
   himMalePercent: number;
 }
 
@@ -33,7 +34,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   dataTablePageSize: 50,
   alleleDisplayMode: DEFAULT_ALLELE_DISPLAY_MODE,
   ignoreCrossingEffects: false,
-  himMalePercent: 33,
+  himMalePercent: 37,
 };
 
 export const getPreferences = (): Preferences => {

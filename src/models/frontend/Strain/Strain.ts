@@ -45,7 +45,16 @@ import {
 export interface Gamete {
   chromosomes: Allele[][];
   prob: number;
+  /** An egg made without an X by a Him hermaphrodite (see `CrossContext.himNulloFraction`) */
+  nulloX?: boolean;
 }
+
+/** True for a gamete that carries no X (a male's X-less sperm, or a Him hermaphrodite's X-less egg) */
+const isNulloX = (gamete: Gamete): boolean =>
+  gamete.nulloX === true ||
+  gamete.chromosomes.some(
+    (chrom) => chrom.length > 0 && chrom.every((allele) => allele.isAbsent())
+  );
 
 /**
  * What the parents of a cross express, for the allele conversions a germline
@@ -59,10 +68,16 @@ export interface CrossContext {
   /** What the strain it is crossed with expresses */
   otherPhenotypes?: ReadonlySet<string>;
   /**
-   * For a self cross of a Him hermaphrodite: the fraction (0-1) of the
-   * children that are males (an X-less sperm fertilizing an egg)
+   * The fraction (0-1) of a Him hermaphrodite's eggs that carry no X (X
+   * nondisjunction in oogenesis; the diplo-X eggs, a fifth as many, are left
+   * out because a card cannot hold three X's). Such an egg fertilized by an
+   * X-bearing sperm makes a male whose single X is the sperm's - the father's,
+   * in a mated cross. An egg without an X cannot be fertilized by a sperm
+   * without one. The children are rescaled to total 1. Only the hermaphrodite
+   * parent's eggs are affected (in a self cross, one set of gametes serves as
+   * the eggs), and only when that parent has Him.
    */
-  selfHimMaleFraction?: number;
+  himNulloFraction?: number;
 }
 
 /** A parent with this many germline variants or more is too tangled to cross */
@@ -770,13 +785,12 @@ export class Strain {
    */
   public async selfCross(
     parentPhenotypes?: ReadonlySet<string>,
-    himMaleFraction?: number
+    himNulloFraction?: number
   ): Promise<Strain[]> {
     return await this.crossWith(this, {
       thisPhenotypes: parentPhenotypes,
       otherPhenotypes: parentPhenotypes,
-      // only a Him hermaphrodite makes males when selfed
-      selfHimMaleFraction: this.him === true ? himMaleFraction : undefined,
+      himNulloFraction,
     });
   }
 
@@ -810,37 +824,41 @@ export class Strain {
       context.otherPhenotypes,
       products
     );
-    const himFraction = context.selfHimMaleFraction ?? 0;
+    // Him: a hermaphrodite parent's eggs may carry no X (in a self cross, only
+    // the second set of gametes plays the eggs)
+    const nullo = context.himNulloFraction ?? 0;
+    const isHimHerm = (parent: Strain): boolean =>
+      parent.sex === Sex.Hermaphrodite && parent.him === true;
+    const himEggs1 = nullo > 0 && other !== this && isHimHerm(parent1);
+    const himEggs2 = nullo > 0 && isHimHerm(parent2);
     const children = variants1.flatMap((v1) => {
-      const gametes1 = v1.strain.meiosis();
+      const gametes1 = himEggs1
+        ? v1.strain.withNulloXEggs(v1.strain.meiosis(), nullo)
+        : v1.strain.meiosis();
       return variants2.flatMap((v2) => {
         const exOptions = ChromosomePair.crossEx(
           v1.strain.chromPairMap.get('Ex'),
           v2.strain.chromPairMap.get('Ex')
         );
-        const weight = v1.prob * v2.prob;
-        const gametes2 = v2.strain.meiosis();
-        const normal = Strain.buildChildren(
+        const gametes2 = himEggs2
+          ? v2.strain.withNulloXEggs(v2.strain.meiosis(), nullo)
+          : v2.strain.meiosis();
+        return Strain.buildChildren(
           gametes1,
           gametes2,
           exOptions,
-          weight * (1 - himFraction)
+          v1.prob * v2.prob
         );
-        if (himFraction <= 0) return normal;
-        // Him: that share of the children come from a sperm without an X, so
-        // they are males (one X, from the egg)
-        const males = Strain.buildChildren(
-          gametes1,
-          v2.strain.withoutX(gametes2),
-          exOptions,
-          weight * himFraction
-        );
-        males.forEach((male) => {
-          male.sex = Sex.Male;
-        });
-        return [...normal, ...males];
       });
     });
+    if (himEggs1 || himEggs2) {
+      // an egg and a sperm that both lack an X make nothing: rescale the rest
+      const total = children.reduce((sum, c) => sum + (c.probability ?? 0), 0);
+      if (total > 0)
+        children.forEach((c) => {
+          c.probability = (c.probability ?? 0) / total;
+        });
+    }
     return await Strain.finishChildren(children);
   }
 
@@ -956,8 +974,13 @@ export class Strain {
     weight = 1
   ): Strain[] {
     return gametes1.flatMap((gamete1) =>
-      gametes2.flatMap((gamete2) =>
-        exOptions.map((exOption) => {
+      gametes2.flatMap((gamete2) => {
+        // two gametes without an X cannot make a worm
+        if (isNulloX(gamete1) && isNulloX(gamete2)) return [];
+        // an X-less egg from a Him hermaphrodite makes a male even when the
+        // strain has no X to show it (the usual way is the single X)
+        const male = (gamete1.nulloX ?? false) !== (gamete2.nulloX ?? false);
+        return exOptions.map((exOption) => {
           const chromPairs = gamete1.chromosomes.map((chrom, idx) =>
             ChromosomePair.buildFromChroms(chrom, gamete2.chromosomes[idx])
           );
@@ -966,29 +989,42 @@ export class Strain {
           strain.probability =
             gamete1.prob * gamete2.prob * exOption.prob * weight;
           strain.isChild = true;
+          if (male) strain.sex = Sex.Male;
           return strain;
-        })
-      )
+        });
+      })
     );
   }
 
   /**
-   * `gametes` (this strain's own, from `meiosis`) with the X replaced by an
-   * absent X: sperm that carry no X. A strain with no X chromosome pair has
-   * nothing to replace (its males are told apart by their sex alone).
+   * `gametes` (this strain's own eggs, from `meiosis`) as a Him hermaphrodite
+   * makes them: each egg carries no X with chance `nullo` (its X replaced by an
+   * absent X) and is as it was otherwise. A strain with no X chromosome pair has
+   * nothing to replace; its X-less eggs are only flagged.
    */
-  private withoutX(gametes: Gamete[]): Gamete[] {
+  private withNulloXEggs(gametes: Gamete[], nullo: number): Gamete[] {
     const xIndex = Array.from(this.chromPairMap.keys())
       .filter((chromName) => chromName !== 'Ex')
       .sort(cmpChromName)
       .indexOf('X');
-    if (xIndex < 0) return gametes;
-    return gametes.map((gamete) => ({
-      prob: gamete.prob,
-      chromosomes: gamete.chromosomes.map((chrom, idx) =>
-        idx === xIndex ? chrom.map((allele) => allele.toAbsent()) : chrom
-      ),
-    }));
+    return [
+      ...gametes.map((gamete) => ({
+        ...gamete,
+        prob: gamete.prob * (1 - nullo),
+      })),
+      ...gametes.map((gamete) => ({
+        prob: gamete.prob * nullo,
+        nulloX: true,
+        chromosomes:
+          xIndex < 0
+            ? gamete.chromosomes
+            : gamete.chromosomes.map((chrom, idx) =>
+                idx === xIndex
+                  ? chrom.map((allele) => allele.toAbsent())
+                  : chrom
+              ),
+      })),
+    ];
   }
 
   /** Merges equal children, drops the impossible ones, orders them by probability and names them after saved strains */

@@ -7,13 +7,19 @@ Four boolean columns on the `phenotypes` table (Data Tables > Phenotypes) change
 | `male_crossing_defective` | a **male** expressing it cannot be the male parent: the left crossing rectangle of its card turns black |
 | `female_crossing_defective` | a **hermaphrodite** expressing it cannot be the hermaphrodite parent of a mated cross: the right rectangle turns black |
 | `self_crossing_defective` | a hermaphrodite expressing it cannot self: the bottom rectangle turns black |
-| `him` | a hermaphrodite expressing it makes males when it selfs (see below) |
+| `him` | a hermaphrodite expressing it loses the X from some of its eggs, so it makes males (see below) |
 
 A black rectangle cannot start or receive a connection (its tooltip says why), and the right-click Cross / Self-cross items, the Cross drawer and notation paste refuse the cross with a plain message. The flags come from the phenotypes the card currently expresses, the same way "Lethal" does, so conditions, the parents' alleles and a mother's maternal phenotypes all count. A card that is already a parent keeps its cross.
 
 **Settings** (Settings page):
 - *Ignore crossing effects*: forces any cross regardless of the flags.
-- *Him male frequency* (1-99%, default 33): the share of a Him hermaphrodite's self-cross children that are males. That share comes from an X-less sperm fertilizing an egg (one X, from the egg); the rest is the normal self cross. Autosomes recombine as usual. A mated cross with a Him parent is unchanged.
+- *Him male frequency* (1-99%, default 37, the figure for him-8(e1489)): the share of a Him hermaphrodite's **eggs that carry no X** (X nondisjunction in oogenesis, which is where him-8 acts).
+
+**How Him works.** Only the hermaphrodite parent's eggs change: with that chance an egg has no X. The sperm are as usual (a male's are half X, half X-less; a hermaphrodite's are all X).
+- **Self cross:** an X-less egg fertilized by an X sperm is a male, so the share of males equals the setting (37%); the rest are hermaphrodites.
+- **Cross to a male:** a normal egg gives a hermaphrodite (X sperm) or a male with the mother's X (X-less sperm), as always. An X-less egg fertilized by an X sperm gives a male whose single X is the **father's** (a patroclinous male); with an X-less sperm it makes nothing. The children are rescaled to total 1, so a Him mother gives more than the usual half males; at 37%, about 61% of the progeny are males and about 23% are males with the father's X.
+- **Left out:** the diplo-X eggs (about a fifth as many as the X-less ones; they give triplo-X hermaphrodites, a card cannot hold three X's), and the 90% drop in X recombination that him-8 causes. A Him male changes nothing.
+- Source for the egg figures: Hodgkin, Horvitz & Brenner 1979 (Genetics 91:67); self-progeny about 37-40% males, about 6% triplo-X (Broverman & Meneely 1994).
 
 **Setting the flags:** in the New Allele dialog (Advanced view), each phenotype row has a *Crossing Effects* button with a checkbox for each effect, next to *Lethal*; or edit the columns in the Phenotypes data table. An existing phenotype's flags are not changed from the dialog (a conflicting tick is refused, like Lethal).
 

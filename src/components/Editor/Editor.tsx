@@ -1095,6 +1095,8 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     const childOptions = await maleNode.data.crossWith(hermNode.data, {
       thisPhenotypes: getCardPhenotypes(maleNode, nodes, edges),
       otherPhenotypes: getCardPhenotypes(hermNode, nodes, edges),
+      // a Him hermaphrodite's eggs may carry no X
+      himNulloFraction: getPreferences().himMalePercent / 100,
     });
 
     // Mark as parents
