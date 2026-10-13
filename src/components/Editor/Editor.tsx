@@ -52,6 +52,7 @@ import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import CrossDesign, {
   addToArray,
   dropDanglingParents,
+  parentsFirst,
 } from 'models/frontend/CrossDesign/CrossDesign';
 import { Strain } from 'models/frontend/Strain/Strain';
 import {
@@ -172,13 +173,16 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   const onConnectParams = useRef<OnConnectStartParams | null>(null);
   const [name, setName] = useState(props.crossDesign.name);
   const [nodes, setNodes] = useState(() => {
-    const loaded = dropDanglingParents(props.crossDesign.nodes);
+    const loaded = parentsFirst(dropDanglingParents(props.crossDesign.nodes));
     refreshCardInfoOfChildren(loaded, props.crossDesign.edges);
     return loaded;
   });
   // A node that names a parent that is gone would blank the whole canvas;
   // draw (and keep) it as a free-standing card instead
-  const drawnNodes = useMemo(() => dropDanglingParents(nodes), [nodes]);
+  const drawnNodes = useMemo(
+    () => parentsFirst(dropDanglingParents(nodes)),
+    [nodes]
+  );
   useEffect(() => {
     if (drawnNodes !== nodes) setNodes(drawnNodes);
   }, [drawnNodes, nodes]);

@@ -74,6 +74,43 @@ export const dropDanglingParents = <
   });
 };
 
+/**
+ * The nodes with every parent ahead of its children (the order within each group
+ * is kept). React-flow expects this: deleting a card removes only the children it
+ * has already met, so a child stored before its parent (a male crossed into a new
+ * hermaphrodite) was left behind when the parent was deleted. Returns the same
+ * array when it is already in order.
+ */
+export const parentsFirst = <T extends { id: string; parentNode?: string }>(
+  nodes: T[]
+): T[] => {
+  const position = new Map(nodes.map((node, index) => [node.id, index]));
+  const inOrder = nodes.every(
+    (node, index) =>
+      node.parentNode === undefined ||
+      (position.get(node.parentNode) ?? -1) < index
+  );
+  if (inOrder) return nodes;
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const placed = new Set<string>();
+  const result: T[] = [];
+  const place = (node: T, depth: number): void => {
+    if (placed.has(node.id)) return;
+    // a parent that is not there, or a loop, must not hang the sort
+    const parent =
+      node.parentNode === undefined ? undefined : byId.get(node.parentNode);
+    if (parent !== undefined && depth < nodes.length) place(parent, depth + 1);
+    // (in a loop the parent's own placing may have placed this node already)
+    if (placed.has(node.id)) return;
+    placed.add(node.id);
+    result.push(node);
+  };
+  nodes.forEach((node) => {
+    place(node, 0);
+  });
+  return result;
+};
+
 export default class CrossDesign {
   public readonly id: string;
   public name: string;

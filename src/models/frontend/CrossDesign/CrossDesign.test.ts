@@ -2,6 +2,7 @@ import { StrainFilter } from 'models/frontend/StrainFilter/StrainFilter';
 import { NodeType, Sex } from 'models/enums';
 import CrossDesign, {
   dropDanglingParents,
+  parentsFirst,
   addToArray,
   type ICrossDesign,
 } from 'models/frontend/CrossDesign/CrossDesign';
@@ -778,5 +779,44 @@ describe('refreshShownProbabilities', () => {
     c.hidden = false;
     CrossDesign.refreshShownProbabilities([a, b, c]);
     expect(a.data.filteredProbability).toBeUndefined();
+  });
+});
+
+describe('parentsFirst', () => {
+  const n = (
+    id: string,
+    parentNode?: string
+  ): { id: string; parentNode?: string } =>
+    parentNode === undefined ? { id } : { id, parentNode };
+  const ids = (list: Array<{ id: string }>): string[] => list.map((x) => x.id);
+
+  test('an array already in order is returned as it is', () => {
+    const nodes = [n('herm'), n('male', 'herm'), n('x', 'herm'), n('kid', 'x')];
+    expect(parentsFirst(nodes)).toBe(nodes);
+  });
+
+  test('a male stored before his new hermaphrodite parent is moved behind her', () => {
+    // a cross started from an existing male: the male is older than his parent
+    const nodes = [n('male', 'herm'), n('herm'), n('x', 'herm'), n('kid', 'x')];
+    const result = parentsFirst(nodes);
+    expect(ids(result)).toEqual(['herm', 'male', 'x', 'kid']);
+    // every parent now comes before its children
+    result.forEach((node, index) => {
+      if (node.parentNode !== undefined)
+        expect(ids(result).indexOf(node.parentNode)).toBeLessThan(index);
+    });
+    // the input is not changed
+    expect(ids(nodes)).toEqual(['male', 'herm', 'x', 'kid']);
+  });
+
+  test('chains of parents, and unrelated nodes in their places, are kept in order', () => {
+    const nodes = [n('c', 'b'), n('free'), n('b', 'a'), n('a')];
+    expect(ids(parentsFirst(nodes))).toEqual(['a', 'b', 'c', 'free']);
+  });
+
+  test('a missing parent or a loop does not hang it', () => {
+    expect(ids(parentsFirst([n('a', 'gone'), n('b')]))).toEqual(['a', 'b']);
+    const loop = parentsFirst([n('a', 'b'), n('b', 'a')]);
+    expect(ids(loop).sort()).toEqual(['a', 'b']);
   });
 });
