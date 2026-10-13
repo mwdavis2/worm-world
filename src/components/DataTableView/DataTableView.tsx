@@ -1,4 +1,4 @@
-import { open } from '@tauri-apps/api/dialog';
+import { open, save } from '@tauri-apps/api/dialog';
 import { type Field } from 'components/ColumnFilter/ColumnFilter';
 import DataImportForm from 'components/DataInputForm/DataInputForm';
 import { Table, type ColumnDefinitionType } from 'components/Table/Table';
@@ -16,6 +16,7 @@ import { duplicateSentence, type DbTableName } from 'utils/dbErrors';
 import { toastDbError } from 'utils/showDbError';
 import { getPreferences, setPreferences } from 'utils/preferences';
 import { beginImport, endImport } from 'utils/importGuard';
+import { exportTableCsv } from 'api/tableExport';
 import { summarizeTableImport } from 'utils/summarizeTableImport';
 
 interface DataTableProps<T, K> {
@@ -313,6 +314,31 @@ const DataTableView = <T, K>(
     }
   };
 
+  // Writes the whole table (not just the rows shown) as a CSV file in the
+  // format Import reads
+  const exportData = async (): Promise<void> => {
+    if (props.tableName === undefined) return;
+    try {
+      const path = await save({
+        defaultPath: `${props.tableName}.csv`,
+        filters: [{ name: 'CSV', extensions: ['csv'] }],
+      });
+      if (path === null) return;
+      const rows = await exportTableCsv(props.tableName, path);
+      toast.success(
+        `Exported ${rows.toLocaleString()} ${
+          rows === 1 ? singularRows(props.title) : props.title.toLowerCase()
+        }`
+      );
+    } catch (e) {
+      toastDbError(e, {
+        action: 'import',
+        table: props.tableName,
+        prefix: 'Unable to export',
+      });
+    }
+  };
+
   // `overrides` lets a caller apply a new page/page size right away, before
   // the state set alongside it has been rendered.
   const applyFilters = (
@@ -480,6 +506,16 @@ const DataTableView = <T, K>(
           >
             Import
           </button>
+          {props.tableName !== undefined && (
+            <button
+              className='btn'
+              onClick={() => {
+                exportData().catch(console.error);
+              }}
+            >
+              Export
+            </button>
+          )}
           {props.unused !== undefined && (
             <label className='flex cursor-pointer items-center gap-2 px-2 text-sm'>
               <input

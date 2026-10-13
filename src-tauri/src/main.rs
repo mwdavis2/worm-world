@@ -87,6 +87,7 @@ async fn main() {
             import_data_tables_zip,
             read_bundle_design,
             export_design_bundle,
+            export_table_csv,
             delete_filtered_genes,
             // conditions
             get_conditions,
@@ -333,6 +334,18 @@ async fn export_design_bundle(
     state_guard
         .export_design_bundle(Path::new(&path), &design_json, &allele_names, &strain_names)
         .await
+}
+
+/// Writes a data table as a CSV file the table's importer reads (see
+/// `interface::table_export`); returns how many rows were written.
+#[tauri::command]
+async fn export_table_csv(
+    state: tauri::State<'_, DbState>,
+    table: String,
+    path: String,
+) -> Result<u32, DbError> {
+    let state_guard = state.0.read().await;
+    state_guard.export_table_csv(&table, Path::new(&path)).await
 }
 
 #[tauri::command]

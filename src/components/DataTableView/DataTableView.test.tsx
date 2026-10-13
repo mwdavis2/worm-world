@@ -521,3 +521,62 @@ describe('adding a row', () => {
     );
   });
 });
+
+describe('exporting a table', () => {
+  interface Call {
+    cmd: string;
+    args: Record<string, unknown>;
+  }
+  const calls: Call[] = [];
+  // the Tauri save dialog is a 'tauri' message; `chosen` is the path it returns
+  const listen = (chosen: string | null, exported = 3): void => {
+    calls.length = 0;
+    mockIPC((cmd, args) => {
+      const a = args as { message?: { cmd?: string } } & Record<
+        string,
+        unknown
+      >;
+      if (cmd === 'tauri' && a.message?.cmd === 'saveDialog') return chosen;
+      calls.push({ cmd, args: a });
+      if (cmd === 'export_table_csv') return exported;
+    });
+  };
+
+  test('is offered only for a table the app can export', () => {
+    listen(null);
+    renderTable({ tableName: 'genes' });
+    expect(screen.getByRole('button', { name: 'Export' })).toBeInTheDocument();
+  });
+
+  test('has no Export button without a table name', () => {
+    listen(null);
+    renderTable();
+    expect(screen.queryByRole('button', { name: 'Export' })).toBeNull();
+  });
+
+  test('writes the table to the chosen file and says how many rows', async () => {
+    listen('/tmp/genes.csv', 3);
+    renderTable({ tableName: 'genes', title: 'Genes' });
+    await userEvent.click(screen.getByRole('button', { name: 'Export' }));
+    await waitFor(() => {
+      expect(calls.some((c) => c.cmd === 'export_table_csv')).toBe(true);
+    });
+    expect(calls.find((c) => c.cmd === 'export_table_csv')?.args).toEqual({
+      table: 'genes',
+      path: '/tmp/genes.csv',
+    });
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Exported 3 genes');
+    });
+  });
+
+  test('cancelling the save dialog exports nothing', async () => {
+    listen(null);
+    renderTable({ tableName: 'genes' });
+    await userEvent.click(screen.getByRole('button', { name: 'Export' }));
+    // give the dialog promise time to settle
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(calls.some((c) => c.cmd === 'export_table_csv')).toBe(false);
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+});

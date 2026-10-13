@@ -16,6 +16,7 @@ mod row_updates;
 pub mod seed;
 pub mod strain;
 pub mod strain_allele;
+pub mod table_export;
 pub mod task;
 pub mod task_sync;
 pub mod variation;
