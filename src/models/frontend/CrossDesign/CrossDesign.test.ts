@@ -1,6 +1,7 @@
 import { StrainFilter } from 'models/frontend/StrainFilter/StrainFilter';
 import { NodeType, Sex } from 'models/enums';
 import CrossDesign, {
+  dropDanglingParents,
   addToArray,
   type ICrossDesign,
 } from 'models/frontend/CrossDesign/CrossDesign';
@@ -701,5 +702,31 @@ describe('placeMatedParents', () => {
       x: 800 + CrossDesign.getRelStrainPos(male2).x,
       y: 500,
     });
+  });
+});
+
+describe('dropDanglingParents', () => {
+  const n = (
+    id: string,
+    parentNode?: string
+  ): { id: string; parentNode?: string } =>
+    parentNode === undefined ? { id } : { id, parentNode };
+
+  test('leaves a design whose parents all exist as the same array', () => {
+    const nodes = [n('a'), n('b', 'a'), n('c', 'a')];
+    expect(dropDanglingParents(nodes)).toBe(nodes);
+  });
+
+  test('frees a node whose parent is gone, and only that node', () => {
+    const nodes = [n('b', 'gone'), n('c', 'b'), n('d')];
+    const result = dropDanglingParents(nodes);
+    expect(result).toEqual([
+      { id: 'b' },
+      { id: 'c', parentNode: 'b' },
+      { id: 'd' },
+    ]);
+    expect(result[0]).not.toHaveProperty('parentNode');
+    // the input is not changed
+    expect(nodes[0].parentNode).toBe('gone');
   });
 });

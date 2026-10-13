@@ -52,6 +52,28 @@ export const addToArray = <T extends { id: string }>(
   return items;
 };
 
+/**
+ * The nodes with any link to a parent that is not among them removed. The
+ * canvas throws ("Parent node ... not found") and shows nothing at all when a
+ * node names a missing parent, which can happen after a card others hang off
+ * is deleted; the orphan then simply becomes a free-standing card. Returns the
+ * same array when no node is orphaned.
+ */
+export const dropDanglingParents = <
+  T extends { id: string; parentNode?: string }
+>(
+  nodes: T[]
+): T[] => {
+  const ids = new Set(nodes.map((node) => node.id));
+  if (!nodes.some((n) => n.parentNode !== undefined && !ids.has(n.parentNode)))
+    return nodes;
+  return nodes.map((node) => {
+    if (node.parentNode === undefined || ids.has(node.parentNode)) return node;
+    const { parentNode: _missing, ...rest } = node;
+    return rest as T;
+  });
+};
+
 export default class CrossDesign {
   public readonly id: string;
   public name: string;

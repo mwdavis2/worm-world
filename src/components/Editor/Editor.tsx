@@ -51,6 +51,7 @@ import {
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import CrossDesign, {
   addToArray,
+  dropDanglingParents,
 } from 'models/frontend/CrossDesign/CrossDesign';
 import { Strain } from 'models/frontend/Strain/Strain';
 import {
@@ -163,9 +164,16 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   const onConnectParams = useRef<OnConnectStartParams | null>(null);
   const [name, setName] = useState(props.crossDesign.name);
   const [nodes, setNodes] = useState(() => {
-    refreshCardInfoOfChildren(props.crossDesign.nodes, props.crossDesign.edges);
-    return props.crossDesign.nodes;
+    const loaded = dropDanglingParents(props.crossDesign.nodes);
+    refreshCardInfoOfChildren(loaded, props.crossDesign.edges);
+    return loaded;
   });
+  // A node that names a parent that is gone would blank the whole canvas;
+  // draw (and keep) it as a free-standing card instead
+  const drawnNodes = useMemo(() => dropDanglingParents(nodes), [nodes]);
+  useEffect(() => {
+    if (drawnNodes !== nodes) setNodes(drawnNodes);
+  }, [drawnNodes, nodes]);
   const [edges, setEdges] = useState(props.crossDesign.edges);
   const undoRedo = useUndoRedo({
     nodes,
@@ -1467,7 +1475,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
               minZoom={preferences.minZoom}
               defaultEdgeOptions={{ type: preferences.edgeStyle }}
               defaultViewport={{ x: 0, y: 0, zoom: 5 }}
-              nodes={nodes}
+              nodes={drawnNodes}
               edges={edges}
               onNodesChange={onNodesChange}
               onConnect={onConnect}
