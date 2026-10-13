@@ -93,17 +93,27 @@ export const insertPhenotype = async (phenotype: Phenotype): Promise<void> => {
   await insertDbPhenotype(phenotype.generateRecord());
 };
 
+/**
+ * A phenotype always has a short name (the database requires one); a form that
+ * leaves it blank sends null, so the name stands in for it, as when a phenotype
+ * is made from the New Allele dialog.
+ */
+export const withShortName = (record: db_Phenotype): db_Phenotype => {
+  const short = (record.shortName as string | null) ?? '';
+  return short.trim() === '' ? { ...record, shortName: record.name } : record;
+};
+
 export const insertDbPhenotype = async (
   record: db_Phenotype
 ): Promise<void> => {
-  await invoke('insert_phenotype', { phenotype: record });
+  await invoke('insert_phenotype', { phenotype: withShortName(record) });
 };
 
 // Changes a phenotype's non-key columns; its name and wild flag pick the row.
 export const updateDbPhenotype = async (
   record: db_Phenotype
 ): Promise<void> => {
-  await invoke('update_phenotype', { phenotype: record });
+  await invoke('update_phenotype', { phenotype: withShortName(record) });
 };
 
 /**
