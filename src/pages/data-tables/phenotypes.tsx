@@ -91,6 +91,8 @@ export default function PhenotypeDataTable(): React.JSX.Element {
     <DataTableView
       title='Phenotypes'
       dataName='phenotype'
+      tableName='phenotypes'
+      keyFields={['name', 'wild']}
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}

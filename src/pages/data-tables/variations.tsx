@@ -113,6 +113,8 @@ export default function VariationDataTable(): React.JSX.Element {
     <DataTableView
       title='Variations'
       dataName='variation'
+      tableName='variations'
+      keyFields={['alleleName']}
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}

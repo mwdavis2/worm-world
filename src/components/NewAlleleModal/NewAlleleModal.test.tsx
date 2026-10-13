@@ -4,6 +4,7 @@ import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import { markSearchIndexStale } from 'utils/searchIndexStale';
 import NewAlleleModal from 'components/NewAlleleModal/NewAlleleModal';
 import { unc119 } from 'models/frontend/Gene/Gene.mock';
+import { toast } from 'react-toastify';
 import { vi } from 'vitest';
 
 interface RecordedCall {
@@ -313,6 +314,75 @@ describe('NewAlleleModal', () => {
     );
     await waitFor(() => {
       expect(screen.getByRole('textbox', { name: 'Gene' })).toHaveValue('');
+    });
+  });
+
+  describe('when adding the allele fails', () => {
+    const addEd3 = async (): Promise<void> => {
+      render(
+        <NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />
+      );
+      await user.type(screen.getByLabelText('Allele name'), 'ed3');
+      await user.type(screen.getByRole('textbox', { name: 'Gene' }), 'unc');
+      await user.click(await screen.findByText(/unc-119/i));
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: 'Add Allele' })
+        ).toBeEnabled();
+      });
+      await user.click(screen.getByRole('button', { name: 'Add Allele' }));
+    };
+
+    test('a name already in use is said beside the name, and nothing is written', async () => {
+      setupIPC((cmd) =>
+        cmd === 'get_count_filtered_alleles' ? 1 : NOT_HANDLED
+      );
+      await addEd3();
+
+      expect(
+        await screen.findByText('An allele named "ed3" already exists.')
+      ).toBeTruthy();
+      expect(calls.find((c) => c.cmd === 'insert_allele')).toBeUndefined();
+      expect(calls.find((c) => c.cmd === 'insert_variation')).toBeUndefined();
+    });
+
+    test('the message goes away when the name is changed', async () => {
+      setupIPC((cmd) =>
+        cmd === 'get_count_filtered_alleles' ? 1 : NOT_HANDLED
+      );
+      await addEd3();
+      await screen.findByText('An allele named "ed3" already exists.');
+      await user.type(screen.getByLabelText('Allele name'), '2');
+      expect(
+        screen.queryByText('An allele named "ed3" already exists.')
+      ).toBeNull();
+    });
+
+    test('a database failure is shown as a plain sentence with the original under Details', async () => {
+      const error = vi.spyOn(toast, 'error').mockReturnValue(0);
+      setupIPC((cmd) => {
+        if (cmd === 'get_count_filtered_alleles') return 0;
+        if (cmd === 'insert_allele')
+          // the backend rejects with an object, not an Error
+          // eslint-disable-next-line @typescript-eslint/no-throw-literal
+          throw {
+            Insert:
+              'error returned from database: (code: 787) FOREIGN KEY constraint failed',
+          };
+        return NOT_HANDLED;
+      });
+      await addEd3();
+
+      await waitFor(() => {
+        expect(error).toHaveBeenCalled();
+      });
+      const content = error.mock.calls[0][0];
+      const { container } = render(<>{content}</>);
+      expect(container.textContent).toContain(
+        'The gene or variation does not exist. Add it first.'
+      );
+      expect(container.textContent).toContain('Details:');
+      error.mockRestore();
     });
   });
 });

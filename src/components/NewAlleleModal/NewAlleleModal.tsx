@@ -4,7 +4,7 @@ import {
   getLocationReferenceVariations,
   insertVariation,
 } from 'api/variation';
-import { insertAllele } from 'api/allele';
+import { getCountFilteredAlleles, insertAllele } from 'api/allele';
 import PhenotypeRow from 'components/PhenotypeRow/PhenotypeRow';
 import { GeneSearchInput } from 'components/GeneSearchInput/GeneSearchInput';
 import { type db_Condition } from 'models/db/db_Condition';
@@ -17,8 +17,9 @@ import { Allele } from 'models/frontend/Allele/Allele';
 import { Variation } from 'models/frontend/Variation/Variation';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { toast } from 'react-toastify';
 import { interpolateGeneticLoc } from 'utils/geneticLocation';
+import { duplicateSentence } from 'utils/dbErrors';
+import { toastDbError } from 'utils/showDbError';
 import {
   type AlleleTab,
   type FluorescentMarkerState,
@@ -272,6 +273,9 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
   const [locationReferenceOptions, setLocationReferenceOptions] = useState<
     db_Variation[]
   >([]);
+  // Why the allele could not be added (a name already taken), shown beside
+  // the name; cleared as soon as the name or the allele type changes
+  const [nameProblem, setNameProblem] = useState<string>();
 
   useEffect(() => {
     if (!props.isOpen) return;
@@ -362,13 +366,42 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
           setTiSiIs((prev) => resyncVariationTab({ ...prev, ...updates }));
         };
 
+  useEffect(() => {
+    setNameProblem(undefined);
+  }, [
+    activeTab,
+    gene.name,
+    tiSiIs.namePrefix,
+    tiSiIs.namingPrefix,
+    tiSiIs.nameSuffix,
+    ex.namePrefix,
+    ex.nameSuffix,
+  ]);
+
   const close = (): void => {
     props.setIsOpen(false);
   };
 
   const handleCreate = (): void => {
     void (async (): Promise<void> => {
+      const typedName =
+        activeTab === 'gene'
+          ? gene.name
+          : buildAlleleName(activeTab, activeVariationTab);
       try {
+        // Check the name first, so a taken one is said plainly beside the
+        // name and nothing is written
+        const taken = await getCountFilteredAlleles({
+          filters: [[['Name', { Equal: typedName }]]],
+          orderBy: [],
+        }).then(
+          (count) => count > 0,
+          () => false // the insert will report a real problem
+        );
+        if (taken) {
+          setNameProblem(duplicateSentence('alleles', typedName));
+          return;
+        }
         let allele: Allele;
         if (activeTab === 'gene') {
           if (gene.gene === undefined) return;
@@ -444,9 +477,7 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
         props.onCreated(allele);
         close();
       } catch (e) {
-        toast.error(
-          'Unable to create allele. Make sure the name is not already in use.'
-        );
+        toastDbError(e, { action: 'add', table: 'alleles', label: typedName });
       }
     })();
   };
@@ -611,6 +642,12 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
               />
             </div>
           </div>
+
+          {nameProblem !== undefined && (
+            <p role='alert' className='text-sm text-error'>
+              {nameProblem}
+            </p>
+          )}
 
           {activeTab === 'gene' && (
             <div className='my-2'>

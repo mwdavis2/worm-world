@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { findSavedStrain } from 'api/strain';
 import ReplaceStrainDialog from 'components/ReplaceStrainDialog/ReplaceStrainDialog';
-import { getErrorMessage } from 'utils/getErrorMessage';
+import { toastDbError } from 'utils/showDbError';
 
 interface AddStrainModalProps {
   isOpen: boolean;
@@ -196,7 +196,11 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
         close();
       })
       .catch((e) => {
-        toast.error(`Unable to save strain: ${getErrorMessage(e)}`);
+        toastDbError(e, {
+          action: 'add',
+          table: 'strains',
+          prefix: 'Unable to save strain',
+        });
       });
   };
 
@@ -215,7 +219,11 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
         else setReplacing(existing);
       })
       .catch((e) => {
-        toast.error(`Unable to save strain: ${getErrorMessage(e)}`);
+        toastDbError(e, {
+          action: 'add',
+          table: 'strains',
+          prefix: 'Unable to save strain',
+        });
       });
   };
 

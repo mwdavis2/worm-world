@@ -71,6 +71,13 @@ export default function AlleleConversionDataTable(): React.JSX.Element {
     <DataTableView
       title='Allele Conversions'
       dataName='alleleConversion'
+      tableName='allele_conversions'
+      keyFields={[
+        'sourceAllele',
+        'productAllele',
+        'driverPhenotypeName',
+        'driverPhenotypeWild',
+      ]}
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}

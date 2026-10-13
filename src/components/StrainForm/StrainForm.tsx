@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { leftOffMaleMessage } from 'utils/leftOffMale';
 import ReplaceStrainDialog from 'components/ReplaceStrainDialog/ReplaceStrainDialog';
-import { getErrorMessage } from 'utils/getErrorMessage';
+import { toastDbError } from 'utils/showDbError';
 import StrainCard from 'components/StrainCard/StrainCard';
 import { type Sex } from 'models/enums';
 import { findSavedStrain, getFilteredStrains } from 'api/strain';
@@ -144,7 +144,11 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
         setState(defaultState);
       })
       .catch((e) => {
-        toast.error(`Unable to save strain: ${getErrorMessage(e)}`);
+        toastDbError(e, {
+          action: 'add',
+          table: 'strains',
+          prefix: 'Unable to save strain',
+        });
       });
   };
 
@@ -274,7 +278,11 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
               else setReplacing(existing);
             })
             .catch((e) => {
-              toast.error(`Unable to save strain: ${getErrorMessage(e)}`);
+              toastDbError(e, {
+                action: 'add',
+                table: 'strains',
+                prefix: 'Unable to save strain',
+              });
             });
         }}
       >

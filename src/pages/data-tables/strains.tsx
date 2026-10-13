@@ -60,6 +60,8 @@ export default function StrainDataTable(): React.JSX.Element {
       <DataTableView
         title='Strains'
         dataName='strain'
+        tableName='strains'
+        keyFields={['name']}
         cols={cols}
         fields={fields}
         nameMapping={nameMapping}

@@ -76,6 +76,8 @@ export default function ConditionDataTable(): React.JSX.Element {
     <DataTableView
       title='Conditions'
       dataName='condition'
+      tableName='conditions'
+      keyFields={['name']}
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}

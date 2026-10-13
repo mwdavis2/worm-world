@@ -55,6 +55,8 @@ export default function StrainDataTable(): React.JSX.Element {
     <DataTableView
       title='Strain Alleles'
       dataName='strainAlleles'
+      tableName='strain_alleles'
+      keyFields={['strainName', 'alleleName']}
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}

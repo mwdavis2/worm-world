@@ -64,6 +64,8 @@ export default function GeneDataTable(): React.JSX.Element {
     <DataTableView
       title='Genes'
       dataName='gene'
+      tableName='genes'
+      keyFields={['sysName']}
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}

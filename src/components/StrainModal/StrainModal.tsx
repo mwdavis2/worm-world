@@ -1,6 +1,7 @@
 import { type Strain } from 'models/frontend/Strain/Strain';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
+import { toastDbError } from 'utils/showDbError';
 
 export interface StrainModalState {
   isOpen: boolean;
@@ -67,11 +68,14 @@ const StrainModal = (props: StrainModalProps): React.JSX.Element => {
                   strain
                     .save()
                     .then(() => toast.success('Saved strain'))
-                    .catch(() =>
-                      toast.error(
-                        'Unable to save strain. Make sure that this genotype has not already been saved under a different name.'
-                      )
-                    );
+                    .catch((e) => {
+                      toastDbError(e, {
+                        action: 'add',
+                        table: 'strains',
+                        label: strainNameInput,
+                        prefix: 'Unable to save strain',
+                      });
+                    });
                   props.setIsOpen(false);
                 }}
               >

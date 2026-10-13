@@ -22,6 +22,10 @@ export interface DataImportFormProps<T> {
   lockedFields?: Array<keyof T>;
   open?: boolean;
   onClose?: () => void;
+  // A problem with what was submitted, shown above the buttons; `onInput` is
+  // told whenever the user changes the form (or closes it), to clear it.
+  error?: string;
+  onInput?: () => void;
 }
 
 interface FieldsProps<T> {
@@ -139,6 +143,7 @@ const DataImportForm = <T,>(
     setFormKey((key) => key + 1);
     if (props.onClose !== undefined) props.onClose();
     else setFormOpen(false);
+    props.onInput?.();
   };
 
   const handleSubmit = (event: React.ChangeEvent<HTMLFormElement>): void => {
@@ -204,12 +209,17 @@ const DataImportForm = <T,>(
             {isEdit ? 'Edit ' + props.title.slice(0, -1) : 'New ' + props.title}
           </h2>
           <hr className='my-2' />
-          <form key={formKey} onSubmit={handleSubmit}>
+          <form key={formKey} onSubmit={handleSubmit} onChange={props.onInput}>
             <Fields
               fieldList={props.fields}
               initialValues={props.initialValues}
               lockedFields={props.lockedFields}
             ></Fields>
+            {props.error !== undefined && (
+              <p role='alert' className='mt-4 text-center text-error'>
+                {props.error}
+              </p>
+            )}
             <hr className='my-8' />
             <div className='flex w-full flex-row justify-center'>
               <input

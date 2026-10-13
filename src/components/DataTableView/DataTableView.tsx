@@ -6,11 +6,14 @@ import { type db_TableImport } from 'models/db/db_TableImport';
 import { type db_CascadeTable } from 'models/db/db_CascadeTable';
 import { type db_DependentRows } from 'models/db/db_DependentRows';
 import { deleteWithDependents, getDeleteImpact } from 'api/cascade';
-import { type FilterGroup } from 'models/db/filter/FilterGroup';
+import { type Filter } from 'models/db/filter/Filter';
+import { type FilterGroup, getDbBoolean } from 'models/db/filter/FilterGroup';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FaEdit as EditIcon } from 'react-icons/fa';
 import { getErrorMessage } from 'utils/getErrorMessage';
+import { duplicateSentence, type DbTableName } from 'utils/dbErrors';
+import { toastDbError } from 'utils/showDbError';
 import { getPreferences, setPreferences } from 'utils/preferences';
 import { beginImport, endImport } from 'utils/importGuard';
 import { summarizeTableImport } from 'utils/summarizeTableImport';
@@ -48,6 +51,13 @@ interface DataTableProps<T, K> {
   // Deletes every row in the table. When provided, a "Clear table" button
   // (with a confirmation showing the row count) is shown next to Import.
   clearTable?: () => Promise<void>;
+  // Which database table this page edits, so an error can say what a row is
+  // and what it points at.
+  tableName?: DbTableName;
+  // The columns that identify a row. With these, adding a row first checks
+  // that no row has the same key and says so beside the form, instead of
+  // writing and reporting a database error.
+  keyFields?: Array<keyof T>;
   // Names of the tables that must be cleared first because their rows
   // reference this one, used for a friendlier message when the delete is
   // refused by a foreign key.
@@ -123,21 +133,64 @@ const DataTableView = <T, K>(
     offset: (page ?? 0) * rowsPerPage,
   });
 
+  // A problem with the row being added, shown in the add form
+  const [addError, setAddError] = useState<string>();
+
+  // The name to show for a row in a message: its first key column's value
+  const labelOf = (record: T): string | undefined => {
+    const first = props.keyFields?.[0];
+    const value = first === undefined ? undefined : record[first];
+    return typeof value === 'string' && value !== '' ? value : undefined;
+  };
+
+  // Whether a row with the same key as `record` is already in the table
+  const keyExists = async (record: T): Promise<boolean> => {
+    const keyFields = props.keyFields ?? [];
+    if (keyFields.length === 0) return false;
+    const filters: Array<Array<[K, Filter]>> = keyFields.map((field) => {
+      const value = record[field];
+      const filter: Filter =
+        typeof value === 'boolean'
+          ? getDbBoolean(value)
+          : value === null || value === undefined
+          ? 'Null'
+          : { Equal: String(value) };
+      return [[props.nameMapping[field], filter]];
+    });
+    return (await props.getCountFilteredRecords({ filters, orderBy: [] })) > 0;
+  };
+
   const onRecordInsertionFormSubmission = (
     record: T,
     successCallback: () => void
   ): void => {
-    props
-      .insertRecord(record)
-      .then((resp) => {
-        successCallback();
-        refresh();
-      })
-      .catch((e) => {
-        toast.error(
-          'An error has occured when inserting data: ' + getErrorMessage(e)
-        );
-      });
+    setAddError(undefined);
+    void (async (): Promise<void> => {
+      if (props.tableName !== undefined && props.keyFields !== undefined) {
+        try {
+          if (await keyExists(record)) {
+            setAddError(duplicateSentence(props.tableName, labelOf(record)));
+            return;
+          }
+        } catch (e) {
+          // the check is a courtesy: if it fails, the insert still reports
+          console.error(e);
+        }
+      }
+      props
+        .insertRecord(record)
+        .then(() => {
+          successCallback();
+          refresh();
+        })
+        .catch((e) => {
+          toastDbError(e, {
+            action: 'add',
+            table: props.tableName,
+            label: labelOf(record),
+          });
+        });
+    })();
   };
 
   const onRecordEditSubmission = (
@@ -155,7 +208,11 @@ const DataTableView = <T, K>(
         refresh();
       })
       .catch((e) => {
-        toast.error('Unable to save changes: ' + getErrorMessage(e));
+        toastDbError(e, {
+          action: 'edit',
+          table: props.tableName,
+          label: labelOf(original),
+        });
       });
   };
 
@@ -173,7 +230,11 @@ const DataTableView = <T, K>(
         );
       refresh();
     } catch (e) {
-      toast.error(`Unable to delete record: ${getErrorMessage(e)}`);
+      toastDbError(e, {
+        action: 'delete',
+        table: props.tableName,
+        label: labelOf(record),
+      });
     }
   };
 
@@ -192,7 +253,11 @@ const DataTableView = <T, K>(
         setPendingDelete({ row, impact });
       })
       .catch((e) => {
-        toast.error(`Unable to delete record: ${getErrorMessage(e)}`);
+        toastDbError(e, {
+          action: 'delete',
+          table: props.tableName,
+          label: labelOf(row),
+        });
       });
   };
 
@@ -212,7 +277,11 @@ const DataTableView = <T, K>(
         );
       refresh();
     } catch (e) {
-      toast.error(`Unable to delete record: ${getErrorMessage(e)}`);
+      toastDbError(e, {
+        action: 'delete',
+        table: props.tableName,
+        label: labelOf(row),
+      });
     }
   };
 
@@ -238,9 +307,7 @@ const DataTableView = <T, K>(
       if (report.inserted === 0) toast.info(message);
       else toast.success(message);
     } catch (e) {
-      toast.error(
-        'An error has occured when importing data: ' + getErrorMessage(e)
-      );
+      toastDbError(e, { action: 'import', table: props.tableName });
     } finally {
       endImport();
     }
@@ -399,6 +466,10 @@ const DataTableView = <T, K>(
               dataName={props.dataName}
               fields={props.fields}
               onSubmit={onRecordInsertionFormSubmission}
+              error={addError}
+              onInput={() => {
+                setAddError(undefined);
+              }}
             />
           )}
           <button

@@ -85,6 +85,7 @@ export default function ExpressionRelationDataTable(): React.JSX.Element {
     <DataTableView
       title='Phenotype Relationships'
       dataName='expressionRelation'
+      tableName='expr_relations'
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}

@@ -56,6 +56,8 @@ export default function AlleleDataTable(): React.JSX.Element {
     <DataTableView
       title='Alleles'
       dataName='alleles'
+      tableName='alleles'
+      keyFields={['name']}
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}

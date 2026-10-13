@@ -58,6 +58,12 @@ export default function AlleleExpressionDataTable(): React.JSX.Element {
     <DataTableView
       title='Allele Phenotypes'
       dataName='alleleExpression'
+      tableName='allele_exprs'
+      keyFields={[
+        'alleleName',
+        'expressingPhenotypeName',
+        'expressingPhenotypeWild',
+      ]}
       cols={cols}
       fields={fields}
       nameMapping={nameMapping}

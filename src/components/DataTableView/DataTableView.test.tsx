@@ -404,3 +404,120 @@ describe('singularRows', () => {
     expect(singularRows(plural)).toBe(singular);
   });
 });
+
+describe('adding a row', () => {
+  // Reads the toast a failure shows (a sentence, or a sentence with Details)
+  const lastToastText = (): string => {
+    const content = (
+      toast.error as unknown as ReturnType<typeof vi.fn>
+    ).mock.calls.slice(-1)[0][0];
+    if (typeof content === 'string') return content;
+    const { container } = render(<>{content}</>);
+    return container.textContent ?? '';
+  };
+
+  const addRow = async (name: string): Promise<void> => {
+    await userEvent.click(await screen.findByText('Add New Thing'));
+    const dialog = within(
+      screen
+        .getByRole('heading', { name: 'New Things' })
+        .closest('.modal-box') as HTMLElement
+    );
+    await userEvent.type(dialog.getByLabelText('Name'), name);
+    await userEvent.click(
+      dialog.getByRole('button', { name: 'Insert Into Database' })
+    );
+  };
+
+  // 120 rows in all; a key check (an Equal filter) finds `existing` of them
+  const countWith =
+    (existing: number) =>
+    async (filter: unknown): Promise<number> =>
+      JSON.stringify(filter).includes('Equal') ? existing : 120;
+
+  test('a name already in the table is said beside the form, and nothing is written', async () => {
+    const insertRecord = vi.fn(async () => {});
+    renderTable({
+      insertRecord,
+      tableName: 'genes',
+      keyFields: ['name'],
+      getCountFilteredRecords: vi.fn(countWith(1)),
+    });
+    await addRow('dup');
+
+    expect(
+      await screen.findByText('A gene named "dup" already exists.')
+    ).toBeTruthy();
+    expect(insertRecord).not.toHaveBeenCalled();
+  });
+
+  test('the message goes away when the form is edited', async () => {
+    renderTable({
+      tableName: 'genes',
+      keyFields: ['name'],
+      getCountFilteredRecords: vi.fn(countWith(1)),
+    });
+    await addRow('dup');
+    await screen.findByText('A gene named "dup" already exists.');
+    const field = screen.getAllByLabelText('Name')[0];
+    await userEvent.type(field, 'x');
+    expect(screen.queryByText('A gene named "dup" already exists.')).toBeNull();
+  });
+
+  test('a new name is inserted', async () => {
+    const insertRecord = vi.fn(async () => {});
+    renderTable({
+      insertRecord,
+      tableName: 'genes',
+      keyFields: ['name'],
+      getCountFilteredRecords: vi.fn(countWith(0)),
+    });
+    await addRow('fresh');
+    await waitFor(() => {
+      expect(insertRecord).toHaveBeenCalledWith({ name: 'fresh' });
+    });
+  });
+
+  test('a database failure is a plain sentence with the original under Details', async () => {
+    const insertRecord = vi.fn(async () => {
+      // the backend rejects with an object, not an Error
+      // eslint-disable-next-line @typescript-eslint/no-throw-literal
+      throw {
+        Insert:
+          'error returned from database: (code: 787) FOREIGN KEY constraint failed',
+      };
+    });
+    renderTable({ insertRecord, tableName: 'alleles' });
+    await addRow('x');
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalled();
+    });
+    const text = lastToastText();
+    expect(text).toContain(
+      'The gene or variation does not exist. Add it first.'
+    );
+    expect(text).toContain('Details: error returned from database');
+  });
+
+  test('a failed delete says the row is still used', async () => {
+    const deleteRecord = vi.fn(async () => {
+      // the backend rejects with an object, not an Error
+      // eslint-disable-next-line @typescript-eslint/no-throw-literal
+      throw {
+        Delete:
+          'error returned from database: (code: 787) FOREIGN KEY constraint failed',
+      };
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderTable({ deleteRecord, tableName: 'alleles' });
+    // the trash cell is the last one in the row
+    const cell = (await screen.findByText('a')).closest('tr')?.lastElementChild;
+    await userEvent.click(cell as Element);
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalled();
+    });
+    expect(lastToastText()).toContain(
+      "Other rows still use this one, so it can't be deleted."
+    );
+  });
+});

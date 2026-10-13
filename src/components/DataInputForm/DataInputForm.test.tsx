@@ -342,4 +342,42 @@ describe('DataImportForm ', () => {
       expect(onSubmit.mock.calls[0][0].kind).toBeNull();
     });
   });
+
+  describe('a problem with what was submitted', () => {
+    const fields: Array<FieldType<{ name: string }>> = [
+      { name: 'name', title: 'Name', type: 'text' },
+    ];
+
+    test('is shown as an alert, and typing in the form reports the change', async () => {
+      user.setup();
+      const onInput = vi.fn();
+      render(
+        <DataImportForm
+          title='Things'
+          dataName='things'
+          fields={fields}
+          onSubmit={vi.fn()}
+          error='A thing named "x" already exists.'
+          onInput={onInput}
+        />
+      );
+      expect(screen.getByRole('alert').textContent).toBe(
+        'A thing named "x" already exists.'
+      );
+      await user.type(screen.getByLabelText('Name'), 'y');
+      expect(onInput).toHaveBeenCalled();
+    });
+
+    test('no alert is shown without one', () => {
+      render(
+        <DataImportForm
+          title='Things'
+          dataName='things'
+          fields={fields}
+          onSubmit={vi.fn()}
+        />
+      );
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+  });
 });
