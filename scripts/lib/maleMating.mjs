@@ -5,12 +5,14 @@
 // they all inherit the flag. Genes graded 1-10% or better (unc-29, unc-49,
 // unc-23's e611) are not marked, and genes with no mating text are left blank.
 // unc-5 is marked on the instructor's call: its only mating note (NO SUCCESS) is
-// on the double mutant unc-5(e53); nuc-1(e1392).
+// on the double mutant unc-5(e53); nuc-1(e1392). unc-119 is marked likewise (no
+// mating text in the CGC) on the instructor's call.
 export const MALE_MATING_DEFECTIVE_PHENOTYPES = new Set([
   'Unc-22',
   'Unc-23',
   'Unc-31',
   'Unc-36',
+  'Unc-119',
   'Unc-5',
   'Unc-52',
   'Unc-60',
