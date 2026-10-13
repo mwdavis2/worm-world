@@ -331,7 +331,7 @@ mod tests {
     }
 
     const VARIATIONS: &str = "alleleName,chromosome,physLoc,geneticLoc,recombSuppressorStart,recombSuppressorEnd,isLocationReference,percentLoss\nfiX1,X,1000,1.5,,,false,\n";
-    const PHENOTYPES: &str = "name,wild,short_name,description,male_mating,lethal,female_sterile,arrested,maturation_days\nFiPheno,0,FiPheno,,,0,,,\nFiPheno,1,FiPheno,,,,,,\n";
+    const PHENOTYPES: &str = "name,wild,short_name,description,male_mating,lethal,male_crossing_defective,female_crossing_defective,self_crossing_defective,him,arrested,maturation_days\nFiPheno,0,FiPheno,,,0,,,,,,\nFiPheno,1,FiPheno,,,,,,,,,\n";
     const ALLELES: &str = "name,contents,sysGeneName,variationName\nfiX1,,,fiX1\n";
     const ALLELE_EXPRS: &str =
         "alleleName,expressingPhenotypeName,expressingPhenotypeWild,dominance\nfiX1,FiPheno,0,4\n";

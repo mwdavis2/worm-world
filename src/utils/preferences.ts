@@ -18,6 +18,11 @@ export interface Preferences {
   dataTablePageSize: number;
   // How allele labels read on strain cards (an id from ALLELE_DISPLAY_MODES).
   alleleDisplayMode: string;
+  // When true, a phenotype's crossing effects (male / female / self crossing
+  // defective) no longer block a cross, so any cross can be forced.
+  ignoreCrossingEffects: boolean;
+  // Percent (1-99) of a Him hermaphrodite's self-cross children that are males.
+  himMalePercent: number;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -27,6 +32,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   textExportMode: 'text',
   dataTablePageSize: 50,
   alleleDisplayMode: DEFAULT_ALLELE_DISPLAY_MODE,
+  ignoreCrossingEffects: false,
+  himMalePercent: 33,
 };
 
 export const getPreferences = (): Preferences => {

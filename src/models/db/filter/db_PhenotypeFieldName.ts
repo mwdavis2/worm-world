@@ -7,7 +7,10 @@ export type PhenotypeFieldName =
   | 'Description'
   | 'MaleMating'
   | 'Lethal'
-  | 'FemaleSterile'
+  | 'MaleCrossingDefective'
+  | 'FemaleCrossingDefective'
+  | 'SelfCrossingDefective'
+  | 'Him'
   | 'Arrested'
   | 'MaturationDays'
   | 'Unused';

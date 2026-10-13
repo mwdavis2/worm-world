@@ -4,6 +4,7 @@ import { type AffectedTraits } from 'models/frontend/Phenotype/Phenotype';
 
 interface ICondition extends AffectedTraits {
   name: string;
+  femaleSterile?: boolean;
   description?: string;
 }
 

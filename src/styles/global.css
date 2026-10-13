@@ -86,6 +86,12 @@ html, body, #root {
   @apply -right-1 h-12 w-2  border-white rounded-sm bg-primary-focus opacity-50
 }
 
+/* A crossing rectangle blocked by a phenotype (male/female/self crossing
+   defective): black and not usable. Same specificity as the rules above, later. */
+.react-flow .strain-node .react-flow__handle.crossing-blocked {
+  @apply cursor-not-allowed bg-black opacity-100
+}
+
 /* The X/Self circle icon's handles are real drag-connect points (see
    Editor.tsx's onConnect/onConnectStart), so hide them with opacity rather
    than visibility - keeps them hit-testable/draggable, just invisible. */

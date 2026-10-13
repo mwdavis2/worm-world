@@ -7,7 +7,10 @@ export interface db_Phenotype {
   description: string | null;
   maleMating: number | null;
   lethal: boolean | null;
-  femaleSterile: boolean | null;
+  maleCrossingDefective: boolean | null;
+  femaleCrossingDefective: boolean | null;
+  selfCrossingDefective: boolean | null;
+  him: boolean | null;
   arrested: boolean | null;
   maturationDays: number | null;
 }

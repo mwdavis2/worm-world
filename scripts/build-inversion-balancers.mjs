@@ -254,7 +254,10 @@ const addPhenotype = (name, wild, lethal = '', flags = {}) => {
     description: '',
     male_mating: flags.maleMating ?? '',
     lethal,
-    female_sterile: flags.femaleSterile ?? '',
+    male_crossing_defective: flags.maleMating === 0 ? 1 : '',
+    female_crossing_defective: flags.sterile ?? '',
+    self_crossing_defective: flags.sterile ?? '',
+    him: '',
     arrested: '',
     maturation_days: '',
   });
@@ -368,7 +371,7 @@ CLASSICAL.forEach(([name, chr, [left, right], alleleName, lethal]) => {
 CLASSICAL_ALLELES.forEach(([allele, geneName, kind]) => {
   const gene = addGeneAllele(allele, geneName);
   if (kind === 'lof') addLossOfFunction(allele, gene);
-  else if (kind === 'sterile') addLossOfFunction(allele, gene, { femaleSterile: 1 });
+  else if (kind === 'sterile') addLossOfFunction(allele, gene, { sterile: 1 });
   else {
     addPhenotype('Let', 0, 1, { maleMating: 0 });
     addExpr(allele, 'Let', 0, LOF_DOMINANCE);
@@ -519,7 +522,7 @@ const write = (file, header, rows) => {
   console.log(`${file}: ${rows.length} rows`);
 };
 write('variations.csv', ['alleleName', 'chromosome', 'physLoc', 'geneticLoc', 'recombSuppressorStart', 'recombSuppressorEnd', 'isLocationReference', 'percentLoss'], variations);
-write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mating', 'lethal', 'female_sterile', 'arrested', 'maturation_days'], [...phenotypes.values()]);
+write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mating', 'lethal', 'male_crossing_defective', 'female_crossing_defective', 'self_crossing_defective', 'him', 'arrested', 'maturation_days'], [...phenotypes.values()]);
 write('alleles.csv', ['name', 'contents', 'sysGeneName', 'variationName'], alleles);
 write('allele_exprs.csv', ['alleleName', 'expressingPhenotypeName', 'expressingPhenotypeWild', 'dominance'], alleleExprs);
 write('expr_relations.csv', ['allele_name', 'expressing_phenotype_name', 'expressing_phenotype_wild', 'altering_phenotype_name', 'altering_phenotype_wild', 'altering_condition', 'is_suppressing'], exprRelations);

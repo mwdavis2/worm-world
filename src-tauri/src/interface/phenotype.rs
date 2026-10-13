@@ -19,7 +19,10 @@ impl InnerDbState {
                 description, 
                 male_mating,
                 lethal,
-                female_sterile,
+                male_crossing_defective,
+                female_crossing_defective,
+                self_crossing_defective,
+                him,
                 arrested,
                 maturation_days
             FROM phenotypes
@@ -52,7 +55,10 @@ impl InnerDbState {
                 description, 
                 male_mating,
                 lethal,
-                female_sterile,
+                male_crossing_defective,
+                female_crossing_defective,
+                self_crossing_defective,
+                him,
                 arrested,
                 maturation_days
             FROM phenotypes",
@@ -117,7 +123,10 @@ impl InnerDbState {
             p.description,
             p.male_mating,
             p.lethal,
-            p.female_sterile,
+            p.male_crossing_defective,
+            p.female_crossing_defective,
+            p.self_crossing_defective,
+            p.him,
             p.arrested,
             p.maturation_days
             FROM
@@ -154,14 +163,18 @@ impl InnerDbState {
     pub async fn update_phenotype(&self, phenotype: &Phenotype) -> Result<(), DbError> {
         match sqlx::query(
             "UPDATE phenotypes SET short_name = ?, description = ?, male_mating = ?,
-            lethal = ?, female_sterile = ?, arrested = ?, maturation_days = ?
+            lethal = ?, male_crossing_defective = ?, female_crossing_defective = ?,
+            self_crossing_defective = ?, him = ?, arrested = ?, maturation_days = ?
             WHERE name = ? AND wild = ?",
         )
         .bind(&phenotype.short_name)
         .bind(&phenotype.description)
         .bind(phenotype.male_mating)
         .bind(phenotype.lethal)
-        .bind(phenotype.female_sterile)
+        .bind(phenotype.male_crossing_defective)
+        .bind(phenotype.female_crossing_defective)
+        .bind(phenotype.self_crossing_defective)
+        .bind(phenotype.him)
         .bind(phenotype.arrested)
         .bind(phenotype.maturation_days)
         .bind(&phenotype.name)
@@ -183,8 +196,8 @@ impl InnerDbState {
 
     pub async fn insert_phenotype(&self, phenotype: &Phenotype) -> Result<(), DbError> {
         match sqlx::query!(
-            "INSERT INTO phenotypes (name, wild, short_name, description, male_mating, lethal, female_sterile, arrested, maturation_days)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "INSERT INTO phenotypes (name, wild, short_name, description, male_mating, lethal, male_crossing_defective, female_crossing_defective, self_crossing_defective, him, arrested, maturation_days)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ",
             phenotype.name,
             phenotype.wild,
@@ -192,7 +205,10 @@ impl InnerDbState {
             phenotype.description,
             phenotype.male_mating,
             phenotype.lethal,
-            phenotype.female_sterile,
+            phenotype.male_crossing_defective,
+            phenotype.female_crossing_defective,
+            phenotype.self_crossing_defective,
+            phenotype.him,
             phenotype.arrested,
             phenotype.maturation_days,
         )
@@ -232,12 +248,12 @@ impl InnerDbState {
                 bulk.errors[0].1
             )));
         }
-        let bind_limit = SQLITE_BIND_LIMIT / 9;
+        let bind_limit = SQLITE_BIND_LIMIT / 12;
         let mut data = bulk.data.into_iter().peekable();
         while data.peek().is_some() {
             let chunk = data.by_ref().take(bind_limit - 1).collect::<Vec<_>>();
             let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-                "INSERT OR IGNORE INTO phenotypes (name, wild, short_name, description, male_mating, lethal, female_sterile, arrested, maturation_days) "
+                "INSERT OR IGNORE INTO phenotypes (name, wild, short_name, description, male_mating, lethal, male_crossing_defective, female_crossing_defective, self_crossing_defective, him, arrested, maturation_days) "
             );
             if chunk.len() > bind_limit {
                 return Err(DbError::BulkInsert(format!(
@@ -252,7 +268,10 @@ impl InnerDbState {
                     .push_bind(item.description)
                     .push_bind(item.male_mating)
                     .push_bind(item.lethal)
-                    .push_bind(item.female_sterile)
+                    .push_bind(item.male_crossing_defective)
+                    .push_bind(item.female_crossing_defective)
+                    .push_bind(item.self_crossing_defective)
+                    .push_bind(item.him)
                     .push_bind(item.arrested)
                     .push_bind(item.maturation_days);
             });
@@ -496,7 +515,10 @@ mod test {
             description: None,
             male_mating: Some(0),
             lethal: Some(true),
-            female_sterile: Some(true),
+            male_crossing_defective: None,
+            female_crossing_defective: Some(true),
+            self_crossing_defective: Some(true),
+            him: None,
             arrested: Some(true),
             maturation_days: Some(4.0),
         };
@@ -511,10 +533,10 @@ mod test {
     #[sqlx::test]
     async fn test_insert_phenotypes(pool: Pool<Sqlite>) -> Result<()> {
         let state = InnerDbState { conn_pool: pool };
-        let csv_str = "name,wild,short_name,description,male_mating,lethal,female_sterile,arrested,maturation_days
-unc-18,1,unc,,,,,,
-unc-31,0,unc,,,,,,
-unc-5,0,unc,,0,0,0,0,4"
+        let csv_str = "name,wild,short_name,description,male_mating,lethal,male_crossing_defective,female_crossing_defective,self_crossing_defective,him,arrested,maturation_days
+unc-18,1,unc,,,,,,,,,
+unc-31,0,unc,,,,,,,,,
+unc-5,0,unc,,0,0,0,0,0,0,0,4"
             .as_bytes();
         let buf = BufReader::new(csv_str);
         let mut reader = csv::ReaderBuilder::new().has_headers(true).from_reader(buf);
@@ -529,7 +551,10 @@ unc-5,0,unc,,0,0,0,0,4"
                 description: None,
                 male_mating: None,
                 lethal: None,
-                female_sterile: None,
+                male_crossing_defective: None,
+                female_crossing_defective: None,
+                self_crossing_defective: None,
+                him: None,
                 arrested: None,
                 maturation_days: None,
             },
@@ -540,7 +565,10 @@ unc-5,0,unc,,0,0,0,0,4"
                 description: None,
                 male_mating: None,
                 lethal: None,
-                female_sterile: None,
+                male_crossing_defective: None,
+                female_crossing_defective: None,
+                self_crossing_defective: None,
+                him: None,
                 arrested: None,
                 maturation_days: None,
             },
@@ -551,7 +579,10 @@ unc-5,0,unc,,0,0,0,0,4"
                 description: None,
                 male_mating: Some(0),
                 lethal: Some(false),
-                female_sterile: Some(false),
+                male_crossing_defective: Some(false),
+                female_crossing_defective: Some(false),
+                self_crossing_defective: Some(false),
+                him: Some(false),
                 arrested: Some(false),
                 maturation_days: Some(4.0),
             },

@@ -94,7 +94,10 @@ describe('persistPhenotypeRows', () => {
           description: null,
           maleMating: null,
           lethal: true,
-          femaleSterile: null,
+          maleCrossingDefective: null,
+          femaleCrossingDefective: null,
+          selfCrossingDefective: null,
+          him: null,
           arrested: null,
           maturationDays: null,
         };
@@ -121,7 +124,10 @@ describe('persistPhenotypeRows', () => {
           description: null,
           maleMating: null,
           lethal: false,
-          femaleSterile: null,
+          maleCrossingDefective: null,
+          femaleCrossingDefective: null,
+          selfCrossingDefective: null,
+          him: null,
           arrested: null,
           maturationDays: null,
         };
@@ -309,5 +315,73 @@ describe('persistPhenotypeRows', () => {
     setupIPC();
     await persistPhenotypeRows('ed3', [baseRow({ name: 'unc-119(+)' })]);
     expect(calls.some((c) => c.cmd === 'insert_expr_relation')).toBe(false);
+  });
+
+  describe('crossing effects', () => {
+    const existingPhenotype = (
+      overrides: Partial<db_Phenotype>
+    ): db_Phenotype => ({
+      name: 'Unc',
+      wild: false,
+      shortName: 'Unc',
+      description: null,
+      maleMating: null,
+      lethal: false,
+      maleCrossingDefective: null,
+      femaleCrossingDefective: null,
+      selfCrossingDefective: null,
+      him: null,
+      arrested: null,
+      maturationDays: null,
+      ...overrides,
+    });
+
+    test('ticked effects are saved on a new Phenotype, the rest as off', async () => {
+      setupIPC();
+      await persistPhenotypeRows('ed3', [
+        baseRow({ femaleCrossingDefective: true, him: true }),
+      ]);
+      const insert = calls.find((c) => c.cmd === 'insert_phenotype');
+      expect(insert?.payload).toMatchObject({
+        phenotype: {
+          maleCrossingDefective: false,
+          femaleCrossingDefective: true,
+          selfCrossingDefective: false,
+          him: true,
+        },
+      });
+    });
+
+    test('an existing Phenotype with blank effects matches a row with none ticked', async () => {
+      setupIPC((cmd) =>
+        cmd === 'get_filtered_phenotypes'
+          ? [existingPhenotype({})]
+          : NOT_HANDLED
+      );
+      await persistPhenotypeRows('ed3', [baseRow({})]);
+      expect(calls.some((c) => c.cmd === 'insert_phenotype')).toBe(false);
+      expect(calls.some((c) => c.cmd === 'insert_allele_expr')).toBe(true);
+    });
+
+    test('a ticked effect the existing Phenotype does not have is a clear conflict', async () => {
+      setupIPC((cmd) =>
+        cmd === 'get_filtered_phenotypes'
+          ? [existingPhenotype({})]
+          : NOT_HANDLED
+      );
+      await expect(
+        persistPhenotypeRows('ed3', [baseRow({ selfCrossingDefective: true })])
+      ).rejects.toThrow(/Self crossing defective/);
+    });
+
+    test('rows of one phenotype that disagree on an effect are refused', async () => {
+      setupIPC();
+      await expect(
+        persistPhenotypeRows('ed3', [
+          baseRow({ id: 'a', relationshipText: '' }),
+          baseRow({ id: 'b', him: true }),
+        ])
+      ).rejects.toThrow(/conflicting "Him/);
+    });
   });
 });

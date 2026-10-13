@@ -107,7 +107,10 @@ async fn update_condition_and_phenotype(pool: Pool<Sqlite>) {
         description: None,
         male_mating: None,
         lethal: Some(true),
-        female_sterile: None,
+        male_crossing_defective: None,
+        female_crossing_defective: None,
+        self_crossing_defective: None,
+        him: None,
         arrested: None,
         maturation_days: None,
     };

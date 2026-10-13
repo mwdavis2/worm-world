@@ -14,8 +14,13 @@ pub struct Phenotype {
     #[serde(rename = "maleMating")]
     pub male_mating: Option<i32>,
     pub lethal: Option<bool>,
-    #[serde(rename = "femaleSterile")]
-    pub female_sterile: Option<bool>,
+    #[serde(rename = "maleCrossingDefective")]
+    pub male_crossing_defective: Option<bool>,
+    #[serde(rename = "femaleCrossingDefective")]
+    pub female_crossing_defective: Option<bool>,
+    #[serde(rename = "selfCrossingDefective")]
+    pub self_crossing_defective: Option<bool>,
+    pub him: Option<bool>,
     pub arrested: Option<bool>,
     #[serde(rename = "maturationDays")]
     pub maturation_days: Option<f64>,
@@ -33,7 +38,10 @@ impl From<PhenotypeDb> for Phenotype {
             description: item.description,
             male_mating: item.male_mating.map(|v| v as i32),
             lethal: item.lethal.map(|v| v == 1),
-            female_sterile: item.female_sterile.map(|v| v == 1),
+            male_crossing_defective: item.male_crossing_defective.map(|v| v == 1),
+            female_crossing_defective: item.female_crossing_defective.map(|v| v == 1),
+            self_crossing_defective: item.self_crossing_defective.map(|v| v == 1),
+            him: item.him.map(|v| v == 1),
             arrested: item.arrested.map(|v| v == 1),
             maturation_days: item.maturation_days,
         }
@@ -51,7 +59,13 @@ pub struct PhenotypeDb {
     // bool
     pub lethal: Option<i64>,
     // bool
-    pub female_sterile: Option<i64>,
+    pub male_crossing_defective: Option<i64>,
+    // bool
+    pub female_crossing_defective: Option<i64>,
+    // bool
+    pub self_crossing_defective: Option<i64>,
+    // bool
+    pub him: Option<i64>,
     // bool
     pub arrested: Option<i64>,
     pub maturation_days: Option<f64>,
@@ -66,7 +80,10 @@ pub enum PhenotypeFieldName {
     Description,
     MaleMating,
     Lethal,
-    FemaleSterile,
+    MaleCrossingDefective,
+    FemaleCrossingDefective,
+    SelfCrossingDefective,
+    Him,
     Arrested,
     MaturationDays,
     /// Virtual column: true when no allele expression, relation or conversion driver uses the phenotype (filter it with `Filter::True`)
@@ -85,7 +102,10 @@ impl FieldNameEnum for PhenotypeFieldName {
             PhenotypeFieldName::Description => "description".to_owned(),
             PhenotypeFieldName::MaleMating => "male_mating".to_owned(),
             PhenotypeFieldName::Lethal => "lethal".to_owned(),
-            PhenotypeFieldName::FemaleSterile => "female_sterile".to_owned(),
+            PhenotypeFieldName::MaleCrossingDefective => "male_crossing_defective".to_owned(),
+            PhenotypeFieldName::FemaleCrossingDefective => "female_crossing_defective".to_owned(),
+            PhenotypeFieldName::SelfCrossingDefective => "self_crossing_defective".to_owned(),
+            PhenotypeFieldName::Him => "him".to_owned(),
             PhenotypeFieldName::Arrested => "arrested".to_owned(),
             PhenotypeFieldName::MaturationDays => "maturation_days".to_owned(),
             PhenotypeFieldName::Unused => UNUSED_PHENOTYPE_SQL.to_owned(),

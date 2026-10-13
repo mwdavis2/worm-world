@@ -276,7 +276,7 @@ impl InnerDbState {
             .filter_map(|r| r.altering_condition.clone())
             .collect();
         let phenotypes: Vec<PhenotypeDb> = sqlx::query_as(
-            "SELECT name, wild, short_name, description, male_mating, lethal, female_sterile, arrested, maturation_days FROM phenotypes ORDER BY rowid",
+            "SELECT name, wild, short_name, description, male_mating, lethal, male_crossing_defective, female_crossing_defective, self_crossing_defective, him, arrested, maturation_days FROM phenotypes ORDER BY rowid",
         )
         .fetch_all(&self.conn_pool)
         .await

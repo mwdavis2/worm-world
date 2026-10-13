@@ -113,7 +113,7 @@ const FAMILIES = [
 
 // Phenotypes named in the variants (gene phenotypes follow the existing
 // convention: the gene name, with a short name). `lethal`/`sterile` flags map
-// to the lethal / female_sterile columns.
+// to the lethal / female and self crossing defective columns.
 const PHENOTYPES = {
   'unc-36': { short: 'unc' },
   'him-5': { short: 'him' },
@@ -124,7 +124,7 @@ const PHENOTYPES = {
   'unc-29': { short: 'unc' },
   'unc(n754dm)': { short: 'unc' },
   Vul: { short: 'Vul', maleMating: 0 },
-  sterile: { short: 'sterile', femaleSterile: 1 },
+  sterile: { short: 'sterile', sterile: 1 },
   'pharyngeal GFP': { short: 'GFP(pharynx)' },
   GFP: { short: 'GFP' },
 };
@@ -335,7 +335,10 @@ const addPhenotype = (name, wild, extra = {}) => {
     description: extra.description ?? '',
     male_mating: extra.maleMating ?? 3,
     lethal: extra.lethal ?? 0,
-    female_sterile: extra.femaleSterile ?? 0,
+    male_crossing_defective: (extra.maleMating ?? 3) === 0 ? 1 : '',
+    female_crossing_defective: extra.sterile ?? 0,
+    self_crossing_defective: extra.sterile ?? 0,
+    him: '',
     arrested: 0,
     maturation_days: extra.lethal ? '' : 3.0,
   });
@@ -506,7 +509,7 @@ const write = (file, header, rows) => {
   console.log(`${file}: ${rows.length} rows`);
 };
 write('variations.csv', ['alleleName', 'chromosome', 'physLoc', 'geneticLoc', 'recombSuppressorStart', 'recombSuppressorEnd', 'isLocationReference', 'percentLoss'], variations);
-write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mating', 'lethal', 'female_sterile', 'arrested', 'maturation_days'], [...phenotypeRows.values()]);
+write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mating', 'lethal', 'male_crossing_defective', 'female_crossing_defective', 'self_crossing_defective', 'him', 'arrested', 'maturation_days'], [...phenotypeRows.values()]);
 write('alleles.csv', ['name', 'contents', 'sysGeneName', 'variationName'], alleles);
 write('allele_exprs.csv', ['alleleName', 'expressingPhenotypeName', 'expressingPhenotypeWild', 'dominance'], alleleExprs);
 write('expr_relations.csv', ['allele_name', 'expressing_phenotype_name', 'expressing_phenotype_wild', 'altering_phenotype_name', 'altering_phenotype_wild', 'altering_condition', 'is_suppressing'], exprRelations);

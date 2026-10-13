@@ -71,7 +71,9 @@ const phenotypes = new Map<string, Phenotype>(
       shortName: row.short_name,
       wild: row.wild === '1',
       lethal: row.lethal === '1',
-      femaleSterile: row.female_sterile === '1',
+      maleCrossingDefective: row.male_crossing_defective === '1',
+      femaleCrossingDefective: row.female_crossing_defective === '1',
+      selfCrossingDefective: row.self_crossing_defective === '1',
     }),
   ])
 );

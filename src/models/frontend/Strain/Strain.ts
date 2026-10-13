@@ -30,10 +30,15 @@ import {
 } from 'models/frontend/ChromosomePair/ChromosomePair';
 import { chromosomes } from 'models/frontend/Chromosome';
 import {
+  FEMALE_CROSSING_DEFECTIVE,
   HERMAPHRODITE,
+  HIM,
   LETHAL,
   MALE,
+  MALE_CROSSING_DEFECTIVE,
+  NO_CROSSING_EFFECTS,
   NON_LETHAL,
+  SELF_CROSSING_DEFECTIVE,
   type StrainFilter,
 } from 'models/frontend/StrainFilter/StrainFilter';
 
@@ -53,6 +58,11 @@ export interface CrossContext {
   thisPhenotypes?: ReadonlySet<string>;
   /** What the strain it is crossed with expresses */
   otherPhenotypes?: ReadonlySet<string>;
+  /**
+   * For a self cross of a Him hermaphrodite: the fraction (0-1) of the
+   * children that are males (an X-less sperm fertilizing an egg)
+   */
+  selfHimMaleFraction?: number;
 }
 
 /** A parent with this many germline variants or more is too tangled to cross */
@@ -108,6 +118,10 @@ interface IStrain {
   filteredProbability?: number;
   // Stored card info (see refreshCardInfo), carried over when a card is copied
   lethal?: boolean;
+  maleCrossingDefective?: boolean;
+  femaleCrossingDefective?: boolean;
+  selfCrossingDefective?: boolean;
+  him?: boolean;
   exprPhenotypeNames?: string[];
   hermXPair?: ChromosomePair;
 }
@@ -151,6 +165,14 @@ export class Strain {
   // isLethal). Stored rather than recomputed at render time because
   // StrainCard has neither of those inputs. Undefined until first resolved.
   public lethal?: boolean;
+  // Crossing effects of the phenotypes this genotype expresses, resolved
+  // alongside `lethal` (see refreshCardInfo): the card's left (male), right
+  // (female) and bottom (self) crossing rectangles are blocked, and a Him
+  // hermaphrodite makes males when selfed. Undefined until first resolved.
+  public maleCrossingDefective?: boolean;
+  public femaleCrossingDefective?: boolean;
+  public selfCrossingDefective?: boolean;
+  public him?: boolean;
   // Short names of the non-wild phenotypes this genotype expresses, as last
   // resolved alongside `lethal` (see refreshCardInfo). Shown on the card.
   public exprPhenotypeNames?: string[];
@@ -208,6 +230,10 @@ export class Strain {
     // Copying a card (clone, marking it a parent, ...) must not blank what it
     // displays; whatever changes the genotype refreshes it again
     this.lethal = params.lethal;
+    this.maleCrossingDefective = params.maleCrossingDefective;
+    this.femaleCrossingDefective = params.femaleCrossingDefective;
+    this.selfCrossingDefective = params.selfCrossingDefective;
+    this.him = params.him;
     this.exprPhenotypeNames = params.exprPhenotypeNames;
     this.hermXPair = params.hermXPair;
 
@@ -294,13 +320,22 @@ export class Strain {
       filter.sex.size === 0 ||
       filter.sex.has(this.sex === Sex.Male ? MALE : HERMAPHRODITE);
 
+    const passesCrossing =
+      filter.crossing.size === 0 ||
+      this.crossingEffectGroups(
+        parentAlleles,
+        filter.activeConditions,
+        motherPhenotypes
+      ).some((group) => filter.crossing.has(group));
+
     return (
       passesAlleleNames &&
       passesReqConds &&
       passesSupConds &&
       passesExprPhens &&
       passesViability &&
-      passesSex
+      passesSex &&
+      passesCrossing
     );
   }
 
@@ -734,11 +769,14 @@ export class Strain {
    * @returns Permuted list of all possible strains and their respective probabilities
    */
   public async selfCross(
-    parentPhenotypes?: ReadonlySet<string>
+    parentPhenotypes?: ReadonlySet<string>,
+    himMaleFraction?: number
   ): Promise<Strain[]> {
     return await this.crossWith(this, {
       thisPhenotypes: parentPhenotypes,
       otherPhenotypes: parentPhenotypes,
+      // only a Him hermaphrodite makes males when selfed
+      selfHimMaleFraction: this.him === true ? himMaleFraction : undefined,
     });
   }
 
@@ -772,6 +810,7 @@ export class Strain {
       context.otherPhenotypes,
       products
     );
+    const himFraction = context.selfHimMaleFraction ?? 0;
     const children = variants1.flatMap((v1) => {
       const gametes1 = v1.strain.meiosis();
       return variants2.flatMap((v2) => {
@@ -779,12 +818,27 @@ export class Strain {
           v1.strain.chromPairMap.get('Ex'),
           v2.strain.chromPairMap.get('Ex')
         );
-        return Strain.buildChildren(
+        const weight = v1.prob * v2.prob;
+        const gametes2 = v2.strain.meiosis();
+        const normal = Strain.buildChildren(
           gametes1,
-          v2.strain.meiosis(),
+          gametes2,
           exOptions,
-          v1.prob * v2.prob
+          weight * (1 - himFraction)
         );
+        if (himFraction <= 0) return normal;
+        // Him: that share of the children come from a sperm without an X, so
+        // they are males (one X, from the egg)
+        const males = Strain.buildChildren(
+          gametes1,
+          v2.strain.withoutX(gametes2),
+          exOptions,
+          weight * himFraction
+        );
+        males.forEach((male) => {
+          male.sex = Sex.Male;
+        });
+        return [...normal, ...males];
       });
     });
     return await Strain.finishChildren(children);
@@ -916,6 +970,25 @@ export class Strain {
         })
       )
     );
+  }
+
+  /**
+   * `gametes` (this strain's own, from `meiosis`) with the X replaced by an
+   * absent X: sperm that carry no X. A strain with no X chromosome pair has
+   * nothing to replace (its males are told apart by their sex alone).
+   */
+  private withoutX(gametes: Gamete[]): Gamete[] {
+    const xIndex = Array.from(this.chromPairMap.keys())
+      .filter((chromName) => chromName !== 'Ex')
+      .sort(cmpChromName)
+      .indexOf('X');
+    if (xIndex < 0) return gametes;
+    return gametes.map((gamete) => ({
+      prob: gamete.prob,
+      chromosomes: gamete.chromosomes.map((chrom, idx) =>
+        idx === xIndex ? chrom.map((allele) => allele.toAbsent()) : chrom
+      ),
+    }));
   }
 
   /** Merges equal children, drops the impossible ones, orders them by probability and names them after saved strains */
@@ -1331,6 +1404,16 @@ export class Strain {
       motherPhenotypes
     );
     this.lethal = expressed.some((phen) => phen.lethal === true);
+    this.maleCrossingDefective = expressed.some(
+      (phen) => phen.maleCrossingDefective === true
+    );
+    this.femaleCrossingDefective = expressed.some(
+      (phen) => phen.femaleCrossingDefective === true
+    );
+    this.selfCrossingDefective = expressed.some(
+      (phen) => phen.selfCrossingDefective === true
+    );
+    this.him = expressed.some((phen) => phen.him === true);
     this.exprPhenotypeNames = [
       ...new Set(
         expressed
@@ -1338,6 +1421,33 @@ export class Strain {
           .map((phen) => (phen.shortName === '' ? phen.name : phen.shortName))
       ),
     ];
+  }
+
+  /**
+   * The crossing-effect groups this genotype is in (see
+   * `StrainFilter.crossing`): each effect a currently-expressed phenotype has,
+   * or NO_CROSSING_EFFECTS when it has none.
+   */
+  public crossingEffectGroups(
+    parentAlleles: Allele[] = [],
+    activeConditions = new Set<string>(),
+    motherPhenotypes?: ReadonlySet<string>
+  ): string[] {
+    const expressed = this.getExprPhenotypes(
+      parentAlleles,
+      activeConditions,
+      motherPhenotypes
+    );
+    const groups = [
+      expressed.some((phen) => phen.maleCrossingDefective === true) &&
+        MALE_CROSSING_DEFECTIVE,
+      expressed.some((phen) => phen.femaleCrossingDefective === true) &&
+        FEMALE_CROSSING_DEFECTIVE,
+      expressed.some((phen) => phen.selfCrossingDefective === true) &&
+        SELF_CROSSING_DEFECTIVE,
+      expressed.some((phen) => phen.him === true) && HIM,
+    ].filter((group): group is string => group !== false);
+    return groups.length > 0 ? groups : [NO_CROSSING_EFFECTS];
   }
 
   /** True if any currently-expressed phenotype is flagged lethal. */

@@ -5,7 +5,14 @@ export interface AffectedTraits {
   /** How well the male can mate. 3 denotes max mating capabilities, 0 states worm is incabable of mating  */
   maleMating?: number;
   lethal?: boolean;
-  femaleSterile?: boolean;
+  /** Crossing effects: a strain expressing this cannot be used as the male parent of a cross (left rectangle) */
+  maleCrossingDefective?: boolean;
+  /** ...cannot be the hermaphrodite parent of a mated cross (right rectangle) */
+  femaleCrossingDefective?: boolean;
+  /** ...cannot self (bottom rectangle) */
+  selfCrossingDefective?: boolean;
+  /** A hermaphrodite expressing this produces males from a self cross */
+  him?: boolean;
   /** Worm maturation is stunted */
   arrested?: boolean;
   /** Generational time for to be ready to breed */
@@ -26,7 +33,10 @@ export class Phenotype {
   description?: string;
   maleMating?: number;
   lethal?: boolean;
-  femaleSterile?: boolean;
+  maleCrossingDefective?: boolean;
+  femaleCrossingDefective?: boolean;
+  selfCrossingDefective?: boolean;
+  him?: boolean;
   arrested?: boolean;
   maturationDays?: number;
 
@@ -43,7 +53,10 @@ export class Phenotype {
       maleMating:
         record.maleMating !== null ? Number(record.maleMating) : undefined,
       lethal: record.lethal ?? undefined,
-      femaleSterile: record.femaleSterile ?? undefined,
+      maleCrossingDefective: record.maleCrossingDefective ?? undefined,
+      femaleCrossingDefective: record.femaleCrossingDefective ?? undefined,
+      selfCrossingDefective: record.selfCrossingDefective ?? undefined,
+      him: record.him ?? undefined,
       arrested: record.arrested ?? undefined,
       maturationDays: record.maturationDays ?? undefined,
     });
@@ -58,7 +71,10 @@ export class Phenotype {
       description: this.description ?? null,
       maleMating: this.maleMating !== undefined ? this.maleMating : null,
       lethal: this.lethal ?? null,
-      femaleSterile: this.femaleSterile ?? null,
+      maleCrossingDefective: this.maleCrossingDefective ?? null,
+      femaleCrossingDefective: this.femaleCrossingDefective ?? null,
+      selfCrossingDefective: this.selfCrossingDefective ?? null,
+      him: this.him ?? null,
       arrested: this.arrested ?? null,
       maturationDays: this.maturationDays ?? null,
     };

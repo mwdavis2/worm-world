@@ -121,6 +121,15 @@ export const StrainFilterModal = (
             filter={props.filter}
             updateFilter={props.updateFilter}
           />
+          <FilterList
+            title='Filter by crossing effects'
+            filterId={props.filterId}
+            options={options.crossing}
+            field='crossing'
+            matchesAny
+            filter={props.filter}
+            updateFilter={props.updateFilter}
+          />
           <ActiveConditionsList
             options={options.activeConditions}
             filterId={props.filterId}

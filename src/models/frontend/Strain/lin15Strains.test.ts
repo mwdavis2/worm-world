@@ -197,7 +197,9 @@ const phenotypes = new Map<string, Phenotype>(
       shortName: row.short_name,
       wild: row.wild === '1',
       lethal: row.lethal === '1',
-      femaleSterile: row.female_sterile === '1',
+      maleCrossingDefective: row.male_crossing_defective === '1',
+      femaleCrossingDefective: row.female_crossing_defective === '1',
+      selfCrossingDefective: row.self_crossing_defective === '1',
     }),
   ])
 );
@@ -460,7 +462,9 @@ describe('the alleles that had no phenotype', () => {
   });
 
   test('hd43 is female sterile and e1415 (unlike e1282) is not temperature sensitive', () => {
-    expect(phenotypeOf('Fbl-1', '0').femaleSterile).toBe(true);
+    expect(phenotypeOf('Fbl-1', '0').femaleCrossingDefective).toBe(true);
+    expect(phenotypeOf('Fbl-1', '0').selfCrossingDefective).toBe(true);
+    expect(phenotypeOf('Fbl-1', '0').maleCrossingDefective).toBe(false);
     const only = (allele: string): Strain =>
       new Strain({ allelePairs: [alleles.get(allele)?.toHomo() as never] });
     expect(nonWildNames(only('e1415'), [])).toContain('Dpy-20');

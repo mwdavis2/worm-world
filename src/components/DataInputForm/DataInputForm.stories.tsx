@@ -179,8 +179,8 @@ const phenotypeFields: FieldType<db_Phenotype>[] = [
     type: 'boolean',
   },
   {
-    name: 'femaleSterile',
-    title: 'Female Sterile',
+    name: 'femaleCrossingDefective',
+    title: 'Female Crossing Defective',
     type: 'boolean',
   },
   {

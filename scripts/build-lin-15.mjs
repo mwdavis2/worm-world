@@ -56,7 +56,7 @@ const MARKER_ALLELES = [
   ['md299', 'unc-18'],
   // already in the database without a phenotype (BT14 uses e138 and hd43)
   ['e138', 'unc-24'],
-  ['hd43', 'fbl-1', '', { femaleSterile: 1 }],
+  ['hd43', 'fbl-1', '', { sterile: 1 }],
   ['e1415', 'dpy-20'], // not temperature sensitive, unlike e1282
 ];
 // Alleles that already exist (data/balancer_alleles, data/translocations or the
@@ -177,7 +177,10 @@ const phenotype = (name, wild, lethal, flags = {}) => ({
   description: '',
   male_mating: '',
   lethal,
-  female_sterile: flags.femaleSterile ?? '',
+  male_crossing_defective: '',
+  female_crossing_defective: flags.sterile ?? '',
+  self_crossing_defective: flags.sterile ?? '',
+  him: '',
   arrested: '',
   maturation_days: '',
 });
@@ -469,7 +472,7 @@ const write = (file, header, rows) => {
 write('variations.csv', ['alleleName', 'chromosome', 'physLoc', 'geneticLoc', 'recombSuppressorStart', 'recombSuppressorEnd', 'isLocationReference', 'percentLoss'], variations);
 // two alleles of one gene (e53 and ox171) ask for the same phenotype rows
 const uniquePhenotypes = [...new Map(phenotypes.map((p) => [`${p.name}|${p.wild}`, p])).values()];
-write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mating', 'lethal', 'female_sterile', 'arrested', 'maturation_days'], uniquePhenotypes);
+write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mating', 'lethal', 'male_crossing_defective', 'female_crossing_defective', 'self_crossing_defective', 'him', 'arrested', 'maturation_days'], uniquePhenotypes);
 write('alleles.csv', ['name', 'contents', 'sysGeneName', 'variationName'], alleles);
 write('allele_exprs.csv', ['alleleName', 'expressingPhenotypeName', 'expressingPhenotypeWild', 'dominance'], alleleExprs);
 write('expr_relations.csv', ['allele_name', 'expressing_phenotype_name', 'expressing_phenotype_wild', 'altering_phenotype_name', 'altering_phenotype_wild', 'altering_condition', 'is_suppressing'], exprRelations);

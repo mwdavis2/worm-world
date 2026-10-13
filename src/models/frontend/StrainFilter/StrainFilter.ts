@@ -17,6 +17,13 @@ export const NON_LETHAL = 'Non-lethal';
 // Members of IStrainFilter.sex. A child is in exactly one.
 export const HERMAPHRODITE = 'Hermaphrodite';
 export const MALE = 'Male';
+// Members of IStrainFilter.crossing: the crossing effects a child expresses
+// (it can have several), or NO_CROSSING_EFFECTS when it has none.
+export const MALE_CROSSING_DEFECTIVE = 'Male crossing defective';
+export const FEMALE_CROSSING_DEFECTIVE = 'Female crossing defective';
+export const SELF_CROSSING_DEFECTIVE = 'Self crossing defective';
+export const HIM = 'Him';
+export const NO_CROSSING_EFFECTS = 'No crossing effects';
 export interface IStrainFilter {
   alleleNames: Set<string>;
   exprPhenotypes: Set<string>;
@@ -42,6 +49,10 @@ export interface IStrainFilter {
   // children (a male has his mother's X alone) are there but hidden until asked
   // for; JSON saved before this existed loads empty.
   sex: Set<string>;
+  // Narrows to children with any of the listed crossing effects (or none, for
+  // NO_CROSSING_EFFECTS); empty means no narrowing, which is also where a new
+  // cross starts - unlike viability, no effect is hidden by default.
+  crossing: Set<string>;
 }
 
 export class StrainFilter implements IStrainFilter {
@@ -71,6 +82,9 @@ export class StrainFilter implements IStrainFilter {
   @Transform((data: any) => new Set(data?.obj?.sex))
   public sex = new Set<string>([HERMAPHRODITE]);
 
+  @Transform((data: any) => new Set(data?.obj?.crossing))
+  public crossing = new Set<string>();
+
   constructor(props?: Partial<IStrainFilter>) {
     if (props !== undefined) Object.assign(this, props);
   }
@@ -85,6 +99,7 @@ export class StrainFilter implements IStrainFilter {
       activeConditions: new Set(this.activeConditions),
       viability: new Set(this.viability),
       sex: new Set(this.sex),
+      crossing: new Set(this.crossing),
     });
   }
 
@@ -116,6 +131,7 @@ export class StrainFilter implements IStrainFilter {
         `Phenotypes: ${list(this.exprPhenotypes)}`,
       viability.length > 0 && `Viability: ${viability.join(', ')}`,
       sex.length > 0 && `Sex: ${sex.join(', ')}`,
+      this.crossing.size > 0 && `Crossing effects: ${list(this.crossing)}`,
       this.activeConditions.size > 0 &&
         `Conditions present: ${list(this.activeConditions)}`,
       this.hiddenNodes.size > 0 &&
@@ -138,7 +154,8 @@ export class StrainFilter implements IStrainFilter {
       this.hiddenNodes.size === 0 &&
       this.activeConditions.size === 0 &&
       !this.viability.has(LETHAL) &&
-      !this.sex.has(MALE)
+      !this.sex.has(MALE) &&
+      this.crossing.size === 0
     );
   }
 
@@ -187,6 +204,13 @@ export class StrainFilter implements IStrainFilter {
         ? new Set([LETHAL, NON_LETHAL])
         : new Set(),
       sex: new Set([strainNode.data.sex === Sex.Male ? MALE : HERMAPHRODITE]),
+      crossing: new Set(
+        strainNode.data.crossingEffectGroups(
+          parentAlleles,
+          activeConditionsInEffect,
+          motherPhenotypes
+        )
+      ),
     };
   }
 
@@ -234,6 +258,10 @@ export class StrainFilter implements IStrainFilter {
           ...options.viability,
         ]);
         allOptions.sex = new Set([...allOptions.sex, ...options.sex]);
+        allOptions.crossing = new Set([
+          ...allOptions.crossing,
+          ...options.crossing,
+        ]);
         return allOptions;
       },
       {
@@ -245,10 +273,14 @@ export class StrainFilter implements IStrainFilter {
         activeConditions: new Set(),
         viability: new Set(),
         sex: new Set(),
+        crossing: new Set(),
       }
     );
     // Offer the sex filter only when the cross has both sexes to choose between
     if (options.sex.size < 2) options.sex = new Set();
+    // ...and the crossing-effects filter only when some child has an effect
+    if ([...options.crossing].every((group) => group === NO_CROSSING_EFFECTS))
+      options.crossing = new Set();
     return options;
   }
 

@@ -58,8 +58,8 @@ exCre1,IV,6000000,1.5,,,false,
 
 `phenotypes.csv`
 ```csv
-name,wild,short_name,description,male_mating,lethal,female_sterile,arrested,maturation_days
-Cre,1,Cre,germline Cre,,0,,,
+name,wild,short_name,description,male_mating,lethal,male_crossing_defective,female_crossing_defective,self_crossing_defective,him,arrested,maturation_days
+Cre,1,Cre,germline Cre,,0,,,,,,
 ```
 
 `alleles.csv`

@@ -61,7 +61,7 @@ const variations = [
   { alleleName: 'mIn1', chromosome: CHROMOSOME, physLoc: middle, geneticLoc: inversionCm, recombSuppressorStart: START, recombSuppressorEnd: END, isLocationReference: 'false', percentLoss: '' },
   { alleleName: 'mIs14', chromosome: CHROMOSOME, physLoc: markerPhys, geneticLoc: markerCm, recombSuppressorStart: '', recombSuppressorEnd: '', isLocationReference: 'false', percentLoss: '' },
 ];
-const phenotype = (name, wild, lethal) => ({ name, wild, short_name: name, description: '', male_mating: '', lethal, female_sterile: '', arrested: '', maturation_days: '' });
+const phenotype = (name, wild, lethal) => ({ name, wild, short_name: name, description: '', male_mating: '', lethal, male_crossing_defective: '', female_crossing_defective: '', self_crossing_defective: '', him: '', arrested: '', maturation_days: '' });
 const phenotypes = [
   phenotype('Dpy-10', 0, 0),
   phenotype('Dpy-10', 1, ''),
@@ -103,7 +103,7 @@ const write = (file, header, rows) => {
   console.log(`${file}: ${rows.length} rows`);
 };
 write('variations.csv', ['alleleName', 'chromosome', 'physLoc', 'geneticLoc', 'recombSuppressorStart', 'recombSuppressorEnd', 'isLocationReference', 'percentLoss'], variations);
-write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mating', 'lethal', 'female_sterile', 'arrested', 'maturation_days'], phenotypes);
+write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mating', 'lethal', 'male_crossing_defective', 'female_crossing_defective', 'self_crossing_defective', 'him', 'arrested', 'maturation_days'], phenotypes);
 write('alleles.csv', ['name', 'contents', 'sysGeneName', 'variationName'], alleles);
 write('allele_exprs.csv', ['alleleName', 'expressingPhenotypeName', 'expressingPhenotypeWild', 'dominance'], alleleExprs);
 write('expr_relations.csv', ['allele_name', 'expressing_phenotype_name', 'expressing_phenotype_wild', 'altering_phenotype_name', 'altering_phenotype_wild', 'altering_condition', 'is_suppressing'], exprRelations);

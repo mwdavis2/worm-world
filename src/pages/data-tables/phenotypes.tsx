@@ -20,7 +20,10 @@ export const cols: Array<ColumnDefinitionType<db_Phenotype>> = [
   { key: 'description', header: 'Description' },
   { key: 'maleMating', header: 'Male Mating' },
   { key: 'lethal', header: 'Lethal' },
-  { key: 'femaleSterile', header: 'Female Sterile' },
+  { key: 'maleCrossingDefective', header: 'Male Crossing Defective' },
+  { key: 'femaleCrossingDefective', header: 'Female Crossing Defective' },
+  { key: 'selfCrossingDefective', header: 'Self Crossing Defective' },
+  { key: 'him', header: 'Him' },
   { key: 'arrested', header: 'Arrested' },
   { key: 'maturationDays', header: 'Maturation Days' },
   { key: 'shortName', header: 'Short Name' },
@@ -63,8 +66,23 @@ const fields: Array<Field<db_Phenotype>> = [
     type: 'boolean',
   },
   {
-    name: 'femaleSterile',
-    title: 'Female Sterile',
+    name: 'maleCrossingDefective',
+    title: 'Male Crossing Defective',
+    type: 'boolean',
+  },
+  {
+    name: 'femaleCrossingDefective',
+    title: 'Female Crossing Defective',
+    type: 'boolean',
+  },
+  {
+    name: 'selfCrossingDefective',
+    title: 'Self Crossing Defective',
+    type: 'boolean',
+  },
+  {
+    name: 'him',
+    title: 'Him (makes males when selfed)',
     type: 'boolean',
   },
   {
@@ -82,7 +100,10 @@ const nameMapping: { [key in keyof db_Phenotype]: PhenotypeFieldName } = {
   maturationDays: 'MaturationDays',
   wild: 'Wild',
   lethal: 'Lethal',
-  femaleSterile: 'FemaleSterile',
+  maleCrossingDefective: 'MaleCrossingDefective',
+  femaleCrossingDefective: 'FemaleCrossingDefective',
+  selfCrossingDefective: 'SelfCrossingDefective',
+  him: 'Him',
   arrested: 'Arrested',
 };
 

@@ -123,7 +123,10 @@ const addPhenotype = (name, wild, extra = {}) => {
     description: '',
     male_mating: extra.maleMating ?? '',
     lethal: extra.lethal ?? '',
-    female_sterile: '',
+    male_crossing_defective: extra.maleMating === 0 ? 1 : '',
+    female_crossing_defective: '',
+    self_crossing_defective: '',
+    him: name === 'Him-5' && wild === 0 ? 1 : '',
     arrested: '',
     maturation_days: '',
   });
@@ -219,7 +222,7 @@ const write = (file, header, rows) => {
   console.log(`${file}: ${rows.length} rows`);
 };
 write('variations.csv', ['alleleName', 'chromosome', 'physLoc', 'geneticLoc', 'recombSuppressorStart', 'recombSuppressorEnd', 'isLocationReference', 'percentLoss'], variations);
-write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mating', 'lethal', 'female_sterile', 'arrested', 'maturation_days'], [...phenotypes.values()]);
+write('phenotypes.csv', ['name', 'wild', 'short_name', 'description', 'male_mating', 'lethal', 'male_crossing_defective', 'female_crossing_defective', 'self_crossing_defective', 'him', 'arrested', 'maturation_days'], [...phenotypes.values()]);
 write('alleles.csv', ['name', 'contents', 'sysGeneName', 'variationName'], alleles);
 write('allele_exprs.csv', ['alleleName', 'expressingPhenotypeName', 'expressingPhenotypeWild', 'dominance'], alleleExprs);
 write('expr_relations.csv', ['allele_name', 'expressing_phenotype_name', 'expressing_phenotype_wild', 'altering_phenotype_name', 'altering_phenotype_wild', 'altering_condition', 'is_suppressing'], exprRelations);

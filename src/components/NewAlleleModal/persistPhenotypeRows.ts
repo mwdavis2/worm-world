@@ -4,6 +4,9 @@ import { insertDbAlleleExpression } from 'api/alleleExpression';
 import { insertDbExpressionRelation } from 'api/expressionRelation';
 import { zygosityToDominance } from 'models/frontend/AlleleExpression/AlleleExpression';
 import {
+  CROSSING_EFFECT_OPTIONS,
+  crossingEffectsOf,
+  type CrossingEffects,
   type PhenotypeRelationship,
   type PhenotypeRowState,
 } from 'components/NewAlleleModal/newAlleleTypes';
@@ -49,7 +52,8 @@ const phenotypeKey = (name: string, wild: boolean): string =>
 const findOrCreatePhenotype = async (
   name: string,
   wild: boolean,
-  lethal: boolean | null
+  lethal: boolean | null,
+  effects: CrossingEffects | null = null
 ): Promise<void> => {
   // findPhenotype resolves to `undefined` (not a rejected promise) when no
   // matching row exists.
@@ -64,6 +68,20 @@ const findOrCreatePhenotype = async (
           'directly if you need to change it.'
       );
     }
+    // A flag the existing row does not have (blank counts as off) cannot be
+    // set from here either, for the same reason as lethal
+    const clash = CROSSING_EFFECT_OPTIONS.find(
+      ({ key }) => effects !== null && (existing[key] ?? false) !== effects[key]
+    );
+    if (clash !== undefined) {
+      throw new Error(
+        `Phenotype "${name}" (${
+          wild ? 'wild-type' : 'non-wild-type'
+        }) already exists with a different "${clash.label}" setting, which ` +
+          'conflicts with this row - edit the existing Phenotypes entry ' +
+          'directly if you need to change it.'
+      );
+    }
     return;
   }
   await insertDbPhenotype({
@@ -73,7 +91,10 @@ const findOrCreatePhenotype = async (
     description: null,
     maleMating: null,
     lethal,
-    femaleSterile: null,
+    maleCrossingDefective: effects?.maleCrossingDefective ?? null,
+    femaleCrossingDefective: effects?.femaleCrossingDefective ?? null,
+    selfCrossingDefective: effects?.selfCrossingDefective ?? null,
+    him: effects?.him ?? null,
     arrested: null,
     maturationDays: null,
   });
@@ -122,6 +143,18 @@ export const persistPhenotypeRows = async (
             `"${first.copyNumber}" vs "${row.copyNumber}".`
         );
       }
+      const firstEffects = crossingEffectsOf(first);
+      const rowEffects = crossingEffectsOf(row);
+      const differing = CROSSING_EFFECT_OPTIONS.find(
+        ({ key }) => firstEffects[key] !== rowEffects[key]
+      );
+      if (differing !== undefined) {
+        throw new Error(
+          `Phenotype "${row.name}" (${
+            row.isWildType ? 'wild-type' : 'non-wild-type'
+          }) has conflicting "${differing.label}" values across its rows.`
+        );
+      }
       if (first.isLethal !== row.isLethal) {
         throw new Error(
           `Phenotype "${row.name}" (${
@@ -132,7 +165,12 @@ export const persistPhenotypeRows = async (
       continue;
     }
     seenPhenotypes.set(key, row);
-    await findOrCreatePhenotype(row.name, row.isWildType, row.isLethal);
+    await findOrCreatePhenotype(
+      row.name,
+      row.isWildType,
+      row.isLethal,
+      crossingEffectsOf(row)
+    );
     await insertDbAlleleExpression({
       alleleName,
       expressingPhenotypeName: row.name,

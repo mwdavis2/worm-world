@@ -30,7 +30,7 @@ if (!database) {
 const bool = (column) => `CASE WHEN ${column} THEN 'true' ELSE 'false' END`;
 const TABLES = {
   genes: 'SELECT systematic_name AS sysName, descriptive_name AS descName, chromosome, phys_loc AS physLoc, gen_loc AS geneticLoc FROM genes ORDER BY rowid',
-  phenotypes: 'SELECT name, wild, short_name, description, male_mating, lethal, female_sterile, arrested, maturation_days FROM phenotypes ORDER BY rowid',
+  phenotypes: 'SELECT name, wild, short_name, description, male_mating, lethal, male_crossing_defective, female_crossing_defective, self_crossing_defective, him, arrested, maturation_days FROM phenotypes ORDER BY rowid',
   variations: `SELECT allele_name AS alleleName, chromosome, phys_loc AS physLoc, gen_loc AS geneticLoc, recomb_suppressor_start AS recombSuppressorStart, recomb_suppressor_end AS recombSuppressorEnd, ${bool('is_location_reference')} AS isLocationReference, percent_loss AS percentLoss FROM variations ORDER BY rowid`,
   alleles: 'SELECT name, contents, systematic_gene_name AS sysGeneName, variation_name AS variationName FROM alleles ORDER BY rowid',
   allele_exprs: 'SELECT allele_name AS alleleName, expressing_phenotype_name AS expressingPhenotypeName, expressing_phenotype_wild AS expressingPhenotypeWild, dominance FROM allele_exprs ORDER BY rowid',

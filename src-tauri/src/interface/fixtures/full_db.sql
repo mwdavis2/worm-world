@@ -101,7 +101,7 @@ INSERT INTO
         name,
         wild,
         male_mating,
-        female_sterile,
+        female_crossing_defective,
         arrested,
         lethal,
         maturation_days,
@@ -209,6 +209,9 @@ VALUES
     ("NeoR", 0, 3, 0, 0, 0, 3, "NeoR"),
     ("paralyzed", 0, 0, 0, 0, 0, NULL, "paralyzed"),
     ("lethal", 0, 0, 0, 0, 1, NULL, "lethal");
+
+-- 'sterile' sets both female and self crossing defective
+UPDATE phenotypes SET self_crossing_defective = female_crossing_defective;
 
 INSERT INTO
     conditions (

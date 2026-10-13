@@ -9,7 +9,10 @@ describe('Phenotype', () => {
       description: 'sample desc',
       maleMating: 9,
       lethal: false,
-      femaleSterile: true,
+      maleCrossingDefective: true,
+      femaleCrossingDefective: true,
+      selfCrossingDefective: false,
+      him: true,
       arrested: false,
       maturationDays: 4,
     });

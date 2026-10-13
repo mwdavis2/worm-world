@@ -365,7 +365,10 @@ mod test {
                 description: None,
                 male_mating: Some(0),
                 lethal: Some(false),
-                female_sterile: Some(false),
+                male_crossing_defective: None,
+                female_crossing_defective: Some(false),
+                self_crossing_defective: Some(false),
+                him: None,
                 arrested: Some(false),
                 maturation_days: Some(4.0),
             })
@@ -413,7 +416,10 @@ mod test {
                 description: None,
                 male_mating: Some(0),
                 lethal: Some(false),
-                female_sterile: Some(false),
+                male_crossing_defective: None,
+                female_crossing_defective: Some(false),
+                self_crossing_defective: Some(false),
+                him: None,
                 arrested: Some(false),
                 maturation_days: Some(4.0),
             })

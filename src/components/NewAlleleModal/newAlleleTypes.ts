@@ -29,12 +29,43 @@ export type PhenotypeRowSource =
   | 'rescuesGene'
   | 'fluorescentMarker';
 
+/** Phenotype flags that change the crossing mechanism (the Crossing Effects menu) */
+export interface CrossingEffects {
+  maleCrossingDefective: boolean;
+  femaleCrossingDefective: boolean;
+  selfCrossingDefective: boolean;
+  him: boolean;
+}
+
+export const CROSSING_EFFECT_OPTIONS: Array<{
+  key: keyof CrossingEffects;
+  label: string;
+}> = [
+  { key: 'maleCrossingDefective', label: 'Male crossing defective' },
+  { key: 'femaleCrossingDefective', label: 'Female crossing defective' },
+  { key: 'selfCrossingDefective', label: 'Self crossing defective' },
+  { key: 'him', label: 'Him (makes males when selfed)' },
+];
+
+/** A row's crossing effects, with the unset ones read as off */
+export const crossingEffectsOf = (row: PhenotypeRowState): CrossingEffects => ({
+  maleCrossingDefective: row.maleCrossingDefective ?? false,
+  femaleCrossingDefective: row.femaleCrossingDefective ?? false,
+  selfCrossingDefective: row.selfCrossingDefective ?? false,
+  him: row.him ?? false,
+});
+
 export interface PhenotypeRowState {
   id: string;
   copyNumber: CopyNumber;
   name: string;
   isWildType: boolean;
   isLethal: boolean;
+  // Crossing Effects menu; unset reads as off
+  maleCrossingDefective?: boolean;
+  femaleCrossingDefective?: boolean;
+  selfCrossingDefective?: boolean;
+  him?: boolean;
   relationship?: PhenotypeRelationship;
   relationshipText: string;
   derivedFrom?: PhenotypeRowSource;

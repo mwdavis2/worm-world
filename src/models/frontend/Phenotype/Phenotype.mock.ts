@@ -7,7 +7,8 @@ export const phenUnc119 = new Phenotype({
   description: undefined,
   maleMating: 0,
   lethal: false,
-  femaleSterile: false,
+  femaleCrossingDefective: false,
+  selfCrossingDefective: false,
   arrested: false,
   maturationDays: 4,
 });

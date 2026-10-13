@@ -10,6 +10,7 @@ import { toastSyncFailed } from 'utils/syncErrors';
 import {
   type EdgeStyle,
   type TextExportMode,
+  DEFAULT_PREFERENCES,
   getPreferences,
   setPreferences,
 } from 'utils/preferences';
@@ -68,6 +69,17 @@ const Settings = (): React.JSX.Element => {
 
   const updateTextExportMode = (value: TextExportMode): void => {
     setLocalPreferences(setPreferences({ textExportMode: value }));
+  };
+
+  const updateIgnoreCrossingEffects = (value: boolean): void => {
+    setLocalPreferences(setPreferences({ ignoreCrossingEffects: value }));
+  };
+
+  const updateHimMalePercent = (value: number): void => {
+    const clamped = Number.isFinite(value)
+      ? Math.min(99, Math.max(1, Math.round(value)))
+      : DEFAULT_PREFERENCES.himMalePercent;
+    setLocalPreferences(setPreferences({ himMalePercent: clamped }));
   };
 
   return (
@@ -174,6 +186,54 @@ const Settings = (): React.JSX.Element => {
               opens the file). &quot;Text path&quot; embeds exact glyph
               outlines, so text is always pixel-perfect but no longer editable
               as text.
+            </span>
+          </label>
+        </div>
+
+        <div className='form-control'>
+          <label className='label cursor-pointer justify-start gap-4'>
+            <input
+              id='ignoreCrossingEffects'
+              type='checkbox'
+              className='toggle'
+              checked={preferences.ignoreCrossingEffects}
+              onChange={(e) => {
+                updateIgnoreCrossingEffects(e.target.checked);
+              }}
+            />
+            <span className='label-text'>Ignore crossing effects</span>
+          </label>
+          <label className='label'>
+            <span className='label-text-alt'>
+              Phenotypes that make a strain crossing defective (male, female or
+              self) turn its crossing rectangles black and block those crosses.
+              Turn this on to cross anyway.
+            </span>
+          </label>
+        </div>
+
+        <div className='form-control'>
+          <label className='label' htmlFor='himMalePercent'>
+            <span className='label-text'>
+              Him male frequency: {preferences.himMalePercent}%
+            </span>
+          </label>
+          <input
+            id='himMalePercent'
+            type='range'
+            min={1}
+            max={99}
+            step={1}
+            className='range'
+            value={preferences.himMalePercent}
+            onChange={(e) => {
+              updateHimMalePercent(Number(e.target.value));
+            }}
+          />
+          <label className='label'>
+            <span className='label-text-alt'>
+              The share of a Him hermaphrodite&apos;s self-cross children that
+              are males. Males appear in new self crosses from Him strains.
             </span>
           </label>
         </div>

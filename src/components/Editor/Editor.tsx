@@ -1,5 +1,9 @@
 import { insertCrossDesign, updateCrossDesign } from 'api/crossDesign';
 import { getPreferences } from 'utils/preferences';
+import {
+  CrossingBlockedError,
+  crossingBlockMessage,
+} from 'models/frontend/Strain/crossingEffects';
 import { insertTasks } from 'api/task';
 import { pushTask } from 'api/taskSync';
 import { getTaskStatementText } from 'components/TaskItem/TaskItem';
@@ -874,10 +878,12 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     middleNode: Node<StrainFilter>,
     childNodes: Array<Node<Strain>>,
     parentAlleles: Allele[],
-    motherPhenotypes?: ReadonlySet<string>
+    motherPhenotypes?: ReadonlySet<string>,
+    showMales = false
   ): void => {
     const threshold = getPreferences().minChildProbability;
     const filter = new StrainFilter();
+    if (showMales) filter.sex.add(MALE);
 
     childNodes.forEach((node) => {
       node.data.refreshCardInfo(
@@ -953,13 +959,21 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   const performSelfCross = async (
     parentNode: Node<Strain>
   ): Promise<CrossResult> => {
+    const { ignoreCrossingEffects, himMalePercent } = getPreferences();
+    const blocked = crossingBlockMessage(
+      parentNode.data,
+      'self',
+      ignoreCrossingEffects
+    );
+    if (blocked !== undefined) throw new CrossingBlockedError(blocked);
     // The parent is only marked as crossed once the cross has worked (below),
     // so a failed cross leaves it as it was.
     const parentStrain = new Strain({ ...parentNode.data, isParent: true });
     // what the parent expresses, with its own parents and mother, decides
     // which germline conversions (Cre/lox and the like) happen in it
     const strainOpts = await parentStrain.selfCross(
-      getCardPhenotypes(parentNode, nodes, edges)
+      getCardPhenotypes(parentNode, nodes, edges),
+      himMalePercent / 100
     );
     parentNode.data = parentStrain;
     const selfNode: Node<StrainFilter> = {
@@ -980,7 +994,9 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       selfNode,
       childNodes,
       parentNode.data.getNonWildAlleles(),
-      getCardPhenotypes(parentNode, nodes, edges)
+      getCardPhenotypes(parentNode, nodes, edges),
+      // a Him parent's self cross makes males, so they start visible
+      parentNode.data.him === true
     );
     const childEdges = childNodes.map((node) => {
       return {
@@ -1011,7 +1027,11 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       setEdges((edges) => [...edges, ...result.edges]);
     } catch (err) {
       console.error(err);
-      toast.error(`The self cross failed: ${getErrorMessage(err)}`);
+      toast.error(
+        err instanceof CrossingBlockedError
+          ? err.message
+          : `The self cross failed: ${getErrorMessage(err)}`
+      );
     }
   };
 
@@ -1021,6 +1041,11 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     maleNode: Node<Strain>,
     fromHerm = true
   ): Promise<CrossResult> => {
+    const ignore = getPreferences().ignoreCrossingEffects;
+    const blocked =
+      crossingBlockMessage(hermNode.data, 'female', ignore) ??
+      crossingBlockMessage(maleNode.data, 'male', ignore);
+    if (blocked !== undefined) throw new CrossingBlockedError(blocked);
     // Cross first: the parents are only marked and moved once the cross has
     // worked, so a failed cross leaves them as they were.
     const childOptions = await maleNode.data.crossWith(hermNode.data, {
@@ -1109,7 +1134,11 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       setEdges((edges) => [...edges, ...result.edges]);
     } catch (err) {
       console.error(err);
-      toast.error(`The cross failed: ${getErrorMessage(err)}`);
+      toast.error(
+        err instanceof CrossingBlockedError
+          ? err.message
+          : `The cross failed: ${getErrorMessage(err)}`
+      );
     }
   };
 

@@ -1,3 +1,4 @@
+import CrossingEffectsMenu from 'components/PhenotypeRow/CrossingEffectsMenu';
 import {
   type CopyNumber,
   type PhenotypeRelationship,
@@ -129,6 +130,7 @@ const PhenotypeRow = (props: PhenotypeRowProps): React.JSX.Element => {
           }}
         />
       </label>
+      <CrossingEffectsMenu row={row} onChange={props.onChange} />
       <div className='flex items-center gap-2'>
         <select
           className='select select-bordered select-sm'
