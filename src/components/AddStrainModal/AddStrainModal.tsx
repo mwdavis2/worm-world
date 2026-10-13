@@ -208,23 +208,28 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
     strain.name = name;
     strain.description = description;
     // editing a saved strain replaces it (a rename onto another saved strain is
-    // refused with a clear message); a new strain whose name is taken asks first
-    if (originalName !== undefined) {
-      saveNow(originalName);
-      return;
-    }
-    findSavedStrain(name)
-      .then((existing) => {
-        if (existing === undefined) saveNow();
-        else setReplacing(existing);
-      })
-      .catch((e) => {
-        toastDbError(e, {
-          action: 'add',
-          table: 'strains',
-          prefix: 'Unable to save strain',
-        });
+    // refused with a clear message); a new strain whose name is taken asks first.
+    // A card loaded from a design may carry a name that was never saved, which
+    // is a new strain, not an edit.
+    const check = async (): Promise<void> => {
+      if (
+        originalName !== undefined &&
+        (await findSavedStrain(originalName)) !== undefined
+      ) {
+        saveNow(originalName);
+        return;
+      }
+      const existing = await findSavedStrain(name);
+      if (existing === undefined) saveNow();
+      else setReplacing(existing);
+    };
+    check().catch((e) => {
+      toastDbError(e, {
+        action: 'add',
+        table: 'strains',
+        prefix: 'Unable to save strain',
       });
+    });
   };
 
   return (
