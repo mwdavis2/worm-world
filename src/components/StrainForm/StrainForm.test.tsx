@@ -98,7 +98,7 @@ describe('Strain form', () => {
             'Cannot add allele pair zzt4/zzt4 because it conflicts with of the same gene or variation.'
           )
         )
-      ).toContain("zzt4 can't be added");
+      ).toContain('zzt4: a strain can');
       expect(cannotBuildStrainMessage(new Error('Something odd'))).toContain(
         'Something odd'
       );

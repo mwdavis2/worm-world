@@ -451,7 +451,7 @@ export const cannotBuildStrainMessage = (e: unknown): string => {
   const text = getErrorMessage(e);
   const pair = /allele pair (\S+?)\/\S+? because it conflicts/.exec(text);
   if (pair !== null)
-    return `${pair[1]} can't be added as another homozygous allele: an allele of the same gene or variation is already on this strain. To get two alleles of one gene (a trans-heterozygote), add it under Heterozygous Alleles (Show Advanced Options).`;
+    return `${pair[1]}: a strain can't be homozygous for two alleles of a gene. Use Heterozygous Alleles.`;
   return `Those alleles can't make a strain: ${text}`;
 };
 
