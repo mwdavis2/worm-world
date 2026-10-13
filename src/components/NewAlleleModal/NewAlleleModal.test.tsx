@@ -458,4 +458,14 @@ describe('NewAlleleModal', () => {
       calls.find((c) => c.cmd === 'insert_phenotype')?.payload
     ).toMatchObject({ phenotype: { name: 'Let', wild: false, lethal: true } });
   });
+
+  test('the Advanced view says its edits are saved only when Add is pressed there', async () => {
+    setupIPC();
+    render(<NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />);
+    expect(screen.queryByText(/saved only if you press Add Allele/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Advanced' }));
+    expect(
+      screen.getByText(/saved only if you press Add Allele/)
+    ).toBeVisible();
+  });
 });

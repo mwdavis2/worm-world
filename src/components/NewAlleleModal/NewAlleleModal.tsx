@@ -1220,6 +1220,10 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
             </div>
           ) : (
             <div className='flex flex-col'>
+              <p className='mb-2 text-sm opacity-70'>
+                Edits here are saved only if you press Add Allele from this tab.
+                Changing a Basic control afterwards resets the rows it built.
+              </p>
               {(activeTab === 'gene'
                 ? gene.phenotypeRows
                 : activeVariationTab.phenotypeRows
