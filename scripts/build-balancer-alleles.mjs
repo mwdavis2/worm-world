@@ -25,7 +25,7 @@
 // copies are lethal and male sterile (the Let phenotype's flags). No relations.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { zipFolder } from './lib/zipFolder.mjs';
-import { maleCrossingDefective } from './lib/maleMating.mjs';
+import { maleCrossingDefective, maleMatingScore } from './lib/maleMating.mjs';
 
 const OUT_DIR = 'data/balancer_alleles';
 const LOF_DOMINANCE = 4; // stored form of zygosity '5', "2 copies (lof)"
@@ -122,7 +122,7 @@ const addPhenotype = (name, wild, extra = {}) => {
     wild,
     short_name: name,
     description: '',
-    male_mating: extra.maleMating ?? '',
+    male_mating: extra.maleMating ?? maleMatingScore(name, wild),
     lethal: extra.lethal ?? '',
     male_crossing_defective: extra.maleMating === 0 ? 1 : maleCrossingDefective(name, wild),
     female_crossing_defective: '',
