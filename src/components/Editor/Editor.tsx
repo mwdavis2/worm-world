@@ -976,11 +976,23 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     closeDrawer();
   };
 
+  // A card that no cross made (a partner just made in the Cross drawer, a card
+  // from pasted notation) has not had its crossing effects worked out yet;
+  // do that before they are checked or used (Him)
+  const resolveFounderEffects = (node: Node<Strain>): void => {
+    if (
+      node.parentNode === undefined &&
+      node.data.femaleCrossingDefective === undefined
+    )
+      node.data.refreshCardInfo();
+  };
+
   // Performs a self-cross without touching the canvas: returns the nodes and
   // edges it creates (parent first) for the caller to commit.
   const performSelfCross = async (
     parentNode: Node<Strain>
   ): Promise<CrossResult> => {
+    resolveFounderEffects(parentNode);
     const { ignoreCrossingEffects, himMalePercent } = getPreferences();
     const blocked = crossingBlockMessage(
       parentNode.data,
@@ -1063,6 +1075,8 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     maleNode: Node<Strain>,
     fromHerm = true
   ): Promise<CrossResult> => {
+    resolveFounderEffects(hermNode);
+    resolveFounderEffects(maleNode);
     const ignore = getPreferences().ignoreCrossingEffects;
     const blocked =
       crossingBlockMessage(hermNode.data, 'female', ignore) ??
@@ -1093,17 +1107,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     // parentNode itself just below. Overwriting position unconditionally
     // while keeping the old parentNode link produces an incoherent jump,
     // since react-flow renders position relative to parentNode.
-    const maleAlreadyPlaced = maleNode.parentNode !== undefined;
-    const hermAlreadyPlaced = hermNode.parentNode !== undefined;
-    maleNode.parentNode = maleNode.parentNode ?? hermNode.id;
-
-    if (fromHerm) {
-      if (!maleAlreadyPlaced)
-        maleNode.position = CrossDesign.getRelStrainPos(hermNode);
-    } else if (!hermAlreadyPlaced) {
-      const tempPos = CrossDesign.getRelStrainPos(maleNode);
-      hermNode.position = CrossDesign.getAbsolutePos(tempPos, maleNode);
-    }
+    CrossDesign.placeMatedParents(hermNode, maleNode, fromHerm);
 
     const hermStrain = hermNode.data;
     const maleStrain = maleNode.data;

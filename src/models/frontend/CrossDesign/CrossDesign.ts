@@ -137,6 +137,43 @@ export default class CrossDesign {
     return { x, y: 0 };
   }
 
+  /**
+   * Links the two parents of a mated cross and places the one that is new.
+   * The male becomes a child of the hermaphrodite (so his position is relative
+   * to hers), unless he already has a parent from an earlier cross. A parent
+   * with a parent already keeps its position; only a new one is placed:
+   * - from the hermaphrodite: a new male goes to her right;
+   * - from the male (`fromHerm` false): a new hermaphrodite goes to his left,
+   *   and he, now her child, gets the matching position relative to her
+   *   instead of keeping the canvas position he had (which the canvas would
+   *   read as relative to her, throwing him far across the canvas).
+   */
+  public static placeMatedParents(
+    hermNode: Node<Strain>,
+    maleNode: Node<Strain>,
+    fromHerm = true
+  ): void {
+    const maleAlreadyPlaced = maleNode.parentNode !== undefined;
+    const hermAlreadyPlaced = hermNode.parentNode !== undefined;
+    maleNode.parentNode = maleNode.parentNode ?? hermNode.id;
+
+    if (fromHerm) {
+      if (!maleAlreadyPlaced)
+        maleNode.position = CrossDesign.getRelStrainPos(hermNode);
+    } else if (!hermAlreadyPlaced) {
+      const tempPos = CrossDesign.getRelStrainPos(maleNode);
+      // where the male really is on the canvas (his own position is relative
+      // to his parent when he has one)
+      const maleAbsolute = maleNode.positionAbsolute ?? maleNode.position;
+      hermNode.position = {
+        x: maleAbsolute.x + tempPos.x,
+        y: maleAbsolute.y + tempPos.y,
+      };
+      if (!maleAlreadyPlaced)
+        maleNode.position = { x: -tempPos.x, y: -tempPos.y };
+    }
+  }
+
   public static getAbsolutePos(relPos: XYPosition, node: Node): XYPosition {
     return { x: relPos.x + node.position.x, y: relPos.y + node.position.y };
   }

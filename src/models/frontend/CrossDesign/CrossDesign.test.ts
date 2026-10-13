@@ -645,3 +645,61 @@ describe('getDataNames', () => {
     expect(design.getDataNames().alleleNames).toEqual([ed3.name]);
   });
 });
+
+describe('placeMatedParents', () => {
+  const card = (id: string, sex: Sex, x: number, y: number): Node<Strain> => ({
+    id,
+    type: NodeType.Strain,
+    position: { x, y },
+    data: sex === Sex.Male ? new Strain().toggleSex() : new Strain(),
+  });
+  // where a node ends up on the canvas, following its parent chain
+  const onCanvas = (node: Node, all: Node[]): XYPosition => {
+    const parent = all.find((n) => n.id === node.parentNode);
+    const base = parent === undefined ? { x: 0, y: 0 } : onCanvas(parent, all);
+    return { x: base.x + node.position.x, y: base.y + node.position.y };
+  };
+
+  test('from the hermaphrodite: a new male goes to her right', () => {
+    const herm = card('h', Sex.Hermaphrodite, 100, 50);
+    const male = card('m', Sex.Male, 0, 0);
+    CrossDesign.placeMatedParents(herm, male, true);
+    expect(male.parentNode).toBe('h');
+    const rel = CrossDesign.getRelStrainPos(herm);
+    expect(male.position).toEqual(rel);
+    expect(onCanvas(male, [herm, male])).toEqual({
+      x: 100 + rel.x,
+      y: 50,
+    });
+  });
+
+  test('from an existing male: the new hermaphrodite goes to his left and he stays where he was on the canvas', () => {
+    const male = card('m', Sex.Male, 1200, 300);
+    const herm = card('h', Sex.Hermaphrodite, 0, 0);
+    CrossDesign.placeMatedParents(herm, male, false);
+    expect(male.parentNode).toBe('h');
+    const all = [herm, male];
+    // the male did not jump (before the fix he drew at about twice his position)
+    expect(onCanvas(male, all)).toEqual({ x: 1200, y: 300 });
+    const left = CrossDesign.getRelStrainPos(male).x;
+    expect(onCanvas(herm, all)).toEqual({ x: 1200 + left, y: 300 });
+    expect(onCanvas(herm, all).x).toBeLessThan(1200);
+  });
+
+  test('an already-placed male keeps his own parent and position; the new hermaphrodite is placed by his real canvas position', () => {
+    const male = card('m', Sex.Male, 300, 0);
+    male.parentNode = 'p';
+    const herm = card('h', Sex.Hermaphrodite, 0, 0);
+    const male2: Node<Strain> = {
+      ...male,
+      positionAbsolute: { x: 800, y: 500 },
+    };
+    CrossDesign.placeMatedParents(herm, male2, false);
+    expect(male2.parentNode).toBe('p');
+    expect(male2.position).toEqual({ x: 300, y: 0 });
+    expect(herm.position).toEqual({
+      x: 800 + CrossDesign.getRelStrainPos(male2).x,
+      y: 500,
+    });
+  });
+});
