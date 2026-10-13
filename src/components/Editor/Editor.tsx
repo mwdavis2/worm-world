@@ -3,6 +3,7 @@ import { getPreferences } from 'utils/preferences';
 import {
   CrossingBlockedError,
   crossingBlockMessage,
+  crossingStartMessage,
 } from 'models/frontend/Strain/crossingEffects';
 import { insertTasks } from 'api/task';
 import { pushTask } from 'api/taskSync';
@@ -522,6 +523,16 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           icon: <CrossIcon />,
           text: 'Cross',
           menuCallback: () => {
+            // a card a phenotype keeps out of crosses never gets as far as
+            // choosing a partner
+            const blocked = crossingStartMessage(
+              strainNode.data,
+              getPreferences().ignoreCrossingEffects
+            );
+            if (blocked !== undefined) {
+              toast.error(blocked);
+              return;
+            }
             setDrawerState({ type: DrawerType.Cross, isOpen: true, id });
           },
         };
@@ -785,9 +796,19 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       return;
     }
 
-    if (params.handleId === Position.Bottom)
+    if (params.handleId === Position.Bottom) {
       selfCross(node.id).catch(console.error);
-    else setDrawerState({ type: DrawerType.Cross, isOpen: true, id: node.id });
+      return;
+    }
+    const blocked = crossingStartMessage(
+      (node as Node<Strain>).data,
+      getPreferences().ignoreCrossingEffects
+    );
+    if (blocked !== undefined) {
+      toast.error(blocked);
+      return;
+    }
+    setDrawerState({ type: DrawerType.Cross, isOpen: true, id: node.id });
   }, []);
 
   // Compacts positions of only the currently-visible children (0..N-1), so

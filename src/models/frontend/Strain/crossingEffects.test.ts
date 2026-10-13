@@ -10,6 +10,7 @@ import { Phenotype } from 'models/frontend/Phenotype/Phenotype';
 import { Strain } from 'models/frontend/Strain/Strain';
 import {
   crossingBlockMessage,
+  crossingStartMessage,
   isCrossingBlocked,
 } from 'models/frontend/Strain/crossingEffects';
 import {
@@ -201,5 +202,30 @@ describe('the crossing-effects filter', () => {
     );
     const old = JSON.stringify({ alleleNames: [], viability: [], sex: [] });
     expect(StrainFilter.fromJSON(old).crossing.size).toBe(0);
+  });
+});
+
+describe('whether a card can start a mated cross (the Cross drawer)', () => {
+  test('a hermaphrodite that cannot be the mother, or a male that cannot be the father, cannot', () => {
+    const herm = homozygous(sterile);
+    herm.refreshCardInfo();
+    const male = homozygous(maleDefective).toggleSex();
+    male.refreshCardInfo();
+    expect(crossingStartMessage(herm)).toContain('female crossing defective');
+    expect(crossingStartMessage(male)).toContain('male crossing defective');
+  });
+
+  test('a hermaphrodite that only cannot self can still start one', () => {
+    const selfOnly = homozygous(
+      alleleWith('selfonly', { selfCrossingDefective: true })
+    );
+    selfOnly.refreshCardInfo();
+    expect(crossingStartMessage(selfOnly)).toBeUndefined();
+  });
+
+  test('ignoring crossing effects allows it', () => {
+    const herm = homozygous(sterile);
+    herm.refreshCardInfo();
+    expect(crossingStartMessage(herm, true)).toBeUndefined();
   });
 });

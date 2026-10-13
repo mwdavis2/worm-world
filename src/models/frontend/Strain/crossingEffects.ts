@@ -55,6 +55,21 @@ export const crossingBlockMessage = (
   return `${who} cannot ${what}: a phenotype it expresses makes it ${EFFECT_LABEL[role]}. Turn on "Ignore crossing effects" in Settings to cross anyway.`;
 };
 
+/**
+ * A plain sentence when `strain` cannot start a mated cross at all (a
+ * hermaphrodite that cannot be the mother, or a male that cannot be the
+ * father), so the Cross drawer should not open; undefined when it can.
+ */
+export const crossingStartMessage = (
+  strain: Strain,
+  ignore = false
+): string | undefined =>
+  crossingBlockMessage(
+    strain,
+    strain.sex === Sex.Male ? 'male' : 'female',
+    ignore
+  );
+
 /** The tooltip on a black crossing rectangle */
 export const blockedHandleTitle = (role: CrossingRole): string =>
   `Blocked by a phenotype: ${EFFECT_LABEL[role]}`;
