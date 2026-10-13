@@ -1,5 +1,9 @@
 import { BiX as CloseIcon, BiPlus as PlusIcon } from 'react-icons/bi';
-import { type ChangeEvent, type HTMLInputTypeAttribute } from 'react';
+import {
+  type ChangeEvent,
+  type HTMLInputTypeAttribute,
+  useEffect,
+} from 'react';
 import { type Filter } from 'models/db/filter/Filter';
 import {
   type FilterType,
@@ -48,9 +52,10 @@ const defaultFilterType = <T,>(field: Field<T>): FilterType =>
   field.type === 'text' ? 'Like' : fieldTypeToFilterTypes[field.type][0];
 
 /**
- * Text and number columns open with one blank row, ready to type in. The other
- * types start with a value already chosen (true, or the first option), which
- * would filter at once, so they keep the "+" button.
+ * Text and number columns open with one blank row, ready to type in (it is not
+ * stored until it is typed in). A boolean column opens with a "True" filter
+ * already stored (see the effect below), and a select column keeps the "+"
+ * button, since its first option would filter at once.
  */
 const opensWithBlankRow = <T,>(field: Field<T>): boolean =>
   field.type === 'text' || field.type === 'number';
@@ -216,6 +221,16 @@ export const ColumnFilter = <T,>(
     opensWithBlankRow(props.field)
       ? [blankFilter(props.field)]
       : props.columnFilters;
+  // A boolean column opens with "True" ready: stored as soon as the box opens, so
+  // closing the box applies it (delete it with the cross if it is not wanted). Only
+  // on opening - deleting the last row afterwards must leave none.
+  const openedField = props.field?.type === 'boolean' ? props.field : undefined;
+  const openedName =
+    openedField === undefined ? undefined : String(openedField.name);
+  useEffect(() => {
+    if (openedField !== undefined && props.columnFilters.length === 0)
+      props.setColumnFilters([blankFilter(openedField)]);
+  }, [openedName]);
   const addFilter = (): void => {
     if (props.field === undefined) {
       return;

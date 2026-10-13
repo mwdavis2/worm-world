@@ -119,12 +119,7 @@ describe('ColumnFilter', () => {
     expect(screen.getByRole('textbox')).toHaveValue('');
   });
 
-  it('boolean and select columns still start empty, with the "+" button', () => {
-    const booleanField: Field<db_Allele> = { ...field, type: 'boolean' };
-    const { unmount } = render(<ColumnFilterWrapper field={booleanField} />);
-    expect(screen.queryByRole('combobox')).toBeNull();
-    expect(screen.getByTitle('add-filter')).toBeInTheDocument();
-    unmount();
+  it('a select column still starts empty, with the "+" button', () => {
     const selectField: Field<db_Allele> = {
       ...field,
       type: 'select',
@@ -132,6 +127,7 @@ describe('ColumnFilter', () => {
     };
     render(<ColumnFilterWrapper field={selectField} />);
     expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.getByTitle('add-filter')).toBeInTheDocument();
   });
 
   it('add button adds a second row below the blank one', async () => {
@@ -144,11 +140,66 @@ describe('ColumnFilter', () => {
     expect(screen.getAllByText('OR')).toHaveLength(2);
   });
 
-  it('add button creates a filter on a column that has a different type of first row', async () => {
+  it('add button adds a second row on a boolean column, below the True it opened with', async () => {
     userEvent.setup();
     const booleanField: Field<db_Allele> = { ...field, type: 'boolean' };
     render(<ColumnFilterWrapper field={booleanField} />);
-    await userEvent.click(screen.getByTitle('add-filter'));
     expect(screen.getAllByRole('combobox')).toHaveLength(1);
+    await userEvent.click(screen.getByTitle('add-filter'));
+    expect(screen.getAllByRole('combobox')).toHaveLength(2);
+  });
+
+  describe('a boolean column', () => {
+    const boolField: Field<db_Allele> = { ...field, type: 'boolean' };
+
+    it('opens with a True filter already stored, so closing the box applies it', () => {
+      const seen: Filter[][] = [];
+      render(
+        <ColumnFilterWrapper
+          field={boolField}
+          onFilters={(filters) => seen.push(filters)}
+        />
+      );
+      expect(seen).toEqual([['True']]);
+      expect(screen.getByRole('combobox')).toHaveValue('True');
+    });
+
+    it('opens with its existing filters untouched', () => {
+      const seen: Filter[][] = [];
+      render(
+        <ColumnFilterWrapper
+          field={boolField}
+          filterTypes={['False']}
+          onFilters={(filters) => seen.push(filters)}
+        />
+      );
+      expect(seen).toHaveLength(0);
+      expect(screen.getByRole('combobox')).toHaveValue('False');
+    });
+
+    it('deleting the filter leaves none (it is not re-added)', async () => {
+      userEvent.setup();
+      const seen: Filter[][] = [];
+      render(
+        <ColumnFilterWrapper
+          field={boolField}
+          onFilters={(filters) => seen.push(filters)}
+        />
+      );
+      await userEvent.click(screen.getByTitle('delete-filter'));
+      expect(seen[seen.length - 1]).toEqual([]);
+      expect(screen.queryByRole('combobox')).toBeNull();
+    });
+
+    it('a text column stores nothing just by opening', () => {
+      const seen: Filter[][] = [];
+      render(
+        <ColumnFilterWrapper
+          field={field}
+          onFilters={(filters) => seen.push(filters)}
+        />
+      );
+      expect(seen).toHaveLength(0);
+    });
   });
 });
