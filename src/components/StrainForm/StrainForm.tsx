@@ -1,6 +1,7 @@
 import { Strain } from 'models/frontend/Strain/Strain';
 import { useRef, useState } from 'react';
 import { toast } from 'react-toastify';
+import { getErrorMessage } from 'utils/getErrorMessage';
 import { leftOffMaleMessage } from 'utils/leftOffMale';
 import ReplaceStrainDialog from 'components/ReplaceStrainDialog/ReplaceStrainDialog';
 import { toastDbError } from 'utils/showDbError';
@@ -105,7 +106,10 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
       .then((strain) => {
         setState(withTypedName(strain));
       })
-      .catch(console.error);
+      .catch((e) => {
+        console.error(e);
+        toast.error(cannotBuildStrainMessage(e));
+      });
   };
 
   function alleleIsUnused(allele: db_Allele): boolean {
@@ -436,6 +440,19 @@ export const StrainSelect = (props: StrainSelectProps): React.JSX.Element => {
       </div>
     </div>
   );
+};
+
+/**
+ * A plain sentence for why the chosen alleles could not make a strain. The usual
+ * cause is a second homozygous allele of a gene or variation that already has
+ * one on the strain (a strain cannot be homozygous for two alleles of a gene).
+ */
+export const cannotBuildStrainMessage = (e: unknown): string => {
+  const text = getErrorMessage(e);
+  const pair = /allele pair (\S+?)\/\S+? because it conflicts/.exec(text);
+  if (pair !== null)
+    return `${pair[1]} can't be added as another homozygous allele: an allele of the same gene or variation is already on this strain. To get two alleles of one gene (a trans-heterozygote), add it under Heterozygous Alleles (Show Advanced Options).`;
+  return `Those alleles can't make a strain: ${text}`;
 };
 
 const buildStrain = async (

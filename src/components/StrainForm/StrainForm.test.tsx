@@ -2,7 +2,9 @@ import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { toast } from 'react-toastify';
 import user from '@testing-library/user-event';
-import StrainForm from 'components/StrainForm/StrainForm';
+import StrainForm, {
+  cannotBuildStrainMessage,
+} from 'components/StrainForm/StrainForm';
 import { ed3 } from 'models/frontend/Allele/Allele.mock';
 import { unc119 } from 'models/frontend/Gene/Gene.mock';
 import { Sex } from 'models/enums';
@@ -85,6 +87,21 @@ describe('Strain form', () => {
       expect(screen.getAllByText(/ed3/i).length).toBeGreaterThan(0);
       // and the card shows the new name
       expect(screen.getByTestId('strainCard')).toHaveTextContent('MyStrain');
+    });
+  });
+
+  describe('two alleles of one gene (the message when they cannot make a strain)', () => {
+    test('cannotBuildStrainMessage names the allele, and keeps any other reason readable', () => {
+      expect(
+        cannotBuildStrainMessage(
+          new Error(
+            'Cannot add allele pair zzt4/zzt4 because it conflicts with of the same gene or variation.'
+          )
+        )
+      ).toContain("zzt4 can't be added");
+      expect(cannotBuildStrainMessage(new Error('Something odd'))).toContain(
+        'Something odd'
+      );
     });
   });
 
