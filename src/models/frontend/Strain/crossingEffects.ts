@@ -44,8 +44,8 @@ export const isCrossingBlocked = (
  */
 export const sameSexMessage = (sex: Sex): string =>
   sex === Sex.Male
-    ? "Two males can't mate. A cross needs one hermaphrodite and one male."
-    : "Two hermaphrodites can't mate: a hermaphrodite self-fertilizes, and only a male can cross with it. Use a male for the cross.";
+    ? "Two males can't mate. Use a hermaphrodite."
+    : "Hermaphrodites self-fertilize, so two can't mate. Use a male.";
 
 /** A plain sentence for a blocked cross, or undefined when `role` is allowed */
 export const crossingBlockMessage = (

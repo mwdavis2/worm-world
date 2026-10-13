@@ -232,17 +232,15 @@ describe('whether a card can start a mated cross (the Cross drawer)', () => {
 });
 
 describe('why same-sex cards cannot be crossed', () => {
-  test('two hermaphrodites: they self-fertilize and need a male', () => {
+  test('two hermaphrodites: they self-fertilize, so use a male', () => {
     const message = sameSexMessage(Sex.Hermaphrodite);
-    expect(message).toContain('Two hermaphrodites');
-    expect(message).toContain('self-fertilizes');
-    expect(message).toContain('male');
+    expect(message).toContain('self-fertilize');
+    expect(message).toContain("two can't mate");
+    expect(message).toContain('Use a male');
   });
 
-  test('two males: a cross needs one of each', () => {
+  test('two males: use a hermaphrodite', () => {
     expect(sameSexMessage(Sex.Male)).toContain('Two males');
-    expect(sameSexMessage(Sex.Male)).toContain(
-      'one hermaphrodite and one male'
-    );
+    expect(sameSexMessage(Sex.Male)).toContain('Use a hermaphrodite');
   });
 });
