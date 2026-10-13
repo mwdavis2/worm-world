@@ -19,6 +19,7 @@ import { type MenuItem } from 'components/Menu/Menu';
 import NoteForm from 'components/NoteForm/NoteForm';
 import StrainForm from 'components/StrainForm/StrainForm';
 import { NodeType, Sex } from 'models/enums';
+import { nodeRects, pasteShift } from 'models/frontend/Notation/pastePlacement';
 import { Allele } from 'models/frontend/Allele/Allele';
 import { leftOffMaleMessage } from 'utils/leftOffMale';
 import { useAlleleDisplayMode } from 'hooks/useAlleleDisplayMode';
@@ -1165,9 +1166,34 @@ const Editor = (props: EditorProps): React.JSX.Element => {
         },
         revealChild,
       });
+      // Keep off the cards already on the canvas: shift the whole paste (its
+      // founders carry every other card) to the right of them when it lands on any
+      const shift = pasteShift(
+        nodeRects(result.nodes),
+        nodeRects(nodes, nodes)
+      );
+      if (shift.x !== 0 || shift.y !== 0)
+        result.nodes
+          .filter((node) => node.parentNode === undefined)
+          .forEach((node) => {
+            node.position = {
+              x: node.position.x + shift.x,
+              y: node.position.y + shift.y,
+            };
+          });
       refreshFounderCardInfo(result.nodes);
       setNodes((nodes) => addToArray(nodes, ...result.nodes));
       setEdges((edges) => [...edges, ...result.edges]);
+      // Bring the pasted cards into view once the canvas has drawn them
+      const pastedIds = result.nodes.map((node) => ({ id: node.id }));
+      setTimeout(() => {
+        reactFlowInstance.fitView({
+          nodes: pastedIds,
+          padding: 0.2,
+          maxZoom: 1,
+          duration: 300,
+        });
+      }, 100);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Could not paste the notation'
