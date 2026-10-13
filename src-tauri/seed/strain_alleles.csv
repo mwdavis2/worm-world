@@ -239,3 +239,7 @@ EG7764,md299,true,true
 "mIn1[dpy-10(e128) mIs14]",e128,true,true
 "mIn1[dpy-10(e128) mIs14]",mIn1,true,true
 "mIn1[dpy-10(e128) mIs14]",mIs14,true,true
+CB1489,e1489,true,true
+SL15,e1439,true,true
+SL15,q268,false,true
+SL15,q347,true,false
