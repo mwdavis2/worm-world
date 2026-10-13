@@ -384,4 +384,60 @@ describe('persistPhenotypeRows', () => {
       ).rejects.toThrow(/conflicting "Him/);
     });
   });
+
+  describe('a relationship with no text', () => {
+    test('writes no relation and creates no phenotype named blank', async () => {
+      setupIPC();
+      await persistPhenotypeRows('ed3', [
+        baseRow({
+          name: 'ZzAdv',
+          relationship: 'suppressedByPhenotype',
+          relationshipText: '',
+        }),
+      ]);
+      // the row's own phenotype and expression are saved
+      expect(
+        calls.filter((c) => c.cmd === 'insert_phenotype').map((c) => c.payload)
+      ).toEqual([
+        expect.objectContaining({
+          phenotype: expect.objectContaining({ name: 'ZzAdv' }),
+        }),
+      ]);
+      expect(calls.some((c) => c.cmd === 'insert_allele_expr')).toBe(true);
+      // ...but no relation and nothing named ''
+      expect(calls.some((c) => c.cmd === 'insert_expr_relation')).toBe(false);
+      expect(
+        calls.some(
+          (c) =>
+            c.cmd === 'insert_phenotype' &&
+            (c.payload as { phenotype: { name: string } }).phenotype.name === ''
+        )
+      ).toBe(false);
+    });
+
+    test('a condition relationship with no text creates no condition named blank', async () => {
+      setupIPC();
+      await persistPhenotypeRows('ed3', [
+        baseRow({
+          name: 'ZzAdv',
+          relationship: 'requiresCondition',
+          relationshipText: '   ',
+        }),
+      ]);
+      expect(calls.some((c) => c.cmd === 'insert_expr_relation')).toBe(false);
+      expect(calls.some((c) => c.cmd === 'insert_condition')).toBe(false);
+    });
+
+    test('a relationship with text is still written', async () => {
+      setupIPC();
+      await persistPhenotypeRows('ed3', [
+        baseRow({
+          name: 'ZzAdv',
+          relationship: 'suppressedByPhenotype',
+          relationshipText: 'Other',
+        }),
+      ]);
+      expect(calls.some((c) => c.cmd === 'insert_expr_relation')).toBe(true);
+    });
+  });
 });

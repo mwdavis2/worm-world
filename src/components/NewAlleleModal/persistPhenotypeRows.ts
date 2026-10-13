@@ -184,8 +184,13 @@ export const persistPhenotypeRows = async (
   // condition or altering phenotype) before writing anything, rather than
   // silently persisting a duplicate.
   const seenRelations = new Set<string>();
+  // A relationship with no text names nothing to relate to (the Advanced view's
+  // default row has one selected and blank): there is no relation to write, and
+  // no phenotype or condition named '' to create.
+  const hasRelation = (row: PhenotypeRowState): boolean =>
+    row.relationship !== undefined && row.relationshipText.trim() !== '';
   for (const row of namedRows) {
-    if (row.relationship === undefined) continue;
+    if (!hasRelation(row) || row.relationship === undefined) continue;
     const target = isConditionRelationship(row.relationship)
       ? `condition\u0000${row.relationshipText}`
       : `phenotype\u0000${row.relationshipText}\u0000${String(
@@ -208,7 +213,7 @@ export const persistPhenotypeRows = async (
     seenRelations.add(relationKey);
   }
   for (const row of namedRows) {
-    if (row.relationship === undefined) continue;
+    if (!hasRelation(row) || row.relationship === undefined) continue;
     const isSuppressing = isSuppressingRelationship(row.relationship);
     if (isConditionRelationship(row.relationship)) {
       await findOrCreateCondition(row.relationshipText);
