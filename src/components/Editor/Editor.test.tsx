@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Editor from 'components/Editor/Editor';
 import type CrossDesign from 'models/frontend/CrossDesign/CrossDesign';
@@ -34,6 +34,26 @@ describe('Editor', () => {
       wrapper: Wrapper, // Need this wrapper since the component uses the react router
     }).container;
   };
+
+  describe('the Delete key', () => {
+    test('is not left to the browser (which can go back a page, out of the design)', () => {
+      renderComponent(crossDesigns.simpleCrossDesign);
+      // fireEvent returns false when the default action was prevented
+      expect(fireEvent.keyDown(document.body, { key: 'Backspace' })).toBe(
+        false
+      );
+      expect(fireEvent.keyDown(document.body, { key: 'Delete' })).toBe(false);
+    });
+
+    test('still works in a text field, and other keys are untouched', () => {
+      renderComponent(crossDesigns.simpleCrossDesign);
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+      expect(fireEvent.keyDown(input, { key: 'Backspace' })).toBe(true);
+      expect(fireEvent.keyDown(document.body, { key: 'a' })).toBe(true);
+      document.body.removeChild(input);
+    });
+  });
 
   test('Renders', () => {
     renderComponent(crossDesigns.simpleCrossDesign);

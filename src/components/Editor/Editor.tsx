@@ -158,6 +158,14 @@ interface StrainModalState {
 // for a design loaded from storage - these are only otherwise set when a cross
 // is created or its filter changes, so older designs would show neither. Only
 // updates what the cards display; never touches visibility or filters.
+/** Whether a key press lands in something the user is typing into */
+export const isTypingTarget = (target: HTMLElement | null): boolean =>
+  target !== null &&
+  (target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.tagName === 'SELECT' ||
+    target.isContentEditable);
+
 const Editor = (props: EditorProps): React.JSX.Element => {
   const navigate = useNavigate();
   const reactFlowInstance = useReactFlow();
@@ -407,19 +415,26 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       })
       .catch(() => toast.error('Could not read the clipboard'));
   };
+  // The Delete key (Backspace on a Mac) that nothing handles can take the web
+  // view back a page, out of the design. Cards are deleted by the canvas itself;
+  // here the browser's own action is stopped, except in text fields.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Backspace' && event.key !== 'Delete') return;
+      if (isTypingTarget(event.target as HTMLElement | null)) return;
+      event.preventDefault();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       const key = event.key.toLowerCase();
       if (!['c', 'v', 'z', 'y'].includes(key) || event.altKey) return;
       if (!(event.metaKey || event.ctrlKey)) return;
-      const target = event.target as HTMLElement | null;
-      if (
-        target !== null &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-      )
-        return;
+      if (isTypingTarget(event.target as HTMLElement | null)) return;
       // Cmd/Ctrl-Z undoes, with Shift (or Ctrl-Y) redoes; text fields, above,
       // keep their own undo
       if (key === 'z' || (key === 'y' && event.ctrlKey && !event.metaKey)) {
