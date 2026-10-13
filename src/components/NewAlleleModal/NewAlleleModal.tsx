@@ -914,6 +914,36 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                                 }}
                               />
                             </label>
+                            <label className='label cursor-pointer gap-1'>
+                              <span
+                                className={`label-text ${
+                                  gene.dominance.homozygous.name === ''
+                                    ? 'opacity-50'
+                                    : ''
+                                }`}
+                              >
+                                Lethal
+                              </span>
+                              <input
+                                type='checkbox'
+                                className='checkbox checkbox-sm'
+                                checked={
+                                  gene.dominance.homozygous.isLethal ?? false
+                                }
+                                disabled={gene.dominance.homozygous.name === ''}
+                                onChange={(e) => {
+                                  updateGene({
+                                    dominance: {
+                                      ...gene.dominance,
+                                      homozygous: {
+                                        ...gene.dominance.homozygous,
+                                        isLethal: e.target.checked,
+                                      },
+                                    },
+                                  });
+                                }}
+                              />
+                            </label>
                             <CrossingEffectsMenu
                               effects={
                                 gene.dominance.homozygous.crossingEffects ?? {}
@@ -995,6 +1025,36 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                                 }}
                               />
                             </label>
+                            <label className='label cursor-pointer gap-1'>
+                              <span
+                                className={`label-text ${
+                                  gene.dominance.homozygous.name === ''
+                                    ? 'opacity-50'
+                                    : ''
+                                }`}
+                              >
+                                Lethal
+                              </span>
+                              <input
+                                type='checkbox'
+                                className='checkbox checkbox-sm'
+                                checked={
+                                  gene.dominance.homozygous.isLethal ?? false
+                                }
+                                disabled={gene.dominance.homozygous.name === ''}
+                                onChange={(e) => {
+                                  updateGene({
+                                    dominance: {
+                                      ...gene.dominance,
+                                      homozygous: {
+                                        ...gene.dominance.homozygous,
+                                        isLethal: e.target.checked,
+                                      },
+                                    },
+                                  });
+                                }}
+                              />
+                            </label>
                             <CrossingEffectsMenu
                               effects={
                                 gene.dominance.homozygous.crossingEffects ?? {}
@@ -1070,6 +1130,38 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                                       heterozygous: {
                                         ...gene.dominance.heterozygous,
                                         rescuedByWT: e.target.checked,
+                                      },
+                                    },
+                                  });
+                                }}
+                              />
+                            </label>
+                            <label className='label cursor-pointer gap-1'>
+                              <span
+                                className={`label-text ${
+                                  gene.dominance.heterozygous.name === ''
+                                    ? 'opacity-50'
+                                    : ''
+                                }`}
+                              >
+                                Lethal
+                              </span>
+                              <input
+                                type='checkbox'
+                                className='checkbox checkbox-sm'
+                                checked={
+                                  gene.dominance.heterozygous.isLethal ?? false
+                                }
+                                disabled={
+                                  gene.dominance.heterozygous.name === ''
+                                }
+                                onChange={(e) => {
+                                  updateGene({
+                                    dominance: {
+                                      ...gene.dominance,
+                                      heterozygous: {
+                                        ...gene.dominance.heterozygous,
+                                        isLethal: e.target.checked,
                                       },
                                     },
                                   });

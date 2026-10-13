@@ -118,6 +118,8 @@ export const defaultFluorescentMarkerState = (): FluorescentMarkerState => ({
 export interface ZygosityBoxState {
   name: string;
   rescuedByWT: boolean;
+  // Whether this box's phenotype is lethal (unset reads as off)
+  isLethal?: boolean;
   // Crossing Effects of this box's phenotype (unset reads as off)
   crossingEffects?: Partial<CrossingEffects>;
 }
@@ -339,7 +341,7 @@ export const computeDominanceRows = (
       copyNumber,
       name: box.name,
       isWildType: false,
-      isLethal: false,
+      isLethal: box.isLethal ?? false,
       ...box.crossingEffects,
       relationship: box.rescuedByWT ? 'rescuedByWildTypePhenotype' : undefined,
       relationshipText: box.rescuedByWT ? geneName : '',

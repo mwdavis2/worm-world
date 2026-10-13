@@ -182,6 +182,18 @@ describe('computeDominanceRows', () => {
     ]);
   });
 
+  test("a box's Lethal tick goes onto its phenotype's row, and onto no other", () => {
+    const state = {
+      enabled: true,
+      mode: Dominance.SemiDominant,
+      homozygous: { name: 'Let', rescuedByWT: true, isLethal: true },
+      heterozygous: { name: 'Mild', rescuedByWT: false },
+    };
+    const [homo, hetero] = computeDominanceRows(state, 'let-1');
+    expect(homo.isLethal).toBe(true);
+    expect(hetero.isLethal).toBe(false);
+  });
+
   test("a box's Crossing Effects go onto its phenotype's row, and onto no other", () => {
     const state = {
       enabled: true,

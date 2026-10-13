@@ -424,4 +424,38 @@ describe('NewAlleleModal', () => {
       phenotype: { name: 'Him-8', wild: false, him: true },
     });
   });
+
+  test('Basic view: Lethal ticked beside the phenotype is saved when adding from Basic', async () => {
+    setupIPC((cmd) => (cmd === 'get_filtered_phenotypes' ? [] : NOT_HANDLED));
+    render(<NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />);
+    await user.type(screen.getByLabelText('Allele name'), 'e1489');
+    await user.type(screen.getByRole('textbox', { name: 'Gene' }), 'unc');
+    await user.click(await screen.findByText(/unc-119/i));
+
+    const dominanceRow = screen
+      .getByRole('combobox', { name: 'Dominance' })
+      .closest('div') as HTMLElement;
+    // Lethal stays unavailable until the phenotype has a name
+    expect(
+      within(dominanceRow).getByRole<HTMLInputElement>('checkbox', {
+        name: 'Lethal',
+      }).disabled
+    ).toBe(true);
+    await user.type(screen.getByPlaceholderText('Name'), 'Let');
+    await user.click(within(dominanceRow).getAllByRole('checkbox')[0]);
+    await user.click(
+      within(dominanceRow).getByRole('checkbox', { name: 'Lethal' })
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add Allele' })).toBeEnabled();
+    });
+    await user.click(screen.getByRole('button', { name: 'Add Allele' }));
+
+    await waitFor(() => {
+      expect(calls.map((c) => c.cmd)).toContain('insert_phenotype');
+    });
+    expect(
+      calls.find((c) => c.cmd === 'insert_phenotype')?.payload
+    ).toMatchObject({ phenotype: { name: 'Let', wild: false, lethal: true } });
+  });
 });
