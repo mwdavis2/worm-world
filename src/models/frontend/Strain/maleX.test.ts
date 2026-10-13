@@ -171,15 +171,20 @@ describe("a male's X in a cross", () => {
     expect(byCopies(fromHerm)).toEqual(byCopies(fromMale));
   });
 
-  test('without any X data the children carry no sex split', async () => {
+  test('without any X data there is an implicit wild X: the sexes still split half and half', async () => {
     const male = new Strain({
       sex: Sex.Male,
       allelePairs: [a1.toTopHet()],
     });
     const herm = new Strain({ allelePairs: [a2.toTopHet()] });
     const kids = await male.crossWith(herm);
-    expect(kids.every((kid) => kid.sex === Sex.Hermaphrodite)).toBe(true);
     expect(total(kids)).toBeCloseTo(1, 9);
+    const share = (sex: Sex): number =>
+      kids
+        .filter((kid) => kid.sex === sex)
+        .reduce((sum, kid) => sum + (kid.probability ?? 0), 0);
+    expect(share(Sex.Hermaphrodite)).toBeCloseTo(0.5, 9);
+    expect(share(Sex.Male)).toBeCloseTo(0.5, 9);
   });
 });
 

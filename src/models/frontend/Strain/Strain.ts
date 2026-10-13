@@ -831,18 +831,37 @@ export class Strain {
       parent.sex === Sex.Hermaphrodite && parent.him === true;
     const himEggs1 = nullo > 0 && other !== this && isHimHerm(parent1);
     const himEggs2 = nullo > 0 && isHimHerm(parent2);
+    // Neither parent has an X-linked allele, so there is no X to show: the sexes
+    // are still worked out, with an implicit wild X. A hermaphrodite's gametes
+    // all carry it; a male's are half X and half X-less (flagged like a Him egg
+    // without an X), so an X-less gamete with an X one makes a male.
+    const noX =
+      !parent1.chromPairMap.has('X') && !parent2.chromPairMap.has('X');
+    const withImplicitX = (strain: Strain, gametes: Gamete[]): Gamete[] =>
+      noX && strain.sex === Sex.Male
+        ? gametes.flatMap((gamete) => [
+            { ...gamete, prob: gamete.prob / 2 },
+            { ...gamete, prob: gamete.prob / 2, nulloX: true },
+          ])
+        : gametes;
     const children = variants1.flatMap((v1) => {
-      const gametes1 = himEggs1
-        ? v1.strain.withNulloXEggs(v1.strain.meiosis(), nullo)
-        : v1.strain.meiosis();
+      const gametes1 = withImplicitX(
+        v1.strain,
+        himEggs1
+          ? v1.strain.withNulloXEggs(v1.strain.meiosis(), nullo)
+          : v1.strain.meiosis()
+      );
       return variants2.flatMap((v2) => {
         const exOptions = ChromosomePair.crossEx(
           v1.strain.chromPairMap.get('Ex'),
           v2.strain.chromPairMap.get('Ex')
         );
-        const gametes2 = himEggs2
-          ? v2.strain.withNulloXEggs(v2.strain.meiosis(), nullo)
-          : v2.strain.meiosis();
+        const gametes2 = withImplicitX(
+          v2.strain,
+          himEggs2
+            ? v2.strain.withNulloXEggs(v2.strain.meiosis(), nullo)
+            : v2.strain.meiosis()
+        );
         return Strain.buildChildren(
           gametes1,
           gametes2,
@@ -851,7 +870,7 @@ export class Strain {
         );
       });
     });
-    if (himEggs1 || himEggs2) {
+    if (himEggs1 || himEggs2 || noX) {
       // an egg and a sperm that both lack an X make nothing: rescale the rest
       const total = children.reduce((sum, c) => sum + (c.probability ?? 0), 0);
       if (total > 0)
@@ -977,9 +996,9 @@ export class Strain {
       gametes2.flatMap((gamete2) => {
         // two gametes without an X cannot make a worm
         if (isNulloX(gamete1) && isNulloX(gamete2)) return [];
-        // an X-less egg from a Him hermaphrodite makes a male even when the
-        // strain has no X to show it (the usual way is the single X)
-        const male = (gamete1.nulloX ?? false) !== (gamete2.nulloX ?? false);
+        // exactly one X-less gamete makes a male, even when the strain has no X
+        // to show it (the usual way is the single X)
+        const male = isNulloX(gamete1) !== isNulloX(gamete2);
         return exOptions.map((exOption) => {
           const chromPairs = gamete1.chromosomes.map((chrom, idx) =>
             ChromosomePair.buildFromChroms(chrom, gamete2.chromosomes[idx])
