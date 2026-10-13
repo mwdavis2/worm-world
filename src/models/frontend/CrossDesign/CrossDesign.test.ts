@@ -730,3 +730,53 @@ describe('dropDanglingParents', () => {
     expect(nodes[0].parentNode).toBe('gone');
   });
 });
+
+describe('refreshShownProbabilities', () => {
+  const child = (id: string, probability: number): Node<Strain> => {
+    const strain = new Strain();
+    strain.probability = probability;
+    return {
+      id,
+      type: NodeType.Strain,
+      position: { x: 0, y: 0 },
+      data: strain,
+    };
+  };
+
+  test('the visible children share 100% between them, and each card gets a fresh strain so it redraws', () => {
+    const a = child('a', 0.25);
+    const b = child('b', 0.25);
+    const c = child('c', 0.5);
+    c.hidden = true;
+    const before = [a.data, b.data];
+    CrossDesign.refreshShownProbabilities([a, b, c]);
+    expect(a.data.filteredProbability).toBeCloseTo(0.5, 9);
+    expect(b.data.filteredProbability).toBeCloseTo(0.5, 9);
+    expect(c.data.filteredProbability).toBeUndefined();
+    // new objects: a memoized card sees a new prop and redraws
+    expect(a.data).not.toBe(before[0]);
+    expect(b.data).not.toBe(before[1]);
+    expect(
+      (a.data.filteredProbability ?? 0) + (b.data.filteredProbability ?? 0)
+    ).toBeCloseTo(1, 9);
+  });
+
+  test('switching the filter again re-shares and never leaves a stale figure', () => {
+    const a = child('a', 0.25);
+    const b = child('b', 0.25);
+    const c = child('c', 0.5);
+    b.hidden = true;
+    c.hidden = true;
+    CrossDesign.refreshShownProbabilities([a, b, c]);
+    expect(a.data.filteredProbability).toBeCloseTo(1, 9);
+    // now b is shown too
+    b.hidden = false;
+    CrossDesign.refreshShownProbabilities([a, b, c]);
+    expect(a.data.filteredProbability).toBeCloseTo(0.5, 9);
+    expect(b.data.filteredProbability).toBeCloseTo(0.5, 9);
+    // nothing hidden: no figure at all
+    c.hidden = false;
+    CrossDesign.refreshShownProbabilities([a, b, c]);
+    expect(a.data.filteredProbability).toBeUndefined();
+  });
+});

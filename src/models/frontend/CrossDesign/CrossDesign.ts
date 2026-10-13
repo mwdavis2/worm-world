@@ -262,6 +262,22 @@ export default class CrossDesign {
     });
   }
 
+  /**
+   * `applyFilteredProbabilities`, then gives every child a fresh copy of its
+   * strain. The figures are written into the strain in place, and a card that is
+   * drawn from the same strain object does not redraw, so a card that stayed
+   * visible kept showing the "x% shown" of the previous filter (the shown
+   * figures added up to more than 100%).
+   */
+  public static refreshShownProbabilities(
+    childNodes: Array<Node<Strain>>
+  ): void {
+    CrossDesign.applyFilteredProbabilities(childNodes);
+    childNodes.forEach((node) => {
+      node.data = node.data.clone();
+    });
+  }
+
   static fromJSON(json: string): CrossDesign {
     return plainToInstance(
       CrossDesign,

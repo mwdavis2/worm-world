@@ -885,7 +885,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
         filter.hiddenNodes.has(node.id);
       hideConnectedEdges(node, node.hidden);
     });
-    CrossDesign.applyFilteredProbabilities(childNodes);
+    CrossDesign.refreshShownProbabilities(childNodes);
     const middleNode = reactFlowInstance.getNode(update.filterId);
     if (middleNode === undefined) {
       console.error('Middle node undefined');
