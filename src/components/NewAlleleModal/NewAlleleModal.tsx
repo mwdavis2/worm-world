@@ -13,6 +13,7 @@ import { type ChromosomeName } from 'models/db/filter/db_ChromosomeName';
 import { type ConditionFieldName } from 'models/db/filter/db_ConditionFieldName';
 import { type FilterGroup } from 'models/db/filter/FilterGroup';
 import { Dominance } from 'models/enums';
+import CrossingEffectsMenu from 'components/PhenotypeRow/CrossingEffectsMenu';
 import { Allele } from 'models/frontend/Allele/Allele';
 import { Variation } from 'models/frontend/Variation/Variation';
 import { useEffect, useState } from 'react';
@@ -913,6 +914,23 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                                 }}
                               />
                             </label>
+                            <CrossingEffectsMenu
+                              effects={
+                                gene.dominance.homozygous.crossingEffects ?? {}
+                              }
+                              disabled={gene.dominance.homozygous.name === ''}
+                              onChange={(crossingEffects) => {
+                                updateGene({
+                                  dominance: {
+                                    ...gene.dominance,
+                                    homozygous: {
+                                      ...gene.dominance.homozygous,
+                                      crossingEffects,
+                                    },
+                                  },
+                                });
+                              }}
+                            />
                           </div>
                         )}
                       </div>
@@ -977,6 +995,23 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                                 }}
                               />
                             </label>
+                            <CrossingEffectsMenu
+                              effects={
+                                gene.dominance.homozygous.crossingEffects ?? {}
+                              }
+                              disabled={gene.dominance.homozygous.name === ''}
+                              onChange={(crossingEffects) => {
+                                updateGene({
+                                  dominance: {
+                                    ...gene.dominance,
+                                    homozygous: {
+                                      ...gene.dominance.homozygous,
+                                      crossingEffects,
+                                    },
+                                  },
+                                });
+                              }}
+                            />
                           </div>
                           <div className='flex items-center gap-1'>
                             <span className='text-sm'>+/- Phenotype</span>
@@ -1041,6 +1076,24 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                                 }}
                               />
                             </label>
+                            <CrossingEffectsMenu
+                              effects={
+                                gene.dominance.heterozygous.crossingEffects ??
+                                {}
+                              }
+                              disabled={gene.dominance.heterozygous.name === ''}
+                              onChange={(crossingEffects) => {
+                                updateGene({
+                                  dominance: {
+                                    ...gene.dominance,
+                                    heterozygous: {
+                                      ...gene.dominance.heterozygous,
+                                      crossingEffects,
+                                    },
+                                  },
+                                });
+                              }}
+                            />
                           </div>
                         </div>
                       )}

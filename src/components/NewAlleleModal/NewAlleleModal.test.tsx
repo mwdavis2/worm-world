@@ -388,4 +388,40 @@ describe('NewAlleleModal', () => {
       error.mockRestore();
     });
   });
+
+  test('Basic view: Crossing Effects ticked beside the phenotype are saved when adding from Basic', async () => {
+    setupIPC((cmd) => (cmd === 'get_filtered_phenotypes' ? [] : NOT_HANDLED));
+    render(<NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />);
+    await user.type(screen.getByLabelText('Allele name'), 'e1489');
+    await user.type(screen.getByRole('textbox', { name: 'Gene' }), 'unc');
+    await user.click(await screen.findByText(/unc-119/i));
+
+    // the Basic dominance control: a phenotype name, then its Crossing Effects
+    await user.type(screen.getByPlaceholderText('Name'), 'Him-8');
+    const dominanceRow = screen
+      .getByRole('combobox', { name: 'Dominance' })
+      .closest('div') as HTMLElement;
+    await user.click(within(dominanceRow).getAllByRole('checkbox')[0]);
+    const menu = screen
+      .getByText('Crossing Effects')
+      .closest('.dropdown') as HTMLElement;
+    await user.click(
+      within(menu).getByRole('checkbox', {
+        name: 'Him (makes males when selfed)',
+      })
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add Allele' })).toBeEnabled();
+    });
+    await user.click(screen.getByRole('button', { name: 'Add Allele' }));
+
+    await waitFor(() => {
+      expect(calls.map((c) => c.cmd).join(',')).toContain('insert_phenotype');
+    });
+    expect(
+      calls.find((c) => c.cmd === 'insert_phenotype')?.payload
+    ).toMatchObject({
+      phenotype: { name: 'Him-8', wild: false, him: true },
+    });
+  });
 });

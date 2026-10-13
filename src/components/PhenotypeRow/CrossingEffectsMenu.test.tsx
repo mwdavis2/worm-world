@@ -1,23 +1,27 @@
 import { render, screen } from '@testing-library/react';
 import user from '@testing-library/user-event';
 import CrossingEffectsMenu from 'components/PhenotypeRow/CrossingEffectsMenu';
-import {
-  defaultPhenotypeRow,
-  type PhenotypeRowState,
-} from 'components/NewAlleleModal/newAlleleTypes';
+import { type CrossingEffects } from 'components/NewAlleleModal/newAlleleTypes';
 import { describe, expect, test, vi } from 'vitest';
 
 const draw = (
-  row: PhenotypeRowState,
-  onChange = vi.fn()
+  effects: Partial<CrossingEffects>,
+  onChange = vi.fn(),
+  disabled = false
 ): ReturnType<typeof vi.fn> => {
-  render(<CrossingEffectsMenu row={row} onChange={onChange} />);
+  render(
+    <CrossingEffectsMenu
+      effects={effects}
+      onChange={onChange}
+      disabled={disabled}
+    />
+  );
   return onChange;
 };
 
 describe('the Crossing Effects menu', () => {
   test('has a real checkbox for each effect, all off for a new row', () => {
-    draw(defaultPhenotypeRow('r'));
+    draw({});
     for (const label of [
       'Male crossing defective',
       'Female crossing defective',
@@ -32,25 +36,28 @@ describe('the Crossing Effects menu', () => {
 
   test('ticking an effect changes just that flag on the row', async () => {
     user.setup();
-    const row = defaultPhenotypeRow('r');
-    const onChange = draw(row);
+    const onChange = draw({ him: true });
     await user.click(
       screen.getByRole('checkbox', { name: 'Self crossing defective' })
     );
+    // the new tick is added to what was already on
     expect(onChange).toHaveBeenCalledWith({
-      ...row,
+      maleCrossingDefective: false,
+      femaleCrossingDefective: false,
       selfCrossingDefective: true,
+      him: true,
     });
   });
 
   test('shows how many effects are on the button', () => {
-    draw({
-      ...defaultPhenotypeRow('r'),
-      maleCrossingDefective: true,
-      him: true,
-    });
+    draw({ maleCrossingDefective: true, him: true });
     expect(
       screen.getByRole('button', { name: /Crossing Effects/ }).textContent
     ).toContain('2');
+  });
+
+  test('can be disabled, with no checkboxes to tick', () => {
+    draw({}, vi.fn(), true);
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
   });
 });

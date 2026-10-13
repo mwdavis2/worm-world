@@ -182,6 +182,23 @@ describe('computeDominanceRows', () => {
     ]);
   });
 
+  test("a box's Crossing Effects go onto its phenotype's row, and onto no other", () => {
+    const state = {
+      enabled: true,
+      mode: Dominance.SemiDominant,
+      homozygous: {
+        name: 'Him-8',
+        rescuedByWT: true,
+        crossingEffects: { him: true, selfCrossingDefective: true },
+      },
+      heterozygous: { name: 'Mild', rescuedByWT: false },
+    };
+    const [homo, hetero] = computeDominanceRows(state, 'him-8');
+    expect(homo).toMatchObject({ him: true, selfCrossingDefective: true });
+    expect(hetero.him).toBeUndefined();
+    expect(hetero.selfCrossingDefective).toBeUndefined();
+  });
+
   test('Recessive: no relationship when rescued-by-WT is unchecked, but the row still exists', () => {
     const state = {
       enabled: true,
