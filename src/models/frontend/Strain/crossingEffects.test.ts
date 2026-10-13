@@ -12,6 +12,7 @@ import {
   crossingBlockMessage,
   crossingStartMessage,
   isCrossingBlocked,
+  sameSexMessage,
 } from 'models/frontend/Strain/crossingEffects';
 import {
   FEMALE_CROSSING_DEFECTIVE,
@@ -227,5 +228,21 @@ describe('whether a card can start a mated cross (the Cross drawer)', () => {
     const herm = homozygous(sterile);
     herm.refreshCardInfo();
     expect(crossingStartMessage(herm, true)).toBeUndefined();
+  });
+});
+
+describe('why same-sex cards cannot be crossed', () => {
+  test('two hermaphrodites: they self-fertilize and need a male', () => {
+    const message = sameSexMessage(Sex.Hermaphrodite);
+    expect(message).toContain('Two hermaphrodites');
+    expect(message).toContain('self-fertilizes');
+    expect(message).toContain('male');
+  });
+
+  test('two males: a cross needs one of each', () => {
+    expect(sameSexMessage(Sex.Male)).toContain('Two males');
+    expect(sameSexMessage(Sex.Male)).toContain(
+      'one hermaphrodite and one male'
+    );
   });
 });

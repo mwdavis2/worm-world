@@ -5,7 +5,7 @@ import { leftOffMaleMessage } from 'utils/leftOffMale';
 import ReplaceStrainDialog from 'components/ReplaceStrainDialog/ReplaceStrainDialog';
 import { toastDbError } from 'utils/showDbError';
 import StrainCard from 'components/StrainCard/StrainCard';
-import { type Sex } from 'models/enums';
+import { Sex } from 'models/enums';
 import { findSavedStrain, getFilteredStrains } from 'api/strain';
 import { AlleleMultiSelect } from 'components/AlleleMultiSelect/AlleleMultiSelect';
 import NewAlleleModal from 'components/NewAlleleModal/NewAlleleModal';
@@ -37,6 +37,16 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
     source: 'alleles',
   };
   const [state, setState] = useState(defaultState);
+  // An empty form after a strain is added: a cross drawer keeps making the sex
+  // it was told to (the partner of the card it was opened from), rather than
+  // falling back to a hermaphrodite
+  const blankState = (): StrainFormState => ({
+    strain: new Strain({
+      sex: props.enforcedSex,
+      isParent: props.enforcedSex !== undefined,
+    }),
+    source: 'alleles',
+  });
   const [showAdvanced, setShowAdvanced] = useState(false);
   // The last text typed in the strain field: the search text while the strain
   // is empty, or the name given to a new strain. It becomes the new strain's
@@ -141,7 +151,7 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
         toast.success('Saved strain');
         props.onSubmit(strain);
         typedName.current = '';
-        setState(defaultState);
+        setState(blankState());
       })
       .catch((e) => {
         toastDbError(e, {
@@ -169,6 +179,13 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
   return (
     <div className='form-control h-full gap-2'>
       <h1 className='text-lg'>Add Strain</h1>
+      {props.enforcedSex !== undefined && (
+        <p className='px-1 text-sm opacity-80'>
+          {props.enforcedSex === Sex.Male
+            ? "Crossing a hermaphrodite needs a male, so this partner is a male (hermaphrodites can't mate with each other)."
+            : "Crossing a male needs a hermaphrodite, so this partner is a hermaphrodite (males can't mate with each other)."}
+        </p>
+      )}
       <EditorContext.Provider value={editorContextValue}>
         <StrainCard strain={state.strain} id={props.newId} />
       </EditorContext.Provider>
@@ -262,7 +279,7 @@ const StrainForm = (props: StrainFormProps): React.JSX.Element => {
         onClick={() => {
           props.onSubmit(state.strain);
           typedName.current = '';
-          setState(defaultState);
+          setState(blankState());
         }}
       >
         Add Strain to Design

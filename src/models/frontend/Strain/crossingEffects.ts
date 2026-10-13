@@ -38,6 +38,15 @@ export const isCrossingBlocked = (
   }
 };
 
+/**
+ * Why two strains of the same sex cannot be crossed, in terms a student can
+ * learn from: hermaphrodites self-fertilize, and mating needs one of each sex.
+ */
+export const sameSexMessage = (sex: Sex): string =>
+  sex === Sex.Male
+    ? "Two males can't mate. A cross needs one hermaphrodite and one male."
+    : "Two hermaphrodites can't mate: a hermaphrodite self-fertilizes, and only a male can cross with it. Use a male for the cross.";
+
 /** A plain sentence for a blocked cross, or undefined when `role` is allowed */
 export const crossingBlockMessage = (
   strain: Strain,

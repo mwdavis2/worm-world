@@ -4,6 +4,7 @@ import {
   CrossingBlockedError,
   crossingBlockMessage,
   crossingStartMessage,
+  sameSexMessage,
 } from 'models/frontend/Strain/crossingEffects';
 import { insertTasks } from 'api/task';
 import { pushTask } from 'api/taskSync';
@@ -760,7 +761,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     const maleStrain: Strain = maleNode.data;
 
     if (hermStrain.sex === maleStrain.sex) {
-      toast.error('Can only mate strains that are different sexes');
+      toast.error(sameSexMessage(hermStrain.sex));
       return;
     }
 
@@ -1274,6 +1275,12 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       console.error(
         'Cannot cross with a form-created node when existing node is undefined or not a strain'
       );
+      return;
+    }
+
+    // Like dragging two cards together: only a hermaphrodite and a male mate
+    if (existingNode.data.sex === strain.sex) {
+      toast.error(sameSexMessage(strain.sex));
       return;
     }
 

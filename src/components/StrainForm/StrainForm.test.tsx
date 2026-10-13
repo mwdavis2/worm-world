@@ -5,6 +5,7 @@ import user from '@testing-library/user-event';
 import StrainForm from 'components/StrainForm/StrainForm';
 import { ed3 } from 'models/frontend/Allele/Allele.mock';
 import { unc119 } from 'models/frontend/Gene/Gene.mock';
+import { Sex } from 'models/enums';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 describe('Strain form', () => {
@@ -84,6 +85,60 @@ describe('Strain form', () => {
       expect(screen.getAllByText(/ed3/i).length).toBeGreaterThan(0);
       // and the card shows the new name
       expect(screen.getByTestId('strainCard')).toHaveTextContent('MyStrain');
+    });
+  });
+
+  describe('in a cross drawer (the partner sex is forced)', () => {
+    const addEd3 = async (): Promise<void> => {
+      await user.click(screen.getByLabelText(/^alleles$/i));
+      await user.keyboard('ed');
+      await user.click(await screen.findByText(/ed3/i));
+    };
+
+    test('says why the partner is the sex it is', () => {
+      render(
+        <StrainForm
+          onSubmit={() => {}}
+          newId={''}
+          alleleDisplayMode='name'
+          enforcedSex={Sex.Male}
+        />
+      );
+      expect(
+        screen.getByText(/Crossing a hermaphrodite needs a male/)
+      ).toBeVisible();
+    });
+
+    test('says nothing of the kind when adding a plain strain', () => {
+      render(
+        <StrainForm onSubmit={() => {}} newId={''} alleleDisplayMode='name' />
+      );
+      expect(screen.queryByText(/Crossing a/)).toBeNull();
+    });
+
+    test('every strain added is the forced sex, including the second one', async () => {
+      const onSubmit = vi.fn();
+      render(
+        <StrainForm
+          onSubmit={onSubmit}
+          newId={''}
+          alleleDisplayMode='name'
+          enforcedSex={Sex.Male}
+        />
+      );
+      await addEd3();
+      await user.click(
+        await screen.findByRole('button', { name: 'Add Strain to Design' })
+      );
+      expect(onSubmit.mock.calls[0][0].sex).toBe(Sex.Male);
+
+      // the form was emptied for the next partner: still a male, not a hermaphrodite
+      await addEd3();
+      await user.click(
+        await screen.findByRole('button', { name: 'Add Strain to Design' })
+      );
+      expect(onSubmit).toHaveBeenCalledTimes(2);
+      expect(onSubmit.mock.calls[1][0].sex).toBe(Sex.Male);
     });
   });
 
