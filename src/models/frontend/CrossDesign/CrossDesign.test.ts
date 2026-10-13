@@ -1,6 +1,7 @@
 import { StrainFilter } from 'models/frontend/StrainFilter/StrainFilter';
 import { NodeType, Sex } from 'models/enums';
 import CrossDesign, {
+  detachFromCardParents,
   dropDanglingParents,
   parentsFirst,
   addToArray,
@@ -818,5 +819,50 @@ describe('parentsFirst', () => {
     expect(ids(parentsFirst([n('a', 'gone'), n('b')]))).toEqual(['a', 'b']);
     const loop = parentsFirst([n('a', 'b'), n('b', 'a')]);
     expect(ids(loop).sort()).toEqual(['a', 'b']);
+  });
+});
+
+describe('detachFromCardParents', () => {
+  const card = (
+    id: string,
+    position: XYPosition,
+    parentNode?: string
+  ): {
+    id: string;
+    type: NodeType;
+    position: XYPosition;
+    parentNode?: string;
+  } => ({
+    id,
+    type: NodeType.Strain,
+    position,
+    ...(parentNode !== undefined ? { parentNode } : {}),
+  });
+  const herm = card('herm', { x: 100, y: 50 });
+  const male = card('male', { x: 400, y: 0 }, 'herm');
+  const cross = {
+    id: 'x',
+    type: NodeType.X,
+    position: { x: 10, y: 10 },
+    parentNode: 'herm',
+  };
+
+  test('frees the named male from his partner, keeping his place on the canvas', () => {
+    const result = detachFromCardParents(
+      [herm, male, cross],
+      new Set(['male'])
+    );
+    const freed = result.find((n) => n.id === 'male');
+    expect(freed?.parentNode).toBeUndefined();
+    expect(freed?.position).toEqual({ x: 500, y: 50 });
+    // others untouched
+    expect(result.find((n) => n.id === 'x')?.parentNode).toBe('herm');
+  });
+
+  test('leaves a card hung under a cross, and unnamed cards, alone', () => {
+    const child = card('child', { x: 0, y: 0 }, 'x');
+    const nodes = [herm, male, cross, child];
+    expect(detachFromCardParents(nodes, new Set(['child']))).toBe(nodes);
+    expect(detachFromCardParents(nodes, new Set())).toBe(nodes);
   });
 });

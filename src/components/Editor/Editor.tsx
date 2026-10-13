@@ -51,6 +51,7 @@ import {
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import CrossDesign, {
   addToArray,
+  detachFromCardParents,
   dropDanglingParents,
   parentsFirst,
 } from 'models/frontend/CrossDesign/CrossDesign';
@@ -712,10 +713,16 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       return node;
     });
 
+    // a parent whose cross is gone is no longer tied to its old partner
+    const freedIds = new Set(updatedParentsOfRemoved.map((node) => node.id));
+
     setNodes((nodes) =>
-      applyNodeChanges(
-        [validNodeRemoveChanges, othehermNodeChanges].flat(),
-        addToArray(nodes, ...updatedParentsOfRemoved)
+      detachFromCardParents(
+        applyNodeChanges(
+          [validNodeRemoveChanges, othehermNodeChanges].flat(),
+          addToArray(nodes, ...updatedParentsOfRemoved)
+        ),
+        freedIds
       )
     );
 

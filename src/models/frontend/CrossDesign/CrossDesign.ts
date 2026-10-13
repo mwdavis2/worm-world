@@ -111,6 +111,52 @@ export const parentsFirst = <T extends { id: string; parentNode?: string }>(
   return result;
 };
 
+/**
+ * The nodes with the named cards freed from a parent that is itself a card.
+ * A mated cross hangs the male under the hermaphrodite so the pair sit side by
+ * side, but that link means nothing once the cross is gone: left in place, deleting
+ * the hermaphrodite deletes the male, moving her drags him, and crossing him to
+ * someone else keeps him tied to her. A freed card keeps its place on the canvas
+ * (its position is made absolute). Returns the same array when nothing is freed.
+ */
+export const detachFromCardParents = <
+  T extends {
+    id: string;
+    type?: string;
+    parentNode?: string;
+    position: XYPosition;
+  }
+>(
+  nodes: T[],
+  ids: Set<string>
+): T[] => {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const isFreed = (node: T): boolean =>
+    ids.has(node.id) &&
+    node.parentNode !== undefined &&
+    byId.get(node.parentNode)?.type === NodeType.Strain;
+  if (!nodes.some(isFreed)) return nodes;
+  const absolute = (node: T): XYPosition => {
+    let x = node.position.x;
+    let y = node.position.y;
+    let parent = node.parentNode;
+    for (let hops = 0; parent !== undefined && hops < nodes.length; hops++) {
+      const up = byId.get(parent);
+      if (up === undefined) break;
+      x += up.position.x;
+      y += up.position.y;
+      parent = up.parentNode;
+    }
+    return { x, y };
+  };
+  return nodes.map((node) => {
+    if (!isFreed(node)) return node;
+    const freed = { ...node, position: absolute(node) };
+    delete freed.parentNode;
+    return freed;
+  });
+};
+
 export default class CrossDesign {
   public readonly id: string;
   public name: string;
