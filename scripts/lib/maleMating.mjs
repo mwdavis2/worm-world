@@ -14,8 +14,8 @@
 // eT1 strain at M-MATING+POOR <1%WT).
 // Not marked: unc-24 (e138, ME1), unc-4 (e120, ME1; a first-edition entry says
 // ME0), unc-75 (e950, ME2), unc-23 (e25, ME1; the CGC had e324 at POOR <1%) and
-// unc-31 (e169, ME1; the CGC had POOR <1%), and unc-29 and unc-49 (CGC 1-10%, no
-// WormBase score checked).
+// unc-31 (e169, ME1; the CGC had POOR <1%), unc-29 (e193, ME2; CGC 1-10%) and
+// unc-49 (e382, ME2; CGC 1-10%).
 export const MALE_MATING_DEFECTIVE_PHENOTYPES = new Set([
   'Unc-5',
   'Unc-9',
@@ -36,6 +36,8 @@ const ME_SCORES = new Map([
   ['Unc-23', 1], // e25
   ['Unc-31', 1], // e169
   ['Unc-36', 1], // e873 (e251 is ME0)
+  ['Unc-29', 2], // e193
+  ['Unc-49', 2], // e382
 ]);
 
 /** 1 when this (non-wild) phenotype is one of the above, else '' */
