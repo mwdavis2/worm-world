@@ -19,6 +19,7 @@
 //   function alleles, rescued by the wild type.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { zipFolder } from './lib/zipFolder.mjs';
+import { maleCrossingDefective } from './lib/maleMating.mjs';
 
 const OUT_DIR = 'data/lin_15';
 const GENE = 'ZK678.1&ZK662.4';
@@ -177,7 +178,7 @@ const phenotype = (name, wild, lethal, flags = {}) => ({
   description: '',
   male_mating: '',
   lethal,
-  male_crossing_defective: '',
+  male_crossing_defective: maleCrossingDefective(name, wild),
   female_crossing_defective: flags.sterile ?? '',
   self_crossing_defective: flags.sterile ?? '',
   him: '',

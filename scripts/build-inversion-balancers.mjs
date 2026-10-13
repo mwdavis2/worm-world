@@ -23,6 +23,7 @@
 //   heterozygotes with the partner's alleles on the bottom homolog.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { zipFolder } from './lib/zipFolder.mjs';
+import { maleCrossingDefective } from './lib/maleMating.mjs';
 
 const OUT_DIR = 'data/inversion_balancers';
 const LOF_DOMINANCE = 4; // stored form of zygosity '5', "2 copies (lof)"
@@ -254,7 +255,7 @@ const addPhenotype = (name, wild, lethal = '', flags = {}) => {
     description: '',
     male_mating: flags.maleMating ?? '',
     lethal,
-    male_crossing_defective: flags.maleMating === 0 ? 1 : '',
+    male_crossing_defective: flags.maleMating === 0 ? 1 : maleCrossingDefective(name, wild),
     female_crossing_defective: flags.sterile ?? '',
     self_crossing_defective: flags.sterile ?? '',
     him: '',

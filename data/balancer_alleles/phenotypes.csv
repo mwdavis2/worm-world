@@ -1,5 +1,5 @@
 name,wild,short_name,description,male_mating,lethal,male_crossing_defective,female_crossing_defective,self_crossing_defective,him,arrested,maturation_days
-Unc-36,0,Unc-36,,,0,,,,,,
+Unc-36,0,Unc-36,,,0,1,,,,,
 Unc-36,1,Unc-36,,,,,,,,,
 Egl-18(Vul),0,Egl-18(Vul),,,0,,,,,,
 Egl-18,1,Egl-18,,,,,,,,,
