@@ -113,6 +113,7 @@ import { NoteNode } from 'components/NoteNode/NoteNode';
 import StrainNode from 'components/StrainNode/StrainNode';
 import EditorContext from 'components/EditorContext/EditorContext';
 import CustomControls from 'components/CustomControls/CustomControls';
+import { tidyTrees } from 'components/Editor/tidyTrees';
 import { useUndoRedo } from 'components/Editor/useUndoRedo';
 import MiddleNode from 'components/MiddleNode/MiddleNode';
 import FilteredOutModal from 'components/FilteredOutModal/FilteredOutModal';
@@ -806,6 +807,19 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     });
   };
 
+  // Slides overlapping trees apart (the undo history records it as one step)
+  const tidy = (): void => {
+    const result = tidyTrees(nodes, edges);
+    if (result.moved === 0) {
+      toast.info('No trees overlap');
+      return;
+    }
+    setNodes(result.nodes);
+    setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+    }, 100);
+  };
+
   const updateFilter = (update: StrainFilterUpdate): void => {
     const filter: StrainFilter =
       reactFlowInstance.getNode(update.filterId)?.data ?? new StrainFilter();
@@ -1415,6 +1429,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                 canRedo={undoRedo.canRedo}
                 onUndo={undoRedo.undo}
                 onRedo={undoRedo.redo}
+                onTidy={tidy}
               />
               <MiniMap
                 position='bottom-left'

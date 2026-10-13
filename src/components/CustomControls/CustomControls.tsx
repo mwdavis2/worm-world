@@ -10,6 +10,7 @@ import {
   FaLockOpen,
   FaRotateLeft,
   FaRotateRight,
+  FaBroom,
 } from 'react-icons/fa6';
 import { SiMicrogenetics as GeneIcon } from 'react-icons/si';
 import { toast } from 'react-toastify';
@@ -37,6 +38,7 @@ interface CustomControlsProps {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onTidy: () => void;
 }
 
 // Each button gets a daisyUI tooltip to its right (the controls sit in the
@@ -120,6 +122,15 @@ const CustomControls = (props: CustomControlsProps): React.JSX.Element => {
             <FaRotateRight className='hover:cursor-pointer' />
           </ControlButton>
         </>
+      )}
+      {props.crossDesignEditable && (
+        <ControlButton
+          className={TIP}
+          data-tip='Tidy up: slide overlapping trees apart'
+          onClick={props.onTidy}
+        >
+          <FaBroom className='hover:cursor-pointer' />
+        </ControlButton>
       )}
       {props.crossDesignEditable && (
         <ControlButton
