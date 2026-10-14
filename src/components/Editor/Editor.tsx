@@ -1337,6 +1337,14 @@ const Editor = (props: EditorProps): React.JSX.Element => {
               y: node.position.y + shift.y,
             };
           });
+      // Name the pasted cards after saved strains with the same genotype, as a
+      // cross names its children (the founders are built bare)
+      await Strain.syncNames(
+        result.nodes
+          .filter((node) => node.type === NodeType.Strain)
+          .map((node) => (node as Node<Strain>).data)
+          .filter((strain) => strain.name === '')
+      );
       refreshFounderCardInfo(result.nodes);
       setNodes((nodes) => addToArray(nodes, ...result.nodes));
       setEdges((edges) => [...edges, ...result.edges]);
