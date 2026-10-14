@@ -656,7 +656,16 @@ const DataTableView = <T, K>(
             props.updateRecord === undefined
               ? undefined
               : async (row, column, value) => {
-                  props.updateRecord?.(row, column, value).catch(console.error);
+                  // wait for the write, so the table is not re-read before it
+                  // lands, and say so when it fails
+                  try {
+                    await props.updateRecord?.(row, column, value);
+                  } catch (e) {
+                    toastDbError(e, {
+                      action: 'edit',
+                      table: props.tableName,
+                    });
+                  }
                   refresh();
                 }
           }
