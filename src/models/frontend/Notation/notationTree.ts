@@ -63,3 +63,32 @@ export const walkAncestry = (
     .flatMap((crossNode) => getIncomers(crossNode, nodes, edges))
     .map((parent) => walkAncestry(parent as Node<Strain>, nodes, edges)),
 });
+
+/**
+ * The cards among `selected` that start a notation of their own: one whose
+ * ancestry already holds another selected card does not (that card's tree is
+ * written inside it). Keeps the order given.
+ */
+export const independentCards = (
+  selected: Array<Node<Strain>>,
+  nodes: Node[],
+  edges: Edge[]
+): Array<Node<Strain>> => {
+  const ancestorIds = (node: Node): Set<string> => {
+    const found = new Set<string>();
+    const visit = (current: Node): void => {
+      getIncomers(current, nodes, edges).forEach((parent) => {
+        if (found.has(parent.id)) return;
+        found.add(parent.id);
+        visit(parent);
+      });
+    };
+    visit(node);
+    return found;
+  };
+  const covered = new Set<string>();
+  selected.forEach((node) => {
+    ancestorIds(node).forEach((id) => covered.add(id));
+  });
+  return selected.filter((node) => !covered.has(node.id));
+};

@@ -50,6 +50,7 @@ import {
 } from 'models/frontend/CrossDesign/motherPhenotypes';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
 import CrossDesign, {
+  NODE_PADDING,
   addToArray,
   detachFromCardParents,
   dropDanglingParents,
@@ -85,7 +86,7 @@ import {
 import {
   collectAlleleNames,
   looksLikeNotation,
-  parseNotation,
+  parseNotationList,
   serializeNotation,
 } from 'models/frontend/Notation/notationText';
 import {
@@ -95,6 +96,7 @@ import {
 import { resolveAlleles } from 'models/frontend/Notation/resolveAlleles';
 import {
   ancestryToNotation,
+  independentCards,
   walkAncestry,
 } from 'models/frontend/Notation/notationTree';
 import ReactFlow, {
@@ -340,43 +342,62 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   // recompute when something a consumer actually reads changes: the allele
   // display mode directly, and nodes/edges/name because scheduleNode (called from
   // getMenuItems) closes over them directly rather than reading live state.
-  // Copies a card, with its ancestry or alone, as notation text to the
-  // clipboard.
+  // Copies cards, each with its ancestry or alone, as notation text to the
+  // clipboard: one tree per line, in canvas order.
   const copyNotationToClipboard = (
-    id: string,
+    ids: string[],
     ancestry: boolean = true
   ): void => {
-    const node = reactFlowInstance.getNode(id);
-    if (node === undefined || node.type !== NodeType.Strain) {
+    const nodes = reactFlowInstance.getNodes();
+    const edges = reactFlowInstance.getEdges();
+    const chosen = ids
+      .map((id) => reactFlowInstance.getNode(id))
+      .filter(
+        (node): node is Node<Strain> =>
+          node !== undefined && node.type === NodeType.Strain
+      )
+      .sort((a, b) => {
+        const posA = a.positionAbsolute ?? a.position;
+        const posB = b.positionAbsolute ?? b.position;
+        return posA.y !== posB.y ? posA.y - posB.y : posA.x - posB.x;
+      });
+    if (chosen.length === 0) {
       console.error(
         'Cannot copy the notation of an undefined or non-strain node'
       );
       return;
     }
+    // a card inside another chosen card's ancestry is already in that text
+    const cards = ancestry ? independentCards(chosen, nodes, edges) : chosen;
     let text: string;
     try {
-      text = serializeNotation(
-        ancestryToNotation(
-          ancestry
-            ? walkAncestry(
-                node as Node<Strain>,
-                reactFlowInstance.getNodes(),
-                reactFlowInstance.getEdges()
-              )
-            : { strain: (node as Node<Strain>).data, parents: [] }
+      text = cards
+        .map((node) =>
+          serializeNotation(
+            ancestryToNotation(
+              ancestry
+                ? walkAncestry(node, nodes, edges)
+                : { strain: node.data, parents: [] }
+            )
+          )
         )
-      );
+        .join('\n');
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Could not write the notation'
       );
       return;
     }
+    const many = cards.length > 1;
     writeText(text)
       .then(() =>
         toast.success(
           ancestry
-            ? 'Copied the ancestor tree to the clipboard'
+            ? many
+              ? `Copied ${cards.length} ancestor trees to the clipboard`
+              : 'Copied the ancestor tree to the clipboard'
+            : many
+            ? `Copied ${cards.length} cards to the clipboard`
             : 'Copied the card to the clipboard'
         )
       )
@@ -386,8 +407,17 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       });
   };
 
-  // Cmd/Ctrl-C copies the selected card, Shift added copies its ancestor tree.
-  // Text the user is selecting, or typing into, keeps its normal copy.
+  // The right-clicked card, or every selected card when it is one of them
+  const idsToCopy = (id: string): string[] => {
+    const selected = reactFlowInstance
+      .getNodes()
+      .filter((node) => node.selected === true && node.type === NodeType.Strain)
+      .map((node) => node.id);
+    return selected.includes(id) ? selected : [id];
+  };
+
+  // Cmd/Ctrl-C copies the selected cards, Shift added copies their ancestor
+  // trees. Text the user is selecting, or typing into, keeps its normal copy.
   const copySelectedRef = useRef<(ancestry: boolean) => void>(() => {});
   copySelectedRef.current = (ancestry: boolean): void => {
     const selected = reactFlowInstance
@@ -395,11 +425,14 @@ const Editor = (props: EditorProps): React.JSX.Element => {
       .filter(
         (node) => node.selected === true && node.type === NodeType.Strain
       );
-    if (selected.length !== 1) {
-      toast.info('Select one card to copy it');
+    if (selected.length === 0) {
+      toast.info('Select a card to copy it');
       return;
     }
-    copyNotationToClipboard(selected[0].id, ancestry);
+    copyNotationToClipboard(
+      selected.map((node) => node.id),
+      ancestry
+    );
   };
   // Cmd/Ctrl-V pastes notation from the clipboard at the centre of the view
   const pasteAtViewCenterRef = useRef<() => void>(() => {});
@@ -599,7 +632,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           icon: <CopyIcon />,
           text: `Copy this card (${modifierKey}C)`,
           menuCallback: () => {
-            copyNotationToClipboard(id, false);
+            copyNotationToClipboard(idsToCopy(id), false);
           },
         };
 
@@ -607,7 +640,7 @@ const Editor = (props: EditorProps): React.JSX.Element => {
           icon: <CopyIcon />,
           text: `Copy ancestor tree (${modifierKey}${shiftKey}C)`,
           menuCallback: () => {
-            copyNotationToClipboard(id);
+            copyNotationToClipboard(idsToCopy(id));
           },
         };
 
@@ -1256,21 +1289,39 @@ const Editor = (props: EditorProps): React.JSX.Element => {
     at?: XYPosition
   ): Promise<void> => {
     try {
-      const tree = parseNotation(text);
-      const alleles = await resolveAlleles(collectAlleleNames(tree));
-      const origin = at ?? getNodePositionFromLastClick();
-      let lineages = 0;
-      const result = await decodeNotation(tree, alleles, {
-        createId: () => props.crossDesign.createId(),
-        selfCross: performSelfCross,
-        matedCross: performMatedCross,
-        placeRoot: (node) => {
-          // Each separate lineage gets its own band below the last
-          node.position = { x: origin.x, y: origin.y + lineages * 700 };
-          lineages++;
-        },
-        revealChild,
+      const trees = parseNotationList(text);
+      const names = new Set<string>();
+      trees.forEach((tree) => {
+        collectAlleleNames(tree).forEach((name) => names.add(name));
       });
+      const alleles = await resolveAlleles(names);
+      const origin = at ?? getNodePositionFromLastClick();
+      // Each separate lineage starts below the last one's lowest card
+      let nextY = origin.y;
+      // Every tree is built before any is added, so one that cannot be built
+      // adds nothing
+      const result: { nodes: Node[]; edges: Edge[] } = { nodes: [], edges: [] };
+      for (const tree of trees) {
+        // a tree can hold several separate founder pairs, whose height is not
+        // known until it is built, so those are spread by a fixed band
+        let roots = 0;
+        const decoded = await decodeNotation(tree, alleles, {
+          createId: () => props.crossDesign.createId(),
+          selfCross: performSelfCross,
+          matedCross: performMatedCross,
+          placeRoot: (node) => {
+            node.position = { x: origin.x, y: nextY + roots * 700 };
+            roots++;
+          },
+          revealChild,
+        });
+        const bottom = Math.max(
+          ...nodeRects(decoded.nodes).map((rect) => rect.y + rect.height)
+        );
+        if (Number.isFinite(bottom)) nextY = bottom + NODE_PADDING;
+        result.nodes.push(...decoded.nodes);
+        result.edges.push(...decoded.edges);
+      }
       // Keep off the cards already on the canvas: shift the whole paste (its
       // founders carry every other card) to the right of them when it lands on any
       const shift = pasteShift(

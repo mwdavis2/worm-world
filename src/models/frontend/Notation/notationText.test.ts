@@ -5,6 +5,7 @@ import {
   looksLikeNotation,
   NotationParseError,
   parseNotation,
+  parseNotationList,
   serializeNotation,
   type NotationNode,
 } from './notationText';
@@ -169,5 +170,40 @@ describe('collectAlleleNames', () => {
       'unc-119',
     ]);
     expect(collectAlleleNames(parseNotation('{+/+ +/0}')).size).toBe(0);
+  });
+});
+
+describe('several trees in one text', () => {
+  const A = '{n765ts/n765ts}';
+  const B = '{{ox423/ox423}{+/0}{ox423/0}}';
+
+  test('are set apart by a new line, whitespace or a semicolon', () => {
+    const expected = [parseNotation(A), parseNotation(B)];
+    expect(parseNotationList(`${A}\n${B}`)).toEqual(expected);
+    expect(parseNotationList(`${A} ${B}`)).toEqual(expected);
+    expect(parseNotationList(`${A};${B}`)).toEqual(expected);
+    expect(parseNotationList(`${A};\n${B};\n`)).toEqual(expected);
+    expect(parseNotationList(A)).toEqual([parseNotation(A)]);
+  });
+
+  test('written one per line, they read back as written', () => {
+    const trees = [parseNotation(A), parseNotation(B), parseNotation(EXAMPLE)];
+    const text = trees.map(serializeNotation).join('\n');
+    expect(parseNotationList(text)).toEqual(trees);
+  });
+
+  test('a bad tree anywhere is an error, and empty text is too', () => {
+    expect(() => parseNotationList(`${A}\n{n765ts`)).toThrow(
+      NotationParseError
+    );
+    expect(() => parseNotationList(`${A}\nunc`)).toThrow(NotationParseError);
+    expect(() => parseNotationList('  ;  ')).toThrow(NotationParseError);
+  });
+
+  test('a clipboard of several trees looks like notation', () => {
+    expect(looksLikeNotation(`${A}\n${B}`)).toBe(true);
+    expect(looksLikeNotation(`${A}\n${B};`)).toBe(true);
+    expect(looksLikeNotation(`${A}\nhello`)).toBe(false);
+    expect(looksLikeNotation('hello')).toBe(false);
   });
 });

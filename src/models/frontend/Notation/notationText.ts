@@ -69,6 +69,25 @@ class Parser {
     return node;
   }
 
+  // One or more trees, set apart by whitespace (a new line) or ";"
+  parseList(): NotationNode[] {
+    const nodes: NotationNode[] = [];
+    const skipBreaks = (): void => {
+      this.skipSpace();
+      while (this.peek() === ';') {
+        this.pos++;
+        this.skipSpace();
+      }
+    };
+    skipBreaks();
+    while (this.pos < this.text.length) {
+      nodes.push(this.parseNode());
+      skipBreaks();
+    }
+    if (nodes.length === 0) throw this.error('Expected "{" but the text ended');
+    return nodes;
+  }
+
   private error(message: string): NotationParseError {
     return new NotationParseError(message, this.pos);
   }
@@ -179,15 +198,23 @@ export const parseNotation = (text: string): NotationNode =>
   new Parser(text).parseAll();
 
 /**
+ * Parses notation text holding one or more trees, set apart by a new line or
+ * ";" (the trees of several copied cards); throws NotationParseError if it is
+ * not valid.
+ */
+export const parseNotationList = (text: string): NotationNode[] =>
+  new Parser(text).parseList();
+
+/**
  * True when the text parses as notation - used to decide whether the clipboard
  * is worth offering to paste. The cheap prefix test keeps a large unrelated
  * clipboard from being parsed.
  */
 export const looksLikeNotation = (text: string): boolean => {
   const trimmed = text.trim();
-  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return false;
+  if (!trimmed.startsWith('{') || !/[}]\s*;?$/.test(trimmed)) return false;
   try {
-    parseNotation(trimmed);
+    parseNotationList(trimmed);
     return true;
   } catch {
     return false;

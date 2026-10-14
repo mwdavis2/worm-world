@@ -8,6 +8,7 @@ import { NotationGenotypeError } from './notationGenotype';
 import { serializeNotation } from './notationText';
 import {
   ancestryToNotation,
+  independentCards,
   walkAncestry,
   type AncestorNode,
 } from './notationTree';
@@ -143,5 +144,62 @@ describe('walkAncestry', () => {
     ).toBe(
       '{{{dpy-5/+ +/+}{unc-119/0}{dpy-5/dpy-5 unc-119/+}}{}{dpy-5/dpy-5 unc-119/unc-119}}'
     );
+  });
+});
+
+describe('independentCards', () => {
+  const strainNode = (id: string): Node<Strain> => ({
+    id,
+    data: crossChild,
+    position: { x: 0, y: 0 },
+  });
+  const middle = (id: string): Node => ({
+    id,
+    data: {},
+    position: { x: 0, y: 0 },
+  });
+  const edge = (source: string, target: string): Edge => ({
+    id: `${source}-${target}`,
+    source,
+    target,
+  });
+  // herm + male -> x -> child -> self -> grandchild; a separate card alone
+  const nodes = [
+    strainNode('herm'),
+    strainNode('male'),
+    middle('x'),
+    strainNode('child'),
+    middle('self'),
+    strainNode('grand'),
+    strainNode('alone'),
+  ];
+  const edges = [
+    edge('herm', 'x'),
+    edge('male', 'x'),
+    edge('x', 'child'),
+    edge('child', 'self'),
+    edge('self', 'grand'),
+  ];
+  const pick = (...ids: string[]): Array<Node<Strain>> =>
+    ids.map((id) => nodes.find((n) => n.id === id) as Node<Strain>);
+
+  test('keeps cards from separate trees', () => {
+    expect(
+      independentCards(pick('grand', 'alone'), nodes, edges).map((n) => n.id)
+    ).toEqual(['grand', 'alone']);
+  });
+
+  test('drops a card that is inside another chosen card’s ancestry', () => {
+    expect(
+      independentCards(pick('herm', 'child', 'grand'), nodes, edges).map(
+        (n) => n.id
+      )
+    ).toEqual(['grand']);
+  });
+
+  test('keeps both parents of a cross (neither is the other’s ancestor)', () => {
+    expect(
+      independentCards(pick('herm', 'male'), nodes, edges).map((n) => n.id)
+    ).toEqual(['herm', 'male']);
   });
 });
