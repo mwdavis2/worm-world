@@ -1,4 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+
+/**
+ * On macOS a Ctrl-click sends `contextmenu` and then a `click` of its own; that
+ * click must not close the menu it just opened.
+ */
+const OPEN_CLICK_GRACE_MS = 100;
 
 export const useContextMenuState = (
   elementClasses: string[],
@@ -11,6 +17,7 @@ export const useContextMenuState = (
   const [rightClickXPos, setXPos] = useState(0);
   const [rightClickYPos, setYPos] = useState(0);
   const [showRightClickMenu, setShowMenu] = useState(testing);
+  const openedAt = useRef(0);
 
   const handleContextMenu = useCallback(
     (e: MouseEvent) => {
@@ -19,6 +26,7 @@ export const useContextMenuState = (
         for (const elementClass of elementClasses) {
           if (target.classList.contains(elementClass)) {
             e.preventDefault();
+            openedAt.current = Date.now();
             setShowMenu(true);
             setXPos(e.pageX);
             setYPos(e.pageY);
@@ -32,15 +40,20 @@ export const useContextMenuState = (
     [setXPos, setYPos, elementClasses]
   );
 
-  const handleClick = useCallback(() => {
-    showRightClickMenu && setShowMenu(false);
-  }, [showRightClickMenu]);
+  const handleClick = useCallback(
+    (e: MouseEvent) => {
+      if (e.ctrlKey || e.button !== 0) return;
+      if (Date.now() - openedAt.current < OPEN_CLICK_GRACE_MS) return;
+      showRightClickMenu && setShowMenu(false);
+    },
+    [showRightClickMenu]
+  );
 
   useEffect(() => {
     document.addEventListener('click', handleClick);
     document.addEventListener('contextmenu', handleContextMenu);
     return () => {
-      document.addEventListener('click', handleClick);
+      document.removeEventListener('click', handleClick);
       document.removeEventListener('contextmenu', handleContextMenu);
     };
   });
