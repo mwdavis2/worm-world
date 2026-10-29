@@ -61,6 +61,26 @@ export const findPhenotype = async (
   );
 };
 
+/**
+ * How the (name, wild) phenotype is already spelled in the database when it
+ * differs from `name` only in case (so `unc-119` finds `Unc-119`); `name`
+ * itself when it exists exactly as given or no phenotype matches at all.
+ */
+export const findPhenotypeSpelling = async (
+  name: string,
+  wild: boolean
+): Promise<string> => {
+  const found = await getFilteredPhenotypes({
+    filters: [[['Name', { Like: name }]], [['Wild', getDbBoolean(wild)]]],
+    orderBy: [],
+  });
+  const sameName = (found ?? []).filter(
+    (record) => record.name.toLowerCase() === name.toLowerCase()
+  );
+  if (sameName.some((record) => record.name === name)) return name;
+  return sameName[0]?.name ?? name;
+};
+
 export const getAlteringPhenotypes = async (
   alleleName: string,
   phenotypeName: string,

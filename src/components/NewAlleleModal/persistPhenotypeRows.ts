@@ -1,4 +1,8 @@
-import { findPhenotype, insertDbPhenotype } from 'api/phenotype';
+import {
+  findPhenotype,
+  findPhenotypeSpelling,
+  insertDbPhenotype,
+} from 'api/phenotype';
 import { findCondition, insertDbCondition } from 'api/condition';
 import { insertDbAlleleExpression } from 'api/alleleExpression';
 import { insertDbExpressionRelation } from 'api/expressionRelation';
@@ -59,7 +63,8 @@ const findOrCreatePhenotype = async (
   // matching row exists.
   const existing = await findPhenotype(name, wild);
   if (existing !== undefined) {
-    if (lethal !== null && existing.lethal !== lethal) {
+    // a blank lethal reads as off, as the crossing flags do
+    if (lethal !== null && (existing.lethal ?? false) !== lethal) {
       throw new Error(
         `Phenotype "${name}" (${
           wild ? 'wild-type' : 'non-wild-type'
@@ -114,6 +119,40 @@ const findOrCreateCondition = async (name: string): Promise<void> => {
   });
 };
 
+// Phenotypes are matched without regard to case, so a name that differs only in
+// case from one already in the database (or from an earlier row of this batch)
+// is written the way that one is spelled: a "Rescues gene" row typed `unc-119`
+// then rescues the `Unc-119` an existing allele is suppressed by, and no
+// second, differently-spelled phenotype is created.
+const withExistingSpellings = async (
+  rows: PhenotypeRowState[]
+): Promise<PhenotypeRowState[]> => {
+  const spellings = new Map<string, string>();
+  const spell = async (name: string, wild: boolean): Promise<string> => {
+    const key = `${name.toLowerCase()}\u0000${String(wild)}`;
+    let spelling = spellings.get(key);
+    if (spelling === undefined) {
+      spelling = await findPhenotypeSpelling(name, wild);
+      spellings.set(key, spelling);
+    }
+    return spelling;
+  };
+  const result: PhenotypeRowState[] = [];
+  for (const row of rows) {
+    const name = await spell(row.name, row.isWildType);
+    const relationship = row.relationship;
+    const relatesToPhenotype =
+      relationship !== undefined &&
+      row.relationshipText.trim() !== '' &&
+      !isConditionRelationship(relationship);
+    const relationshipText = relatesToPhenotype
+      ? await spell(row.relationshipText, isWildTypeRelationship(relationship))
+      : row.relationshipText;
+    result.push({ ...row, name, relationshipText });
+  }
+  return result;
+};
+
 // Persists a New Allele dialog's Phenotype rows into phenotypes/allele_exprs/
 // expr_relations. Rows with a blank Name are skipped (should already be
 // filtered out upstream, but this is defensive rather than assumed).
@@ -121,7 +160,9 @@ export const persistPhenotypeRows = async (
   alleleName: string,
   rows: PhenotypeRowState[]
 ): Promise<void> => {
-  const namedRows = rows.filter((row) => row.name !== '');
+  const namedRows = await withExistingSpellings(
+    rows.filter((row) => row.name !== '')
+  );
 
   // Pass 1 - every distinct (name, wild) phenotype's own Phenotype +
   // AlleleExpression, so Pass 2's cross-references within the same batch

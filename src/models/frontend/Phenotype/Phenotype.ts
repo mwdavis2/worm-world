@@ -84,6 +84,16 @@ export class Phenotype {
     return `${this.name}${this.wild ? ' (wild)' : ''}`;
   }
 
+  /**
+   * What two phenotypes are compared by when one is required or suppressed by
+   * another: `getUniqueName()` in lower case, so `Unc-119 (wild)` and
+   * `unc-119 (wild)` are the same phenotype. Names themselves keep their own
+   * spelling.
+   */
+  public getMatchKey(): string {
+    return this.getUniqueName().toLowerCase();
+  }
+
   public toJSON(): string {
     return JSON.stringify(instanceToPlain(this));
   }

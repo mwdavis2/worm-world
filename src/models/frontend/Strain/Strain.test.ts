@@ -1603,3 +1603,89 @@ describe('balancers in a cross', () => {
     expect(probabilities[2]).toBeCloseTo(0.5);
   });
 });
+
+describe('phenotypes are matched without regard to case', () => {
+  const phen = (name: string, wild: boolean): Phenotype =>
+    new Phenotype({ name, shortName: name, wild });
+  const allele = (
+    name: string,
+    expr: Partial<AlleleExpressionState> & { dominance: Zygosity }
+  ): Allele => {
+    const result = new Allele({ name, variation: new Variation({ name }) });
+    result.alleleExpressions = [
+      new AlleleExpression({
+        alleleName: name,
+        expressingPhenotype: phen('unnamed', false),
+        requiredPhenotypes: [],
+        suppressingPhenotypes: [],
+        requiredConditions: [],
+        suppressingConditions: [],
+        ...expr,
+      }),
+    ];
+    return result;
+  };
+  const names = (strain: Strain, mother?: ReadonlySet<string>): string[] =>
+    strain
+      .getExprPhenotypes([], new Set<string>(), mother)
+      .map((x) => x.getUniqueName());
+
+  // the mutant is suppressed by the wild phenotype "Unc-119" (as ed3 is)
+  const mutant = allele('mut', {
+    dominance: '2',
+    expressingPhenotype: phen('Unc-119', false),
+    suppressingPhenotypes: [phen('Unc-119', true)],
+  });
+
+  test('a rescuer written in another case still suppresses the mutant', () => {
+    const rescuer = allele('resc', {
+      dominance: '1or2',
+      expressingPhenotype: phen('unc-119', true),
+    });
+    const strain = new Strain({
+      allelePairs: [mutant.toHomo(), rescuer.toTopHet()],
+    });
+    expect(names(strain)).not.toContain('Unc-119');
+    expect(names(strain)).toContain('unc-119 (wild)');
+  });
+
+  test('a rescuer in the same case does too, and without one the mutant shows', () => {
+    const rescuer = allele('resc2', {
+      dominance: '1or2',
+      expressingPhenotype: phen('Unc-119', true),
+    });
+    const rescued = new Strain({
+      allelePairs: [mutant.toHomo(), rescuer.toTopHet()],
+    });
+    expect(names(rescued)).not.toContain('Unc-119');
+    const alone = new Strain({ allelePairs: [mutant.toHomo()] });
+    expect(names(alone)).toContain('Unc-119');
+  });
+
+  test("a wild row in another case stops the implicit wild default, like one in the mutant's own case", () => {
+    const other = allele('other', {
+      dominance: '1or2',
+      expressingPhenotype: phen('unc-119', true),
+    });
+    const withWild = new Strain({
+      allelePairs: [mutant.toTopHet(), other.toTopHet()],
+    });
+    // the het mutant is not expressed, and the wild phenotype that is there is
+    // the row's own - not an extra implicit "Unc-119 (wild)"
+    expect(names(withWild).filter((n) => n.endsWith('(wild)'))).toEqual([
+      'unc-119 (wild)',
+    ]);
+  });
+
+  test('a mother expressing the phenotype in another case still counts', () => {
+    const maternal = allele('mat', {
+      dominance: '2',
+      expressingPhenotype: phen('Rescued', false),
+      maternalSuppressingPhenotypes: [phen('Tra-3', true)],
+    });
+    const strain = new Strain({ allelePairs: [maternal.toHomo()] });
+    expect(names(strain, new Set())).toContain('Rescued');
+    expect(names(strain, new Set(['tra-3 (wild)']))).not.toContain('Rescued');
+    expect(names(strain, new Set(['Tra-3 (wild)']))).not.toContain('Rescued');
+  });
+});

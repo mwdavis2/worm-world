@@ -441,3 +441,82 @@ describe('persistPhenotypeRows', () => {
     });
   });
 });
+
+describe('phenotype names are matched without regard to case', () => {
+  const existing = (name: string, wild: boolean): db_Phenotype => ({
+    name,
+    wild,
+    shortName: name,
+    description: null,
+    maleMating: null,
+    lethal: wild ? null : false,
+    maleCrossingDefective: null,
+    femaleCrossingDefective: null,
+    selfCrossingDefective: null,
+    him: null,
+    arrested: null,
+    maturationDays: null,
+  });
+
+  test('a row typed in another case is saved under the existing spelling, with no new phenotype', async () => {
+    // the database holds the wild phenotype "Unc-119"
+    setupIPC((cmd, payload) => {
+      if (cmd !== 'get_filtered_phenotypes') return NOT_HANDLED;
+      const text = JSON.stringify(payload).toLowerCase();
+      return text.includes('unc-119') ? [existing('Unc-119', true)] : [];
+    });
+    await persistPhenotypeRows('oxTi1', [
+      baseRow({
+        name: 'unc-119',
+        isWildType: true,
+        copyNumber: '1or2',
+        isLethal: false,
+      }),
+    ]);
+    expect(calls.some((c) => c.cmd === 'insert_phenotype')).toBe(false);
+    const expr = calls.find((c) => c.cmd === 'insert_allele_expr');
+    expect(expr?.payload).toMatchObject({
+      alleleExpr: {
+        alleleName: 'oxTi1',
+        expressingPhenotypeName: 'Unc-119',
+        expressingPhenotypeWild: true,
+      },
+    });
+  });
+
+  test("a relationship's phenotype text is respelled the same way", async () => {
+    setupIPC((cmd, payload) => {
+      if (cmd !== 'get_filtered_phenotypes') return NOT_HANDLED;
+      const text = JSON.stringify(payload).toLowerCase();
+      return text.includes('unc-119') ? [existing('Unc-119', true)] : [];
+    });
+    await persistPhenotypeRows('ed9', [
+      baseRow({
+        name: 'Unc-9',
+        relationship: 'rescuedByWildTypePhenotype',
+        relationshipText: 'unc-119',
+      }),
+    ]);
+    const relation = calls.find((c) => c.cmd === 'insert_expr_relation');
+    expect(relation?.payload).toMatchObject({
+      exprRelation: {
+        alteringPhenotypeName: 'Unc-119',
+        alteringPhenotypeWild: true,
+      },
+    });
+  });
+
+  test('two rows of one batch that differ in case share the first spelling', async () => {
+    setupIPC();
+    await persistPhenotypeRows('x1', [
+      baseRow({ id: 'a', name: 'Foo', isWildType: true }),
+      baseRow({ id: 'b', name: 'foo', isWildType: true }),
+    ]);
+    const inserted = calls
+      .filter((c) => c.cmd === 'insert_phenotype')
+      .map(
+        (c) => (c.payload as { phenotype: { name: string } }).phenotype.name
+      );
+    expect(inserted).toEqual(['Foo']);
+  });
+});

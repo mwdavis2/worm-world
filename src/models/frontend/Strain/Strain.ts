@@ -56,10 +56,14 @@ const isNulloX = (gamete: Gamete): boolean =>
     (chrom) => chrom.length > 0 && chrom.every((allele) => allele.isAbsent())
   );
 
+/** The names in a set in lower case, which is how phenotypes are matched (see `Phenotype.getMatchKey`) */
+const lowerSet = (names: ReadonlySet<string>): Set<string> =>
+  new Set([...names].map((name) => name.toLowerCase()));
+
 /**
  * What the parents of a cross express, for the allele conversions a germline
  * driver triggers (see `AlleleConversion`): unique phenotype names, as
- * `Phenotype.getUniqueName()` writes them. A parent left out expresses what its
+ * `Phenotype.getUniqueName()` writes them (case does not matter). A parent left out expresses what its
  * own genotype gives it, with no parents, conditions or mother of its own.
  */
 export interface CrossContext {
@@ -901,9 +905,10 @@ export class Strain {
       (allele.conversions?.length ?? 0) > 0;
     if (!this.getAlleles().some(isSource)) return [{ strain: this, prob: 1 }];
 
-    const driven =
+    const driven = lowerSet(
       expressed ??
-      new Set(this.getExprPhenotypes().map((phen) => phen.getUniqueName()));
+        new Set(this.getExprPhenotypes().map((phen) => phen.getUniqueName()))
+    );
     // Work on a copy, so the slots below index the pairs of the strains made
     // from it
     const base = this.deepClone();
@@ -917,7 +922,7 @@ export class Strain {
         const allele = pair[side];
         if (!isSource(allele)) continue;
         const rules = allele.conversions.filter((rule) =>
-          driven.has(rule.getDriverKey())
+          driven.has(rule.getDriverKey().toLowerCase())
         );
         if (rules.length > 0)
           slots.push({ pairIndex, side, outcomes: conversionOutcomes(rules) });
@@ -1172,11 +1177,11 @@ export class Strain {
     if (pair.isHomo()) return !pair.isWild();
     const otherSide = pair.top.name === expr.alleleName ? pair.bot : pair.top;
     if (otherSide.isWild()) return false;
-    const key = expr.expressingPhenotype.getUniqueName();
+    const key = expr.expressingPhenotype.getMatchKey();
     return otherSide.alleleExpressions.some(
       (otherExpr) =>
         otherExpr.dominance === '5' &&
-        otherExpr.expressingPhenotype.getUniqueName() === key
+        otherExpr.expressingPhenotype.getMatchKey() === key
     );
   }
 
@@ -1244,6 +1249,8 @@ export class Strain {
     motherPhenotypes?: ReadonlySet<string>
   ): { expressed: Phenotype[]; unresolved: Phenotype[] } {
     type Status = 'true' | 'false' | 'unknown';
+    const mother =
+      motherPhenotypes === undefined ? undefined : lowerSet(motherPhenotypes);
 
     const trackedAlleles = new Map<string, Allele>();
     [...this.getNonWildAlleles(), ...parentAlleles].forEach((allele) => {
@@ -1286,7 +1293,7 @@ export class Strain {
     const exprsByKey = new Map<string, AlleleExpression[]>();
     const keyToPhenotype = new Map<string, Phenotype>();
     candidateExprs.forEach((expr) => {
-      const key = expr.expressingPhenotype.getUniqueName();
+      const key = expr.expressingPhenotype.getMatchKey();
       keyToPhenotype.set(key, expr.expressingPhenotype);
       const rows = exprsByKey.get(key) ?? [];
       rows.push(expr);
@@ -1300,7 +1307,7 @@ export class Strain {
     candidateExprs.forEach((expr) => {
       [...expr.requiredPhenotypes, ...expr.suppressingPhenotypes].forEach(
         (phen) => {
-          const key = phen.getUniqueName();
+          const key = phen.getMatchKey();
           if (!status.has(key)) {
             status.set(key, exprsByKey.has(key) ? 'unknown' : 'false');
           }
@@ -1316,24 +1323,24 @@ export class Strain {
       snapshot: Map<string, Status>
     ): Status => {
       const reqStatuses = expr.requiredPhenotypes.map(
-        (phen) => snapshot.get(phen.getUniqueName()) ?? 'false'
+        (phen) => snapshot.get(phen.getMatchKey()) ?? 'false'
       );
       const supStatuses = expr.suppressingPhenotypes.map(
-        (phen) => snapshot.get(phen.getUniqueName()) ?? 'false'
+        (phen) => snapshot.get(phen.getMatchKey()) ?? 'false'
       );
       // A maternal relation asks about the mother, whose phenotypes are
       // already settled, so it is a plain yes/no. Without a known mother a
       // required phenotype is not met and a suppressing one has no effect.
       if (
         expr.maternalRequiredPhenotypes.some(
-          (phen) => !(motherPhenotypes?.has(phen.getUniqueName()) ?? false)
+          (phen) => !(mother?.has(phen.getMatchKey()) ?? false)
         )
       ) {
         return 'false';
       }
       if (
         expr.maternalSuppressingPhenotypes.some(
-          (phen) => motherPhenotypes?.has(phen.getUniqueName()) ?? false
+          (phen) => mother?.has(phen.getMatchKey()) ?? false
         )
       ) {
         return 'false';
@@ -1391,14 +1398,18 @@ export class Strain {
     const namesWithWildRow = new Set(
       allTrackedExprs
         .filter((expr) => expr.expressingPhenotype.wild)
-        .map((expr) => expr.expressingPhenotype.name)
+        .map((expr) => expr.expressingPhenotype.name.toLowerCase())
     );
-    const phenotypeNames = new Set(
-      allTrackedExprs.map((expr) => expr.expressingPhenotype.name)
-    );
-    phenotypeNames.forEach((name) => {
-      if (namesWithWildRow.has(name)) return;
-      const mutantStatus = status.get(name) ?? 'false';
+    // lower-case name -> the spelling first met
+    const phenotypeNames = new Map<string, string>();
+    allTrackedExprs.forEach((expr) => {
+      const name = expr.expressingPhenotype.name;
+      if (!phenotypeNames.has(name.toLowerCase()))
+        phenotypeNames.set(name.toLowerCase(), name);
+    });
+    phenotypeNames.forEach((name, lowerName) => {
+      if (namesWithWildRow.has(lowerName)) return;
+      const mutantStatus = status.get(lowerName) ?? 'false';
       if (mutantStatus === 'true' || mutantStatus === 'unknown') return;
       expressed.push(new Phenotype({ name, shortName: name, wild: true }));
     });
