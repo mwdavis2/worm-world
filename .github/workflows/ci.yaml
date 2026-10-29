@@ -22,10 +22,15 @@ jobs:
         include:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
+            rust: stable
           # Pinned to 22.04, not ubuntu-latest: Tauri 1.x builds against
           # webkit2gtk-4.0, which Ubuntu dropped in 24.04 (it ships 4.1 only).
+          # Rust is pinned to 1.85.0 here: wry 0.23 does not compile against
+          # webkit2gtk on the newest stable (checked 2026-10-29), while 1.85.0
+          # builds, and the lockfile needs at least 1.85 (edition 2024).
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            rust: 1.85.0
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout repository
@@ -39,8 +44,9 @@ jobs:
             libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
       - name: Rust setup
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ matrix.rust }}
           targets: ${{ matrix.target }}
 
       - name: Rust cache
