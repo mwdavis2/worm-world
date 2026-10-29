@@ -14,6 +14,7 @@ const SETS: Array<[string, string]> = [
   ['data/inversion_balancers.zip', 'data/inversion_balancers'],
   ['data/lin_15.zip', 'data/lin_15'],
   ['data/mIn1.zip', 'data/mIn1'],
+  ['data/oxTi_insertions.zip', 'data/oxTi_insertions'],
   // the full first-run data, for installs that already have a database
   ['data/seed.zip', 'src-tauri/seed'],
 ];

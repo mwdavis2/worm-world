@@ -870,6 +870,113 @@ mod tests {
         }
     }
 
+    // The CSVs written by scripts/build-oxti-insertions.mjs, imported on top of
+    // the shipped data.
+    #[sqlx::test]
+    async fn generated_oxti_insertion_csvs_import_cleanly(pool: Pool<Sqlite>) {
+        let state = InnerDbState {
+            conn_pool: pool.clone(),
+        };
+        state.seed_defaults().await.unwrap();
+        state
+            .insert_variations(bulk_from(include_bytes!(
+                "../../../data/oxTi_insertions/variations.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_phenotypes(bulk_from(include_bytes!(
+                "../../../data/oxTi_insertions/phenotypes.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_alleles(bulk_from(include_bytes!(
+                "../../../data/oxTi_insertions/alleles.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_allele_exprs(bulk_from(include_bytes!(
+                "../../../data/oxTi_insertions/allele_exprs.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_expr_relations(bulk_from(include_bytes!(
+                "../../../data/oxTi_insertions/expr_relations.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_strains(bulk_from(include_bytes!(
+                "../../../data/oxTi_insertions/strains.csv"
+            )))
+            .await
+            .unwrap();
+        state
+            .insert_strain_alleles(bulk_from(include_bytes!(
+                "../../../data/oxTi_insertions/strain_alleles.csv"
+            )))
+            .await
+            .unwrap();
+
+        for (table, csv_bytes) in [
+            (
+                "strains",
+                &include_bytes!("../../../data/oxTi_insertions/strains.csv")[..],
+            ),
+            (
+                "variations",
+                &include_bytes!("../../../data/oxTi_insertions/variations.csv")[..],
+            ),
+        ] {
+            let rows = Reader::from_reader(csv_bytes).records().count();
+            let count: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table}"))
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+            assert!(count as usize >= rows, "{table}: every row should import");
+        }
+        // peel-1 is lethal only with heat-shock on
+        let peel: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM expr_relations WHERE expressing_phenotype_name = 'Phsp::peel-1' AND altering_condition = 'heat-shock' AND is_suppressing = 0",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(peel, 3);
+        for (what, query) in [
+            (
+                "alleles whose variation does not exist",
+                "SELECT COUNT(*) FROM alleles WHERE variation_name IS NOT NULL AND variation_name NOT IN (SELECT allele_name FROM variations)",
+            ),
+            (
+                "alleles whose gene does not exist",
+                "SELECT COUNT(*) FROM alleles WHERE systematic_gene_name IS NOT NULL AND systematic_gene_name NOT IN (SELECT systematic_name FROM genes)",
+            ),
+            (
+                "strain_alleles whose allele does not exist",
+                "SELECT COUNT(*) FROM strain_alleles WHERE allele_name NOT IN (SELECT name FROM alleles)",
+            ),
+            (
+                "strain_alleles whose strain does not exist",
+                "SELECT COUNT(*) FROM strain_alleles WHERE strain_name NOT IN (SELECT name FROM strains)",
+            ),
+            (
+                "allele_exprs whose phenotype does not exist",
+                "SELECT COUNT(*) FROM allele_exprs e WHERE NOT EXISTS (SELECT 1 FROM phenotypes p WHERE p.name = e.expressing_phenotype_name AND p.wild = e.expressing_phenotype_wild)",
+            ),
+            (
+                "expr_relations whose condition does not exist",
+                "SELECT COUNT(*) FROM expr_relations WHERE altering_condition IS NOT NULL AND altering_condition NOT IN (SELECT name FROM conditions)",
+            ),
+        ] {
+            let orphans: i64 = sqlx::query_scalar(query).fetch_one(&pool).await.unwrap();
+            assert_eq!(orphans, 0, "{what}");
+        }
+    }
+
     // The shipped demo data (phenotypes, variations, alleles, strains, ...) must
     // seed into a blank database with every reference resolved.
     #[sqlx::test]
