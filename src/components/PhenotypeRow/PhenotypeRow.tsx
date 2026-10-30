@@ -79,109 +79,116 @@ const PhenotypeRow = (props: PhenotypeRowProps): React.JSX.Element => {
     : COPY_NUMBER_OPTIONS;
 
   return (
-    <div
-      className={`flex flex-wrap items-center gap-2 border-b border-base-300 py-2 ${
-        isInert ? 'opacity-50' : ''
-      }`}
-    >
-      <select
-        className='select select-bordered select-sm'
-        value={row.copyNumber}
-        onChange={(e) => {
-          props.onChange({
-            ...row,
-            copyNumber: e.target.value as CopyNumber,
-          });
-        }}
+    <div className='border-b border-base-300 py-2'>
+      <div
+        className={`flex flex-wrap items-center gap-2 ${
+          isInert ? 'opacity-50' : ''
+        }`}
       >
-        {copyNumberOptions.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <input
-        type='text'
-        placeholder='Name'
-        className='input input-bordered input-sm w-32'
-        value={row.name}
-        onChange={(e) => {
-          props.onChange({ ...row, name: e.target.value });
-        }}
-      />
-      <label className='label cursor-pointer gap-1'>
-        <span className='label-text'>Wild-type</span>
-        <input
-          type='checkbox'
-          className='checkbox checkbox-sm'
-          checked={row.isWildType}
-          onChange={(e) => {
-            props.onChange({ ...row, isWildType: e.target.checked });
-          }}
-        />
-      </label>
-      <label className='label cursor-pointer gap-1'>
-        <span className='label-text'>Lethal</span>
-        <input
-          type='checkbox'
-          className='checkbox checkbox-sm'
-          checked={row.isLethal}
-          onChange={(e) => {
-            props.onChange({ ...row, isLethal: e.target.checked });
-          }}
-        />
-      </label>
-      <CrossingEffectsMenu
-        effects={crossingEffectsOf(row)}
-        onChange={(effects) => {
-          props.onChange({ ...row, ...effects });
-        }}
-      />
-      <div className='flex items-center gap-2'>
         <select
           className='select select-bordered select-sm'
-          value={row.relationship ?? ''}
+          value={row.copyNumber}
           onChange={(e) => {
-            const value = e.target.value;
             props.onChange({
               ...row,
-              relationship:
-                value === '' ? undefined : (value as PhenotypeRelationship),
+              copyNumber: e.target.value as CopyNumber,
             });
           }}
         >
-          <option value=''>—</option>
-          {RELATIONSHIP_OPTIONS.map((opt) => (
+          {copyNumberOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
           ))}
-          <optgroup label='From the mother'>
-            {MATERNAL_RELATIONSHIP_OPTIONS.map((opt) => (
+        </select>
+        <input
+          type='text'
+          placeholder='Name'
+          className='input input-bordered input-sm w-32'
+          value={row.name}
+          onChange={(e) => {
+            props.onChange({ ...row, name: e.target.value });
+          }}
+        />
+        <label className='label cursor-pointer gap-1'>
+          <span className='label-text'>Wild-type</span>
+          <input
+            type='checkbox'
+            className='checkbox checkbox-sm'
+            checked={row.isWildType}
+            onChange={(e) => {
+              props.onChange({ ...row, isWildType: e.target.checked });
+            }}
+          />
+        </label>
+        <label className='label cursor-pointer gap-1'>
+          <span className='label-text'>Lethal</span>
+          <input
+            type='checkbox'
+            className='checkbox checkbox-sm'
+            checked={row.isLethal}
+            onChange={(e) => {
+              props.onChange({ ...row, isLethal: e.target.checked });
+            }}
+          />
+        </label>
+        <CrossingEffectsMenu
+          effects={crossingEffectsOf(row)}
+          onChange={(effects) => {
+            props.onChange({ ...row, ...effects });
+          }}
+        />
+        <div className='flex items-center gap-2'>
+          <select
+            className='select select-bordered select-sm'
+            value={row.relationship ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              props.onChange({
+                ...row,
+                relationship:
+                  value === '' ? undefined : (value as PhenotypeRelationship),
+              });
+            }}
+          >
+            <option value=''>—</option>
+            {RELATIONSHIP_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
-          </optgroup>
-        </select>
-        <input
-          type='text'
-          placeholder='Other condition or phenotype'
-          className='input input-bordered input-sm w-40'
-          value={row.relationshipText}
-          onChange={(e) => {
-            props.onChange({ ...row, relationshipText: e.target.value });
-          }}
-        />
+            <optgroup label='From the mother'>
+              {MATERNAL_RELATIONSHIP_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+          <input
+            type='text'
+            placeholder='Other condition or phenotype'
+            className='input input-bordered input-sm w-40'
+            value={row.relationshipText}
+            onChange={(e) => {
+              props.onChange({ ...row, relationshipText: e.target.value });
+            }}
+          />
+        </div>
+        <button
+          type='button'
+          aria-label='Delete phenotype row'
+          className='btn btn-ghost btn-sm'
+          onClick={props.onDelete}
+        >
+          🗑
+        </button>
       </div>
-      <button
-        type='button'
-        aria-label='Delete phenotype row'
-        className='btn btn-ghost btn-sm'
-        onClick={props.onDelete}
-      >
-        🗑
-      </button>
+      {isInert && (
+        <p className='mt-1 text-xs text-base-content/70'>
+          Name this phenotype to activate the row.
+        </p>
+      )}
     </div>
   );
 };

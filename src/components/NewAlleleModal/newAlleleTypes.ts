@@ -149,8 +149,10 @@ export interface DominanceState {
   heterozygous: ZygosityBoxState;
 }
 
+// `enabled` stays on: the row has no checkbox, and it contributes phenotype rows
+// only for the boxes that have a name.
 export const defaultDominanceState = (): DominanceState => ({
-  enabled: false,
+  enabled: true,
   mode: Dominance.Recessive,
   homozygous: defaultZygosityBoxState(),
   heterozygous: defaultZygosityBoxState(),

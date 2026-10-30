@@ -6,6 +6,9 @@ import { getGeneEntries, searchGenes } from 'utils/searchIndex';
 export interface GeneSearchInputProps {
   selectedGene?: Gene;
   onSelect: (gene: Gene) => void;
+  // Called when the text is edited after a gene was picked: the pick no longer
+  // matches what the box shows.
+  onClear?: () => void;
   placeholder?: string;
   // For disambiguating multiple GeneSearchInput instances on the same page
   // (e.g. by role+name in tests) when their placeholders are identical.
@@ -51,6 +54,7 @@ export const GeneSearchInput = (
   const onInputChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const value = event.target.value;
     setText(value);
+    if (props.selectedGene !== undefined) props.onClear?.();
     const thisSearch = ++latestSearch.current;
     if (value.trim() === '') {
       setSearchRes([]);

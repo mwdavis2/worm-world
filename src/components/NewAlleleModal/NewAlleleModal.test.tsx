@@ -239,12 +239,12 @@ describe('NewAlleleModal', () => {
     render(<NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />);
 
     await user.click(screen.getByRole('button', { name: 'Ex' }));
-    // The checkbox is disabled until a drug is picked - pick it first.
+    // Picking a drug is all it takes: there is no checkbox to tick.
     await user.type(screen.getByPlaceholderText('Drug name'), 'Hyg');
     await user.click(await screen.findByText('Hyg'));
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Resistant to Drug' })
-    );
+    expect(
+      screen.queryByRole('checkbox', { name: 'Resistant to Drug' })
+    ).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Advanced' }));
 
@@ -262,6 +262,50 @@ describe('NewAlleleModal', () => {
     expect(wildTypeCheckbox.checked).toBe(false);
   });
 
+  test('the drug and marker rows are active exactly while their boxes are filled in', async () => {
+    setupIPC((cmd) => {
+      if (cmd === 'get_filtered_conditions')
+        return [{ name: 'Puromycin', description: 'drug' }];
+      return NOT_HANDLED;
+    });
+    render(<NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />);
+    await user.click(screen.getByRole('button', { name: 'Ex' }));
+
+    const drugBox = screen.getByPlaceholderText('Drug name');
+    await user.type(drugBox, 'Puro');
+    await user.click(await screen.findByText('Puromycin'));
+    await user.type(screen.getByPlaceholderText('Marker name'), 'Pmyo-2::GFP');
+
+    await user.click(screen.getByRole('button', { name: 'Advanced' }));
+    expect(screen.getAllByDisplayValue('0 copies').length).toBeGreaterThan(0);
+    expect(screen.getAllByDisplayValue('Pmyo-2::GFP').length).toBeGreaterThan(
+      0
+    );
+
+    // emptying the boxes switches the rows off again
+    await user.click(screen.getByRole('button', { name: 'Basic' }));
+    await user.clear(screen.getByPlaceholderText('Drug name'));
+    await user.clear(screen.getByPlaceholderText('Marker name'));
+    await user.click(screen.getByRole('button', { name: 'Advanced' }));
+    expect(screen.queryAllByDisplayValue('0 copies')).toHaveLength(0);
+    expect(screen.queryAllByDisplayValue('Pmyo-2::GFP')).toHaveLength(0);
+  });
+
+  test('Add Allele says what is missing while it is disabled', async () => {
+    setupIPC();
+    render(<NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />);
+    expect(
+      screen.getByText('Enter an allele name and pick its gene.')
+    ).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Allele name'), 'e1489');
+    expect(
+      screen.getByText('Pick the gene from the list.')
+    ).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: 'Gene' }), 'unc');
+    await user.click(await screen.findByText(/unc-119/i));
+    expect(screen.queryByText(/Pick the gene|Enter an allele/)).toBeNull();
+  });
+
   test('a new opening starts with empty drug and gene boxes, not the text from the last one', async () => {
     setupIPC((cmd) => {
       if (cmd === 'get_filtered_conditions')
@@ -272,14 +316,13 @@ describe('NewAlleleModal', () => {
       <NewAlleleModal isOpen setIsOpen={() => {}} onCreated={() => {}} />
     );
 
-    // pick a drug from the list: the checkbox becomes usable
+    // pick a drug from the list
     const drugBox = screen.getByPlaceholderText('Drug name');
     await user.type(drugBox, 'Puro');
     await user.click(await screen.findByText('Puromycin'));
-    expect(screen.getByLabelText('Resistant to Drug')).toBeEnabled();
     expect(drugBox).toHaveValue('Puromycin');
 
-    // close and open again: the box and the checkbox agree (both empty)
+    // close and open again: the box is empty
     rerender(
       <NewAlleleModal
         isOpen={false}
@@ -293,7 +336,6 @@ describe('NewAlleleModal', () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Drug name')).toHaveValue('');
     });
-    expect(screen.getByLabelText('Resistant to Drug')).toBeDisabled();
   });
 
   test('a picked gene does not linger in the gene box on the next opening', async () => {
@@ -396,12 +438,9 @@ describe('NewAlleleModal', () => {
     await user.type(screen.getByRole('textbox', { name: 'Gene' }), 'unc');
     await user.click(await screen.findByText(/unc-119/i));
 
-    // the Basic dominance control: a phenotype name, then its Crossing Effects
+    // the Basic dominance control: a phenotype name is enough to activate it,
+    // then its Crossing Effects
     await user.type(screen.getByPlaceholderText('Name'), 'Him-8');
-    const dominanceRow = screen
-      .getByRole('combobox', { name: 'Dominance' })
-      .closest('div') as HTMLElement;
-    await user.click(within(dominanceRow).getAllByRole('checkbox')[0]);
     const menu = screen
       .getByText('Crossing Effects')
       .closest('.dropdown') as HTMLElement;
@@ -442,7 +481,6 @@ describe('NewAlleleModal', () => {
       }).disabled
     ).toBe(true);
     await user.type(screen.getByPlaceholderText('Name'), 'Let');
-    await user.click(within(dominanceRow).getAllByRole('checkbox')[0]);
     await user.click(
       within(dominanceRow).getByRole('checkbox', { name: 'Lethal' })
     );

@@ -58,6 +58,11 @@ const StrainModal = (props: StrainModalProps): React.JSX.Element => {
               />
             </div>
             <div className='modal-action'>
+              {strainNameInput === '' && (
+                <span className='self-center text-sm text-base-content/70'>
+                  Enter a strain name to save it.
+                </span>
+              )}
               <button
                 disabled={strainNameInput === ''}
                 className='btn btn-primary my-2'

@@ -65,6 +65,9 @@ interface NewAlleleModalProps {
 const ConditionSearchInput = (props: {
   value?: string;
   onSelect: (name: string) => void;
+  // Called when the text is edited after a drug was picked: the pick no
+  // longer matches what the box shows.
+  onClear?: () => void;
 }): React.JSX.Element => {
   const [searchRes, setSearchRes] = useState<db_Condition[]>([]);
   const [text, setText] = useState(props.value ?? '');
@@ -73,6 +76,7 @@ const ConditionSearchInput = (props: {
   const onInputChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const value = event.target.value;
     setText(value);
+    if (props.value !== undefined) props.onClear?.();
     if (value === '') {
       setSearchRes([]);
       setSearched(false);
@@ -133,31 +137,31 @@ const ConditionSearchInput = (props: {
   );
 };
 
+// The three rows below have no checkbox: a row is active exactly when its box
+// holds a pick (drug, gene) or text (marker), so filling it in is all it takes.
+const rowLabelClass = (active: boolean): string =>
+  `w-40 shrink-0 ${active ? '' : 'opacity-50'}`;
+
 const ResistantToDrugControl = (props: {
   state: ResistantToDrugState;
   onChange: (state: ResistantToDrugState) => void;
 }): React.JSX.Element => {
-  // Checking this only ever has an effect once a drug has actually been
-  // picked - dim the label AND disable the checkbox itself until then, so
-  // it's impossible to check a box that would do nothing.
-  const hasEffect = (props.state.drugName ?? '') !== '';
   return (
     <div className='flex items-center gap-2'>
-      <input
-        type='checkbox'
-        aria-label='Resistant to Drug'
-        className='checkbox checkbox-sm'
-        checked={props.state.enabled}
-        disabled={!hasEffect}
-        onChange={(e) => {
-          props.onChange({ ...props.state, enabled: e.target.checked });
-        }}
-      />
-      <span className={hasEffect ? '' : 'opacity-50'}>Resistant to Drug</span>
+      <span className={rowLabelClass(props.state.enabled)}>
+        Resistant to Drug
+      </span>
       <ConditionSearchInput
         value={props.state.drugName}
         onSelect={(drugName) => {
-          props.onChange({ ...props.state, drugName });
+          props.onChange({ ...props.state, drugName, enabled: true });
+        }}
+        onClear={() => {
+          props.onChange({
+            ...props.state,
+            drugName: undefined,
+            enabled: false,
+          });
         }}
       />
     </div>
@@ -168,22 +172,9 @@ const RescuesGeneControl = (props: {
   state: RescuesGeneState;
   onChange: (state: RescuesGeneState) => void;
 }): React.JSX.Element => {
-  // Checking this only ever has an effect once a gene has actually been
-  // picked - dim the label AND disable the checkbox itself until then, so
-  // it's impossible to check a box that would do nothing.
-  const hasEffect = props.state.gene !== undefined;
   return (
     <div className='flex items-center gap-2'>
-      <input
-        type='checkbox'
-        className='checkbox checkbox-sm'
-        checked={props.state.enabled}
-        disabled={!hasEffect}
-        onChange={(e) => {
-          props.onChange({ ...props.state, enabled: e.target.checked });
-        }}
-      />
-      <span className={hasEffect ? '' : 'opacity-50'}>Rescues gene</span>
+      <span className={rowLabelClass(props.state.enabled)}>Rescues gene</span>
       <div className='w-48'>
         <GeneSearchInput
           selectedGene={props.state.gene}
@@ -194,6 +185,15 @@ const RescuesGeneControl = (props: {
               ...props.state,
               gene,
               geneName: gene.descName ?? gene.sysName,
+              enabled: true,
+            });
+          }}
+          onClear={() => {
+            props.onChange({
+              ...props.state,
+              gene: undefined,
+              geneName: '',
+              enabled: false,
             });
           }}
         />
@@ -206,42 +206,28 @@ const FluorescentMarkerControl = (props: {
   state: FluorescentMarkerState;
   onChange: (state: FluorescentMarkerState) => void;
 }): React.JSX.Element => {
-  // Checking this only ever has an effect once a marker name has actually
-  // been entered - dim the label AND disable the checkbox itself until
-  // then, so it's impossible to check a box that would do nothing.
-  const hasEffect = props.state.text !== '';
   return (
     <div className='flex items-center gap-2'>
-      <input
-        type='checkbox'
-        className='checkbox checkbox-sm'
-        checked={props.state.enabled}
-        disabled={!hasEffect}
-        onChange={(e) => {
-          props.onChange({ ...props.state, enabled: e.target.checked });
-        }}
-      />
-      <span className={hasEffect ? '' : 'opacity-50'}>
+      <span className={rowLabelClass(props.state.enabled)}>
         Fluorescent marker(s)
       </span>
       <input
         type='text'
+        aria-label='Fluorescent marker(s)'
+        placeholder='Marker name'
         className='input input-bordered input-sm'
         value={props.state.text}
         onChange={(e) => {
           const text = e.target.value;
-          // If clearing the name un-does the only thing that made checking
-          // this meaningful, un-check it too rather than leaving a checked
-          // box that's about to become disabled and stuck.
-          props.onChange({
-            ...props.state,
-            text,
-            enabled: text === '' ? false : props.state.enabled,
-          });
+          props.onChange({ ...props.state, text, enabled: text !== '' });
         }}
       />
       <label className='label cursor-pointer gap-1'>
-        <span className='label-text'>2 copies brighter</span>
+        <span
+          className={`label-text ${props.state.enabled ? '' : 'opacity-50'}`}
+        >
+          2 copies brighter
+        </span>
         <input
           type='checkbox'
           className='checkbox checkbox-sm'
@@ -491,6 +477,21 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
         // Chromosome only applies to Ti/Si/Is - Ex arrays aren't
         // chromosomally located, so there's no field to require here.
         (activeTab !== 'tiSiIs' || activeVariationTab.chromosome !== undefined);
+
+  // What is still missing before Add Allele works, for the hint beside it.
+  const createBlockedReason = ((): string | undefined => {
+    if (canCreate) return undefined;
+    if (activeTab === 'gene') {
+      if (gene.name === '') return 'Enter an allele name and pick its gene.';
+      return 'Pick the gene from the list.';
+    }
+    if (
+      activeVariationTab.namePrefix === '' ||
+      activeVariationTab.nameSuffix === ''
+    )
+      return 'Enter the allele name (letters, then a number).';
+    return 'Choose a chromosome.';
+  })();
 
   const selectLocationReference = (variation: db_Variation): void => {
     const hasPhys = variation.physLoc !== null;
@@ -803,10 +804,8 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
               />
               {activeTab === 'gene' &&
                 (() => {
-                  // Checking this only ever has an effect once at least one
-                  // zygosity box has a Phenotype name - dim the label AND
-                  // disable the checkbox itself until then, so it's
-                  // impossible to check a box that would do nothing.
+                  // No phenotype name yet means this row saves nothing: dim
+                  // the dropdown with the row's other controls (it stays usable).
                   const dominanceHasEffect =
                     computeDominanceRows(
                       { ...gene.dominance, enabled: true },
@@ -815,20 +814,6 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                   return (
                     <div className='flex flex-col gap-2'>
                       <div className='flex items-center gap-2'>
-                        <input
-                          type='checkbox'
-                          className='checkbox checkbox-sm'
-                          checked={gene.dominance.enabled}
-                          disabled={!dominanceHasEffect}
-                          onChange={(e) => {
-                            updateGene({
-                              dominance: {
-                                ...gene.dominance,
-                                enabled: e.target.checked,
-                              },
-                            });
-                          }}
-                        />
                         <select
                           className={`select select-bordered select-sm ${
                             dominanceHasEffect ? '' : 'opacity-50'
@@ -856,7 +841,15 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                         </select>
                         {gene.dominance.mode !== Dominance.SemiDominant && (
                           <div className='flex items-center gap-1'>
-                            <span className='text-sm'>Phenotype</span>
+                            <span
+                              className={`text-sm ${
+                                gene.dominance.homozygous.name === ''
+                                  ? 'opacity-50'
+                                  : ''
+                              }`}
+                            >
+                              Phenotype
+                            </span>
                             <input
                               type='text'
                               placeholder='Name'
@@ -871,18 +864,8 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                                   ...gene.dominance,
                                   homozygous,
                                 };
-                                const stillHasEffect =
-                                  computeDominanceRows(
-                                    { ...nextDominance, enabled: true },
-                                    ''
-                                  ).length > 0;
                                 updateGene({
-                                  dominance: {
-                                    ...nextDominance,
-                                    enabled: stillHasEffect
-                                      ? gene.dominance.enabled
-                                      : false,
-                                  },
+                                  dominance: nextDominance,
                                 });
                               }}
                             />
@@ -967,7 +950,15 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                       {gene.dominance.mode === Dominance.SemiDominant && (
                         <div className='ml-8 flex flex-col gap-2'>
                           <div className='flex items-center gap-1'>
-                            <span className='text-sm'>-/- Phenotype</span>
+                            <span
+                              className={`text-sm ${
+                                gene.dominance.homozygous.name === ''
+                                  ? 'opacity-50'
+                                  : ''
+                              }`}
+                            >
+                              -/- Phenotype
+                            </span>
                             <input
                               type='text'
                               placeholder='Name'
@@ -982,18 +973,8 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                                   ...gene.dominance,
                                   homozygous,
                                 };
-                                const stillHasEffect =
-                                  computeDominanceRows(
-                                    { ...nextDominance, enabled: true },
-                                    ''
-                                  ).length > 0;
                                 updateGene({
-                                  dominance: {
-                                    ...nextDominance,
-                                    enabled: stillHasEffect
-                                      ? gene.dominance.enabled
-                                      : false,
-                                  },
+                                  dominance: nextDominance,
                                 });
                               }}
                             />
@@ -1074,7 +1055,15 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                             />
                           </div>
                           <div className='flex items-center gap-1'>
-                            <span className='text-sm'>+/- Phenotype</span>
+                            <span
+                              className={`text-sm ${
+                                gene.dominance.heterozygous.name === ''
+                                  ? 'opacity-50'
+                                  : ''
+                              }`}
+                            >
+                              +/- Phenotype
+                            </span>
                             <input
                               type='text'
                               placeholder='Name'
@@ -1089,18 +1078,8 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
                                   ...gene.dominance,
                                   heterozygous,
                                 };
-                                const stillHasEffect =
-                                  computeDominanceRows(
-                                    { ...nextDominance, enabled: true },
-                                    ''
-                                  ).length > 0;
                                 updateGene({
-                                  dominance: {
-                                    ...nextDominance,
-                                    enabled: stillHasEffect
-                                      ? gene.dominance.enabled
-                                      : false,
-                                  },
+                                  dominance: nextDominance,
                                 });
                               }}
                             />
@@ -1307,6 +1286,11 @@ const NewAlleleModal = (props: NewAlleleModalProps): React.JSX.Element => {
           )}
 
           <div className='modal-action'>
+            {createBlockedReason !== undefined && (
+              <span className='mr-auto self-center text-sm text-base-content/70'>
+                {createBlockedReason}
+              </span>
+            )}
             <button className='btn btn-ghost' onClick={close}>
               Cancel
             </button>

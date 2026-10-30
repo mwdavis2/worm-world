@@ -363,6 +363,11 @@ const AddStrainModal = (props: AddStrainModalProps): React.JSX.Element => {
                   Update strain
                 </button>
               )}
+              {name === '' && (
+                <span className='self-center text-sm text-base-content/70'>
+                  Enter a strain name to save it.
+                </span>
+              )}
               <button
                 className='btn btn-primary'
                 disabled={name === ''}
