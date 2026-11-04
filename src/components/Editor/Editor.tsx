@@ -46,6 +46,7 @@ import {
 import {
   getCardPhenotypes,
   getMotherPhenotypes,
+  pickMother,
   type PhenotypeCache,
 } from 'models/frontend/CrossDesign/motherPhenotypes';
 import { type AllelePair } from 'models/frontend/AllelePair/AllelePair';
@@ -128,6 +129,9 @@ import { tidyTrees } from 'components/Editor/tidyTrees';
 import { useUndoRedo } from 'components/Editor/useUndoRedo';
 import MiddleNode from 'components/MiddleNode/MiddleNode';
 import FilteredOutModal from 'components/FilteredOutModal/FilteredOutModal';
+import PunnettSquareModal, {
+  type PunnettInputs,
+} from 'components/PunnettSquareModal/PunnettSquareModal';
 
 // The shortcut modifier shown in menu labels: Cmd on a Mac, Ctrl elsewhere
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -1465,6 +1469,33 @@ const Editor = (props: EditorProps): React.JSX.Element => {
   // One per render, shared by every cross's filter modal.
   const motherCache: PhenotypeCache = new Map();
 
+  // What a cross's Punnett square needs, worked out when its modal is opened.
+  const getPunnettInputs = (
+    middleNode: Node<StrainFilter>
+  ): PunnettInputs | undefined => {
+    const parents = getIncomers(middleNode, nodes, edges) as Array<
+      Node<Strain>
+    >;
+    const mother = pickMother(
+      parents.map((parent) => ({ sex: parent.data.sex, parent }))
+    )?.parent;
+    if (mother === undefined) return undefined;
+    const father =
+      parents.length > 1 ? parents.find((p) => p !== mother) : undefined;
+    const cache: PhenotypeCache = new Map();
+    return {
+      mother: mother.data,
+      father: father?.data,
+      motherPhenotypes: getCardPhenotypes(mother, nodes, edges, cache),
+      fatherPhenotypes:
+        father === undefined
+          ? undefined
+          : getCardPhenotypes(father, nodes, edges, cache),
+      activeConditions: middleNode.data.activeConditions,
+      himNulloFraction: getPreferences().himMalePercent / 100,
+    };
+  };
+
   return (
     <div className='drawer drawer-end'>
       <input
@@ -1501,6 +1532,10 @@ const Editor = (props: EditorProps): React.JSX.Element => {
                 excludedNodes={nodes.filter(
                   (node) => node.parentNode === middleNode.id && node.hidden
                 )}
+              />
+              <PunnettSquareModal
+                filterId={middleNode.id}
+                getInputs={() => getPunnettInputs(middleNode)}
               />
             </Fragment>
           ))}

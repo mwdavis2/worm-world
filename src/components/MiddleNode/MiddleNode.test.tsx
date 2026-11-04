@@ -58,3 +58,13 @@ describe('MiddleNode filter tooltip', () => {
     expect(tipsOf(container)).toContain('No filters');
   });
 });
+
+describe('MiddleNode Punnett square button', () => {
+  test("is a label for the cross's Punnett modal, so it opens like the filter modal", () => {
+    const container = renderNode(new StrainFilter());
+    expect(tipsOf(container)).toContain('Punnett square');
+    expect(
+      container.querySelector("label[for='punnett-modal-m1']")
+    ).not.toBeNull();
+  });
+});

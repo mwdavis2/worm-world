@@ -87,6 +87,26 @@ export interface CrossContext {
 /** A parent with this many germline variants or more is too tangled to cross */
 export const MAX_GERMLINE_VARIANTS = 256;
 
+/** The most gametes a Punnett square shows on a side; more would be an unreadable grid */
+export const MAX_PUNNETT_GAMETES = 24;
+
+/** What `Strain.punnett` can use besides the cross context: how to resolve each child's phenotypes */
+export interface PunnettContext extends CrossContext {
+  activeConditions?: Set<string>;
+  motherPhenotypes?: ReadonlySet<string>;
+}
+
+export type PunnettSquare =
+  | {
+      kind: 'grid';
+      rows: Gamete[];
+      cols: Gamete[];
+      /** cells[row][col]; undefined where the pairing makes no worm (two X-less gametes) */
+      cells: Array<Array<Strain | undefined>>;
+    }
+  | { kind: 'tooMany'; rows: number; cols: number }
+  | { kind: 'unsupported'; reason: 'conversion' | 'array' };
+
 /** One parent's germline as a weighted genotype */
 interface GermlineVariant {
   strain: Strain;
@@ -829,43 +849,23 @@ export class Strain {
       products
     );
     // Him: a hermaphrodite parent's eggs may carry no X (in a self cross, only
-    // the second set of gametes plays the eggs)
+    // the second set of gametes plays the eggs). Neither parent having an X
+    // means an implicit one is used, see `parentGametes`.
     const nullo = context.himNulloFraction ?? 0;
-    const isHimHerm = (parent: Strain): boolean =>
-      parent.sex === Sex.Hermaphrodite && parent.him === true;
-    const himEggs1 = nullo > 0 && other !== this && isHimHerm(parent1);
-    const himEggs2 = nullo > 0 && isHimHerm(parent2);
-    // Neither parent has an X-linked allele, so there is no X to show: the sexes
-    // are still worked out, with an implicit wild X. A hermaphrodite's gametes
-    // all carry it; a male's are half X and half X-less (flagged like a Him egg
-    // without an X), so an X-less gamete with an X one makes a male.
-    const noX =
-      !parent1.chromPairMap.has('X') && !parent2.chromPairMap.has('X');
-    const withImplicitX = (strain: Strain, gametes: Gamete[]): Gamete[] =>
-      noX && strain.sex === Sex.Male
-        ? gametes.flatMap((gamete) => [
-            { ...gamete, prob: gamete.prob / 2 },
-            { ...gamete, prob: gamete.prob / 2, nulloX: true },
-          ])
-        : gametes;
+    const { himEggs1, himEggs2, noX } = Strain.eggFlags(
+      parent1,
+      parent2,
+      other === this,
+      nullo
+    );
     const children = variants1.flatMap((v1) => {
-      const gametes1 = withImplicitX(
-        v1.strain,
-        himEggs1
-          ? v1.strain.withNulloXEggs(v1.strain.meiosis(), nullo)
-          : v1.strain.meiosis()
-      );
+      const gametes1 = Strain.parentGametes(v1.strain, himEggs1, nullo, noX);
       return variants2.flatMap((v2) => {
         const exOptions = ChromosomePair.crossEx(
           v1.strain.chromPairMap.get('Ex'),
           v2.strain.chromPairMap.get('Ex')
         );
-        const gametes2 = withImplicitX(
-          v2.strain,
-          himEggs2
-            ? v2.strain.withNulloXEggs(v2.strain.meiosis(), nullo)
-            : v2.strain.meiosis()
-        );
+        const gametes2 = Strain.parentGametes(v2.strain, himEggs2, nullo, noX);
         return Strain.buildChildren(
           gametes1,
           gametes2,
@@ -883,6 +883,136 @@ export class Strain {
         });
     }
     return await Strain.finishChildren(children);
+  }
+
+  /**
+   * Which parents' eggs may carry no X (a Him hermaphrodite's; in a self cross
+   * only the second set plays the eggs), and whether neither parent has an X
+   * pair at all (an implicit wild X is then used, see `parentGametes`).
+   */
+  private static eggFlags(
+    parent1: Strain,
+    parent2: Strain,
+    selfCross: boolean,
+    nullo: number
+  ): { himEggs1: boolean; himEggs2: boolean; noX: boolean } {
+    const isHimHerm = (parent: Strain): boolean =>
+      parent.sex === Sex.Hermaphrodite && parent.him === true;
+    return {
+      himEggs1: nullo > 0 && !selfCross && isHimHerm(parent1),
+      himEggs2: nullo > 0 && isHimHerm(parent2),
+      noX: !parent1.chromPairMap.has('X') && !parent2.chromPairMap.has('X'),
+    };
+  }
+
+  /**
+   * One parent's gametes as a cross uses them: with a Him hermaphrodite's
+   * X-less eggs added, and a male's gametes split into X and X-less halves when
+   * no parent has an X to show (an X-less gamete with an X one makes a male).
+   */
+  private static parentGametes(
+    strain: Strain,
+    himEggs: boolean,
+    nullo: number,
+    noX: boolean
+  ): Gamete[] {
+    const gametes = himEggs
+      ? strain.withNulloXEggs(strain.meiosis(), nullo)
+      : strain.meiosis();
+    return noX && strain.sex === Sex.Male
+      ? gametes.flatMap((gamete) => [
+          { ...gamete, prob: gamete.prob / 2 },
+          { ...gamete, prob: gamete.prob / 2, nulloX: true },
+        ])
+      : gametes;
+  }
+
+  /**
+   * The Punnett square of crossing this strain (the rows) with {other} (the
+   * columns): each parent's gametes with their probabilities, and the child of
+   * every pairing. The gametes are the ones a cross on the canvas uses (see
+   * `crossWith`), so the cells are that cross's children, one pairing apart.
+   * Not drawn when a parent's germline converts alleles (Cre/lox) or an
+   * extrachromosomal array segregates, or when a side has more than
+   * `MAX_PUNNETT_GAMETES` gametes.
+   * @param context as for `crossWith`, plus what resolves each child's
+   * lethality and phenotypes (see `refreshCardInfo`)
+   */
+  public async punnett(
+    other: Strain,
+    context: PunnettContext = {}
+  ): Promise<PunnettSquare> {
+    const parent1 = this.deepClone();
+    const parent2 = other.deepClone();
+    parent1.fillWildsFrom(parent2);
+    parent2.fillWildsFrom(parent1);
+
+    const products = new Map<string, Allele>();
+    const variants1 = await parent1.germlineVariants(
+      context.thisPhenotypes,
+      products
+    );
+    const variants2 = await parent2.germlineVariants(
+      context.otherPhenotypes,
+      products
+    );
+    if (variants1.length !== 1 || variants2.length !== 1)
+      return { kind: 'unsupported', reason: 'conversion' };
+
+    const nullo = context.himNulloFraction ?? 0;
+    const { himEggs1, himEggs2, noX } = Strain.eggFlags(
+      parent1,
+      parent2,
+      other === this,
+      nullo
+    );
+    const rows = Strain.parentGametes(
+      variants1[0].strain,
+      himEggs1,
+      nullo,
+      noX
+    );
+    const cols = Strain.parentGametes(
+      variants2[0].strain,
+      himEggs2,
+      nullo,
+      noX
+    );
+    if (rows.length > MAX_PUNNETT_GAMETES || cols.length > MAX_PUNNETT_GAMETES)
+      return { kind: 'tooMany', rows: rows.length, cols: cols.length };
+
+    const exOptions = ChromosomePair.crossEx(
+      variants1[0].strain.chromPairMap.get('Ex'),
+      variants2[0].strain.chromPairMap.get('Ex')
+    );
+    if (exOptions.length !== 1) return { kind: 'unsupported', reason: 'array' };
+
+    const cells = rows.map((row) =>
+      cols.map((col) => Strain.buildChildren([row], [col], exOptions)[0])
+    );
+    if (himEggs1 || himEggs2 || noX) {
+      // as in `crossWith`: pairings that make nothing leave the rest to rescale
+      const total = cells
+        .flat()
+        .reduce((sum, cell) => sum + (cell?.probability ?? 0), 0);
+      if (total > 0)
+        cells.flat().forEach((cell) => {
+          if (cell !== undefined)
+            cell.probability = (cell.probability ?? 0) / total;
+        });
+    }
+    const parentAlleles = [
+      ...this.getNonWildAlleles(),
+      ...other.getNonWildAlleles(),
+    ];
+    cells.flat().forEach((cell) => {
+      cell?.refreshCardInfo(
+        parentAlleles,
+        context.activeConditions,
+        context.motherPhenotypes
+      );
+    });
+    return { kind: 'grid', rows, cols, cells };
   }
 
   /**

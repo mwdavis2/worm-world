@@ -7,6 +7,7 @@ import type StrainFilter from 'models/frontend/StrainFilter/StrainFilter';
 import SelfCrossIcon from 'components/SelfCrossIcon/SelfCrossIcon';
 import { Handle, Position, useStore } from 'reactflow';
 import { BiX as CloseIcon } from 'react-icons/bi';
+import { TbBorderAll as PunnettIcon } from 'react-icons/tb';
 import { NodeType, Sex } from 'models/enums';
 
 export interface MiddleNodeProps {
@@ -45,7 +46,7 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
     // the circle toward an icon crossed space outside the hover target and
     // hid it again before it could be reached. The circle itself stays
     // pinned at its original visual position (bottom-left of this box).
-    <div className='group relative h-20 w-36'>
+    <div className='group relative h-20 w-44'>
       <div className='middle-node absolute bottom-0 left-0'>
         {props.type === NodeType.Self ? (
           <Handle key='top' id='top' type='target' position={Position.Top} />
@@ -116,6 +117,17 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
           ) : (
             <FilterIcon size='30' />
           )}
+        </label>
+      </div>
+      <div
+        className='export-hide-icon tooltip tooltip-top invisible absolute left-32 top-0 group-hover:visible'
+        data-tip='Punnett square'
+      >
+        <label
+          htmlFor={`punnett-modal-${props.id}`}
+          className='hover:cursor-pointer'
+        >
+          <PunnettIcon size='30' aria-label='Punnett square' />
         </label>
       </div>
     </div>
