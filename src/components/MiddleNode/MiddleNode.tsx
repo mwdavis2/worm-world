@@ -4,7 +4,7 @@ import {
 } from 'react-icons/hi';
 import { AiOutlineEyeInvisible as EyeIcon } from 'react-icons/ai';
 import type StrainFilter from 'models/frontend/StrainFilter/StrainFilter';
-import { TbArrowLoopLeft as SelfIcon } from 'react-icons/tb';
+import SelfCrossIcon from 'components/SelfCrossIcon/SelfCrossIcon';
 import { Handle, Position, useStore } from 'reactflow';
 import { BiX as CloseIcon } from 'react-icons/bi';
 import { NodeType, Sex } from 'models/enums';
@@ -77,7 +77,7 @@ const MiddleNode = (props: MiddleNodeProps): React.JSX.Element => {
           }`}
         >
           {props.type === NodeType.Self ? (
-            <SelfIcon className='h-8 w-8 text-3xl text-primary-content' />
+            <SelfCrossIcon className='h-8 w-8 text-secondary-content' />
           ) : (
             <CloseIcon className='h-8 w-8 text-3xl text-primary-content' />
           )}
