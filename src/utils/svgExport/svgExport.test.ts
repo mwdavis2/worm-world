@@ -573,6 +573,34 @@ describe('buildCrossDesignSvg', () => {
   });
 });
 
+describe('the middle nodes in the exported image', () => {
+  const middle = async (type: NodeType): Promise<string> => {
+    const node: Node = { id: 'm', type, position: { x: 0, y: 0 }, data: {} };
+    return await buildCrossDesignSvg(
+      [node],
+      [],
+      'default',
+      'gene-name',
+      'text'
+    );
+  };
+
+  test('a self cross draws the looping arrow with the X inside, not the old loop', async () => {
+    const svg = await middle(NodeType.Self);
+    expect(svg).toContain('d="M7.5 1.5V10A5.8 5.8 0 0 0 19.1 10');
+    expect(svg).toContain('stroke-width="1.8"');
+    // the X rides inside the loop, scaled
+    expect(svg).toContain('scale(0.46) translate(-12 -12)');
+    expect(svg).not.toContain('M13 21v-13');
+  });
+
+  test('a mated cross still draws the plain X', async () => {
+    const svg = await middle(NodeType.X);
+    expect(svg).toContain('d="m16.192 6.344');
+    expect(svg).not.toContain('M7.5 1.5V10A5.8');
+  });
+});
+
 describe("a male's X in the exported image", () => {
   const xAllele = (name: string, loc: number): Allele =>
     new Allele({

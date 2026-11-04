@@ -6,6 +6,7 @@ export interface ThemeColors {
   selfNodeBackground: string; // bg-secondary
   xNodeBackground: string; // bg-primary
   middleNodeIcon: string; // text-primary-content
+  selfNodeIcon: string; // text-secondary-content
   canvasBackground: string; // bg-base-300 (the react-flow dot-pattern backdrop)
   edgeStroke: string; // opaque rgb(...), matches .react-flow__edge-path's hue
   edgeStrokeOpacity: number; // matches .react-flow__edge-path's hsla(var(--bc)/0.3) alpha
@@ -91,6 +92,7 @@ export const sampleThemeColors = (): ThemeColors => {
     selfNodeBackground: probe('bg-secondary', 'backgroundColor'),
     xNodeBackground: probe('bg-primary', 'backgroundColor'),
     middleNodeIcon: probe('text-primary-content', 'color'),
+    selfNodeIcon: probe('text-secondary-content', 'color'),
     canvasBackground: probe('bg-base-300', 'backgroundColor'),
     edgeStroke: edge.rgb,
     edgeStrokeOpacity: edge.alpha,

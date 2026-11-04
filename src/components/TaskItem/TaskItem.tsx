@@ -1,10 +1,10 @@
 import StrainCard from 'components/StrainCard/StrainCard';
+import SelfCrossIcon from 'components/SelfCrossIcon/SelfCrossIcon';
 import { type Task } from 'models/frontend/Task/Task';
 import { type Strain } from 'models/frontend/Strain/Strain';
 import {
   TbSnowflake as FreezeIcon,
   TbMicroscope as PCRIcon,
-  TbArrowLoopLeft as SelfCrossIcon,
   TbBinaryTree as TreeIcon,
 } from 'react-icons/tb';
 import {
@@ -106,7 +106,7 @@ const TaskItem = (props: TaskItemProps): React.JSX.Element => {
         )}
         {hermStrain !== undefined && <StrainCard strain={hermStrain} id={''} />}
         <div
-          className={`flex h-8 w-8 items-center justify-center rounded-full text-primary-content ${getIconColor(
+          className={`flex h-8 w-8 items-center justify-center rounded-full ${getIconColor(
             action
           )}`}
         >
@@ -272,13 +272,13 @@ export const TaskStatement = (props: { task: Task }): React.JSX.Element => {
 const getIconColor = (action: Action): string => {
   switch (action) {
     case 'Cross':
-      return 'bg-primary';
+      return 'bg-primary text-primary-content';
     case 'SelfCross':
-      return 'bg-secondary';
+      return 'bg-secondary text-secondary-content';
     case 'Pcr':
-      return 'bg-accent';
+      return 'bg-accent text-accent-content';
     case 'Freeze':
-      return 'bg-accent';
+      return 'bg-accent text-accent-content';
   }
 };
 
@@ -287,7 +287,7 @@ const ActionIcon = (props: { action: Action }): React.JSX.Element => {
     case 'Cross':
       return <CrossIcon size='30' />;
     case 'SelfCross':
-      return <SelfCrossIcon size='20' />;
+      return <SelfCrossIcon className='h-6 w-6' />;
     case 'Freeze':
       return <FreezeIcon size='20' />;
     case 'Pcr':

@@ -163,7 +163,13 @@ const iconMarkup = (
   const scale = size / icon.viewBoxSize;
   const transform = `translate(${x}, ${y}) scale(${scale})`;
   if (icon.stroke === true) {
-    return `<path d="${icon.d}" transform="${transform}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`;
+    const outline = `<path d="${
+      icon.d
+    }" transform="${transform}" fill="none" stroke="${color}" stroke-width="${
+      icon.strokeWidth ?? 2
+    }" stroke-linecap="round" stroke-linejoin="round" />`;
+    if (icon.filled === undefined) return outline;
+    return `${outline}<path d="${icon.filled.d}" transform="${transform} ${icon.filled.transform}" fill="${color}" />`;
   }
   return `<path d="${icon.d}" transform="${transform}" fill="${color}" />`;
 };
@@ -618,7 +624,7 @@ const renderMiddleNode = (
       cx - iconSize / 2,
       cy - iconSize / 2,
       iconSize,
-      colors.middleNodeIcon
+      isSelf ? colors.selfNodeIcon : colors.middleNodeIcon
     )
   );
 };
