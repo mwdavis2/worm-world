@@ -601,6 +601,61 @@ describe('the middle nodes in the exported image', () => {
   });
 });
 
+describe('a note in the exported image', () => {
+  const note = (size?: { width: number; height: number }): Node<string> => ({
+    id: 'n',
+    type: NodeType.Note,
+    data: 'a short note',
+    position: { x: 0, y: 0 },
+    ...size,
+  });
+  const exported = async (node: Node<string>): Promise<Document> =>
+    new DOMParser().parseFromString(
+      await buildCrossDesignSvg([node], [], 'default', 'gene-name', 'text'),
+      'image/svg+xml'
+    );
+
+  test('is drawn at its measured size, and the image is sized to fit it', async () => {
+    const svg = await exported(note({ width: 180, height: 56 }));
+    const box = svg.querySelector('rect[rx="4"]');
+    expect(box?.getAttribute('width')).toBe('180');
+    expect(box?.getAttribute('height')).toBe('56');
+    // the 50px padding goes on each side
+    expect(svg.documentElement.getAttribute('width')).toBe('280');
+    expect(svg.documentElement.getAttribute('height')).toBe('156');
+  });
+
+  test('a note that has not been measured keeps the default size', async () => {
+    const box = (await exported(note())).querySelector('rect[rx="4"]');
+    expect(box?.getAttribute('width')).toBe('320');
+    expect(box?.getAttribute('height')).toBe('112');
+  });
+
+  test('a long note wraps to its own width, not the default one', async () => {
+    const long: Node<string> = {
+      ...note({ width: 120, height: 112 }),
+      data: 'one two three four five six seven eight nine ten eleven twelve',
+    };
+    const narrow = await buildCrossDesignSvg(
+      [long],
+      [],
+      'default',
+      'gene-name',
+      'text'
+    );
+    const wide = await buildCrossDesignSvg(
+      [{ ...long, width: 320 }],
+      [],
+      'default',
+      'gene-name',
+      'text'
+    );
+    const lines = (svg: string): number => (svg.match(/<text /g) ?? []).length;
+    // the narrow box wraps onto more lines than the wide one
+    expect(lines(narrow)).toBeGreaterThan(lines(wide));
+  });
+});
+
 describe("a male's X in the exported image", () => {
   const xAllele = (name: string, loc: number): Allele =>
     new Allele({

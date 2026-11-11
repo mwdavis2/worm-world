@@ -73,7 +73,13 @@ const nodeSize = (node: Node): Size => {
     case NodeType.X:
       return { width: MIDDLE_NODE_SIZE, height: MIDDLE_NODE_SIZE };
     case NodeType.Note:
-      return { width: NOTE_NODE_WIDTH, height: NOTE_NODE_HEIGHT };
+      // A note is as big as its text makes it (up to NOTE_NODE_WIDTH x
+      // NOTE_NODE_HEIGHT, the on-screen maximum); react-flow's measured size
+      // is that, and the maximum is only a fallback for a node not measured yet
+      return {
+        width: node.width ?? NOTE_NODE_WIDTH,
+        height: node.height ?? NOTE_NODE_HEIGHT,
+      };
     default:
       return { width: 0, height: 0 };
   }
@@ -662,13 +668,14 @@ const renderNoteNode = (
   tr: TextRenderer
 ): string => {
   const { x, y } = position;
+  const { width, height } = nodeSize(node);
   const fontSize = 14;
   const lineHeight = 18;
   const parts = [
-    `<rect x="${x}" y="${y}" width="${NOTE_NODE_WIDTH}" height="${NOTE_NODE_HEIGHT}" rx="4" fill="${colors.cardBackground}" stroke="${colors.contentText}" stroke-width="1" />`,
+    `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="4" fill="${colors.cardBackground}" stroke="${colors.contentText}" stroke-width="1" />`,
   ];
-  const maxLines = Math.floor((NOTE_NODE_HEIGHT - 16) / lineHeight);
-  const lines = wrapText(node.data, NOTE_NODE_WIDTH - 16, fontSize, tr).slice(
+  const maxLines = Math.floor((height - 16) / lineHeight);
+  const lines = wrapText(node.data, width - 16, fontSize, tr).slice(
     0,
     maxLines
   );
